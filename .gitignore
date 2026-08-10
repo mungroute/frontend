@@ -33,3 +33,8 @@ pnpm-debug.log*
 # Test / coverage
 coverage/
 *.local
+*.tsbuildinfo
+
+# Local browser QA artifacts
+.playwright-cli/
+output/
