@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { BaseMapViewport } from './BaseMapViewport'
+import { BaseMapProvider } from './BaseMapProvider'
 import type { BaseMapAdapter, BaseMapScene } from './types'
 
 const scene: BaseMapScene = {
@@ -90,5 +91,20 @@ describe('BaseMapViewport', () => {
     expect(screen.getByTestId('base-map-fallback')).toBeInTheDocument()
     markSecondReady()
     await waitFor(() => expect(screen.getByRole('region', { name: '지도' })).toHaveAttribute('data-map-provider', 'adapter'))
+  })
+
+  it('uses the app-level map provider and preserves the visual overlay after tiles load', async () => {
+    const mount = vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }))
+    const adapter: BaseMapAdapter = { mount }
+
+    render(
+      <BaseMapProvider adapter={adapter} defaultScene={scene}>
+        <BaseMapViewport ariaLabel="공통 지도" fallback={{ src: '/map.png', overlay: <span>추천 경로</span> }} />
+      </BaseMapProvider>,
+    )
+
+    expect(mount).toHaveBeenCalledWith(expect.any(HTMLElement), scene)
+    await waitFor(() => expect(screen.queryByTestId('base-map-fallback')).not.toBeInTheDocument())
+    expect(screen.getByText('추천 경로')).toBeInTheDocument()
   })
 })

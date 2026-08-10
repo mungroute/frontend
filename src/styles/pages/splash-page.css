@@ -2,7 +2,7 @@
   position: relative;
   isolation: isolate;
   width: 100%;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -133,7 +133,7 @@
 
 @media (min-width: 720px) {
   .splash-page {
-    min-height: 100vh;
+    min-height: var(--app-viewport-height);
   }
 
   .splash-page__brand {

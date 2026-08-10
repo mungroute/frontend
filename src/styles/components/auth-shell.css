@@ -1,6 +1,6 @@
 .auth-page {
   width: min(100%, 390px);
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height);
   margin: 0 auto;
   position: relative;
   display: flex;

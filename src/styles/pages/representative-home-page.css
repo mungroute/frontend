@@ -1,7 +1,7 @@
 .representative-home-page {
   position: relative;
   width: min(100%, 390px);
-  height: 100dvh;
+  height: var(--app-viewport-height);
   min-height: 640px;
   margin: 0 auto;
   overflow: hidden;
