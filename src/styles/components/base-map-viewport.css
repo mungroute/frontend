@@ -27,9 +27,21 @@
   z-index: 0;
 }
 
-.base-map-viewport__overlay {
+.base-map-viewport__fallback-overlay {
   z-index: 2;
   pointer-events: none;
+}
+
+.base-map-viewport__overlay {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.base-map-viewport .ol-attribution {
+  right: 6px;
+  bottom: 6px;
+  font-size: 9px;
+  opacity: .72;
 }
 
 .base-map-viewport__overlay :is(a, button) {

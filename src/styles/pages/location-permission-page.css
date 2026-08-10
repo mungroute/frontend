@@ -1,6 +1,6 @@
 .location-permission-page {
   width: 100%;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height);
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;

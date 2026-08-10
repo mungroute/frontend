@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { BaseMapBinding, BaseMapInstance } from './types'
+import { BaseMapContext } from './BaseMapContext'
 import '../../styles/components/base-map-viewport.css'
 
 type BaseMapViewportProps = {
@@ -22,12 +23,14 @@ export function BaseMapViewport({
   map,
   children,
 }: BaseMapViewportProps) {
+  const defaults = useContext(BaseMapContext)
+  const resolvedMap = map ?? (defaults?.adapter ? { adapter: defaults.adapter, scene: defaults.defaultScene } : undefined)
   const canvasRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<BaseMapInstance>(null)
-  const renderedSceneRef = useRef(map?.scene)
+  const renderedSceneRef = useRef(resolvedMap?.scene)
   const [providerReady, setProviderReady] = useState(false)
-  const adapter = map?.adapter
-  const scene = map?.scene
+  const adapter = resolvedMap?.adapter
+  const scene = resolvedMap?.scene
 
   useEffect(() => {
     renderedSceneRef.current = scene
@@ -77,10 +80,10 @@ export function BaseMapViewport({
       {!providerReady && (
         <div className="base-map-viewport__fallback" data-testid="base-map-fallback">
           <img className="base-map-viewport__fallback-image" src={fallback.src} alt={fallback.alt ?? ''} />
-          {fallback.overlay && <div className="base-map-viewport__fallback-overlay">{fallback.overlay}</div>}
         </div>
       )}
       <div ref={canvasRef} className="base-map-viewport__canvas" />
+      {fallback.overlay && <div className="base-map-viewport__fallback-overlay">{fallback.overlay}</div>}
       {children && <div className="base-map-viewport__overlay">{children}</div>}
     </section>
   )
