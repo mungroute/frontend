@@ -1,0 +1,12 @@
+.distance-alert-page__map { position: absolute; inset: -1px; }
+.distance-alert-page__route { position: absolute; top: 170px; left: 54px; width: 270px; height: 355px; }
+.distance-alert-page__direction { position: absolute; top: 174px; left: 18px; width: 174px; height: 178px; }
+.distance-alert-page__nearby { position: absolute; top: 155px; left: 63px; width: 44px; height: 50px; }
+.distance-alert-page__current { position: absolute; top: 350px; left: 184px; width: 42px; height: 42px; }
+.distance-alert-page__alert { position: absolute; z-index: 3; top: 34px; right: 20px; left: 20px; min-height: 144px; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--color-primary); border-radius: var(--radius-18); background: rgba(255,255,255,.96); box-shadow: 0 8px 24px rgba(55,43,34,.15); }
+.distance-alert-page__alert > img { width: 88px; height: 88px; flex: 0 0 auto; border-radius: 50%; }
+.distance-alert-page__alert h1 { margin: 0; color: var(--color-text-primary); font-size: 18px; line-height: 26px; }
+.distance-alert-page__alert strong { display: block; margin-top: 2px; color: var(--color-primary); font-size: 13px; line-height: 19px; }
+.distance-alert-page__alert p { margin: 3px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; letter-spacing: -.02em; }
+.distance-alert-page__sheet { position: absolute; z-index: 3; right: -1px; bottom: -1px; left: -1px; height: 184px; padding: 28px 30px 10px; border-radius: var(--radius-28) var(--radius-28) 0 0; }
+@media (max-height: 700px) { .distance-alert-page__alert { top: 16px; min-height: 126px; } .distance-alert-page__sheet { height: 170px; padding-top: 17px; } }

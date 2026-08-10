@@ -1,0 +1,22 @@
+.dog-selection-page__map { position: absolute; inset: -1px; opacity: .42; filter: saturate(.7); }
+.dog-selection-page__sheet { position: absolute; z-index: 2; top: 97px; right: -1px; bottom: -1px; left: -1px; padding: 16px 20px 24px; border-radius: 32px 32px 0 0; background: var(--color-bg-base); box-shadow: var(--elevation-sheet); }
+.dog-selection-page__handle { width: 42px; height: 4px; margin: 0 auto 20px; border-radius: var(--radius-full); background: var(--color-border-strong); }
+.dog-selection-page__sheet h1 { margin: 0; font-size: 21px; line-height: 30px; letter-spacing: -.04em; }
+.dog-selection-page__intro { margin: 6px 0 23px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.dog-selection-page__dogs { display: grid; gap: 12px; }
+.dog-selection-page__dogs button { width: 100%; height: 104px; display: flex; align-items: center; gap: 14px; padding: 12px 15px; border: 1px solid var(--color-border); border-radius: var(--radius-16); color: var(--color-text-primary); background: var(--color-surface); text-align: left; cursor: pointer; }
+.dog-selection-page__dogs button[aria-pressed='true'] { padding: 11px 14px; border: 2px solid var(--color-primary); background: #fffdfb; }
+.dog-selection-page__avatar { width: 56px; height: 56px; overflow: hidden; flex: 0 0 auto; border: 1px solid rgba(244, 122, 58, .18); border-radius: 50%; background: var(--color-primary-soft); }
+.dog-selection-page__avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.dog-selection-page__dogs button > span:not(.dog-selection-page__avatar):not(.dog-selection-page__radio) { flex: 1; }
+.dog-selection-page__dogs strong, .dog-selection-page__dogs small { display: block; }
+.dog-selection-page__dogs strong { font-size: 16px; line-height: 24px; }
+.dog-selection-page__dogs small { margin-top: 2px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.dog-selection-page__radio { position: relative; width: 28px; height: 28px; }
+.dog-selection-page__radio img { width: 28px; height: 28px; display: block; }
+.dog-selection-page__radio b { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 16px; }
+.dog-selection-page__register { width: 100%; height: 69px; margin-top: 12px; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-14); color: var(--color-text-secondary); background: transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
+.dog-selection-page__distance-card { height: 102px; margin-top: 24px; padding: 14px 16px 12px; border: 1px solid var(--color-primary); border-radius: var(--radius-16); background: var(--color-surface); }
+.dog-selection-page__distance-card > span { display: block; margin-top: 4px; color: var(--color-primary); font-size: 11px; line-height: 17px; }
+.dog-selection-page__confirm { position: absolute; top: 599px; right: 20px; left: 20px; height: 57px; }
+@media (max-height: 760px) { .dog-selection-page__sheet { top: 60px; } .dog-selection-page__handle { margin-bottom: 12px; } .dog-selection-page__intro { margin-bottom: 10px; } .dog-selection-page__dogs button { height: 72px; } .dog-selection-page__avatar { width: 46px; height: 46px; } .dog-selection-page__register { height: 42px; } .dog-selection-page__distance-card { margin-top: 10px; padding-block: 9px; } .dog-selection-page__confirm { bottom: 18px; } }
