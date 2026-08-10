@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="101.001" height="66.001" viewBox="0 0 101.001 66.001" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Route/Changed Segment" filter="url(#filter0_d_0_17)">
+<path d="M5.50092 60.5001C25.5009 54.5001 43.5009 44.5001 60.5009 32.5001C72.5009 24.5001 84.5009 14.5001 95.5009 5.50011" stroke="#D85C4A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<filter id="filter0_d_0_17" x="-2.38419e-07" y="0" width="101.001" height="66.001" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.94 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_17"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_17" result="shape"/>
+</filter>
+</defs>
+</svg>

@@ -1,0 +1,80 @@
+.route-generating-page__status {
+  position: absolute;
+  top: 64px;
+  right: 20px;
+  left: 20px;
+  text-align: center;
+}
+
+.route-generating-page__status h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.route-generating-page__status p {
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  letter-spacing: -0.025em;
+}
+
+.route-generating-page__visual {
+  position: absolute;
+  top: 159px;
+  left: 50%;
+  width: 260px;
+  height: 260px;
+  display: block;
+  object-fit: contain;
+  transform: translateX(-50%);
+}
+
+.route-generating-page__skeletons {
+  position: absolute;
+  top: 463px;
+  right: 23px;
+  left: 23px;
+  display: grid;
+  gap: 16px;
+}
+
+.route-generating-page__skeleton {
+  height: 86px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 16px;
+  border-radius: var(--radius-16);
+  background: var(--color-surface);
+}
+
+.route-generating-page__skeleton span {
+  height: 14px;
+  width: 170px;
+  border-radius: var(--radius-full);
+  background: var(--color-disabled);
+  animation: route-skeleton-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.route-generating-page__skeleton span + span {
+  width: 250px;
+  height: 10px;
+  background: var(--color-bg-subtle);
+  animation-delay: 180ms;
+}
+
+@keyframes route-skeleton-pulse {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+@media (max-height: 760px) {
+  .route-generating-page__status { top: 38px; }
+  .route-generating-page__visual { top: 118px; width: 220px; height: 220px; }
+  .route-generating-page__skeletons { top: 370px; gap: 12px; }
+  .route-generating-page__skeleton { height: 76px; padding-block: 14px; gap: 16px; }
+}
