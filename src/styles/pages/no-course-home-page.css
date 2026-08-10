@@ -1,0 +1,67 @@
+.no-course-home-page {
+  position: relative;
+  width: min(100%, 390px);
+  height: 100dvh;
+  min-height: 640px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  box-shadow: var(--elevation-card);
+}
+
+.no-course-home-page__map {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% - 76px);
+  overflow: hidden;
+}
+
+.no-course-home-page__logo {
+  position: absolute;
+  top: 23.2px;
+  left: 19px;
+  width: 112px;
+  height: 33.6px;
+  object-fit: contain;
+}
+
+.no-course-home-page__profile {
+  position: absolute;
+  top: 22px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+}
+
+.no-course-home-page__current-location {
+  position: absolute;
+  top: 48.63%;
+  left: 44.23%;
+  width: 36px;
+  height: 36px;
+}
+
+.no-course-home-page__start {
+  position: absolute;
+  z-index: 2;
+  bottom: 107px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@media (max-height: 760px) {
+  .no-course-home-page__current-location {
+    top: 43%;
+  }
+}
+
+@media (min-width: 391px) {
+  .no-course-home-page {
+    box-shadow: var(--elevation-floating);
+  }
+}

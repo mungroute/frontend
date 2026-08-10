@@ -1,0 +1,20 @@
+.management-header { position: absolute; top: 19px; right: 19px; left: 19px; min-height: 58px; }
+.management-header__back { position: absolute; top: -7px; left: -14px; width: 40px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; color: var(--color-text-primary); background: transparent; font-family: Arial, sans-serif; font-size: 34px; line-height: 1; cursor: pointer; }
+.management-header h1 { margin: 0 0 0 38px; font-size: 20px; line-height: 30px; }
+.management-header p { margin: 4px 0 0 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.management-header__trailing { position: absolute; top: -1px; right: 1px; }
+.management-metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0 12px; border-radius: 18px; background: var(--color-surface); }
+.management-metrics div { display: flex; min-width: 0; flex-direction: column-reverse; justify-content: center; padding-left: 10px; }
+.management-metrics dt { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.management-metrics dd { margin: 0; font-size: 22px; line-height: 32px; font-weight: 700; white-space: nowrap; }
+.route-summary-card { position: relative; display: block; width: 100%; height: 116px; padding: 16px 18px; border: 2px solid var(--color-primary); border-radius: 16px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
+.route-summary-card strong, .route-summary-card__meta, .route-summary-card__badge { display: block; }
+.route-summary-card strong { font-size: 17px; line-height: 26px; }
+.route-summary-card__meta { margin-top: 3px; color: var(--color-text-secondary); font-size: 14px; line-height: 21px; }
+.route-summary-card__badge { width: max-content; margin-top: 6px; padding: 3px 10px; border-radius: var(--radius-full); color: var(--color-primary); background: var(--color-primary-soft); font-size: 12px; line-height: 18px; }
+.route-summary-card__chevron { position: absolute; top: 36px; right: 29px; color: var(--color-primary); font-size: 28px; font-weight: 700; }
+.management-detail-row { width: 100%; height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border: 0; border-radius: 16px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
+.management-detail-row > span:first-child { display: grid; gap: 2px; }
+.management-detail-row strong { font-size: 15px; line-height: 24px; font-weight: 500; }
+.management-detail-row small { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.management-detail-row > span:last-child { color: var(--color-text-secondary); font-size: 22px; }

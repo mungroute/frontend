@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="284.001" height="90.6314" viewBox="0 0 284.001 90.6314" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Route/Completed Walk" filter="url(#filter0_d_0_5)">
+<path d="M5.00025 85.6311C39.0002 61.6311 63.0002 40.6311 94.0002 40.6311C124 41.6311 147 55.6311 174 34.6311C206 8.63112 237 -6.36888 279 15.6311" stroke="#E96B2C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<filter id="filter0_d_0_5" x="-2.38419e-07" y="0" width="284.001" height="90.6314" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.94 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_5"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_5" result="shape"/>
+</filter>
+</defs>
+</svg>

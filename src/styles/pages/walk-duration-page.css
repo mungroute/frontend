@@ -1,0 +1,338 @@
+.walk-duration-page__header {
+  position: absolute;
+  top: 14px;
+  right: 20px;
+  left: 12px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+}
+
+.walk-duration-page__header h1 {
+  position: absolute;
+  top: 8px;
+  left: 71px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.walk-duration-page__time-card,
+.walk-duration-page__departure {
+  position: absolute;
+  right: 23px;
+  left: 23px;
+  border-radius: var(--radius-16);
+  background: var(--color-surface);
+}
+
+.walk-duration-page__time-card {
+  top: 97px;
+  height: 196px;
+  padding: 18px 20px;
+}
+
+.walk-duration-page__time-card h2,
+.walk-duration-page__departure h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.walk-duration-page__time-card .ui-time-picker {
+  margin-top: 8px;
+}
+
+.walk-duration-page__time-card > p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.walk-duration-page__departure {
+  top: 317px;
+  height: 92px;
+  padding: 16px;
+}
+
+.walk-duration-page__departure > div {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.walk-duration-page__departure > div > span {
+  width: 84px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-12);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.walk-duration-page__departure button {
+  min-width: 112px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.walk-duration-page__map {
+  position: absolute;
+  top: 433px;
+  right: 23px;
+  left: 23px;
+  height: 214px;
+}
+
+.walk-duration-page__map-marker {
+  position: absolute;
+  top: 45.8%;
+  left: 47.4%;
+  width: 24px;
+  height: 24px;
+}
+
+.walk-duration-page__continue {
+  position: absolute;
+  right: 34px;
+  bottom: 49px;
+  left: 34px;
+}
+
+.walk-duration-page__dialog-backdrop {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(41, 36, 33, 0.38);
+  animation: walk-duration-backdrop-in 160ms ease-out;
+}
+
+.walk-duration-page__dialog-backdrop .ui-sheet {
+  width: 100%;
+  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  border-radius: var(--radius-28) var(--radius-28) 0 0;
+  background: var(--color-surface);
+  animation: walk-duration-sheet-in 220ms ease-out;
+}
+
+.walk-duration-page__dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.walk-duration-page__dialog-header h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.walk-duration-page__dialog-header button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.walk-duration-page__dialog-description {
+  margin: 4px 0 20px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.walk-duration-page__time-composer {
+  display: grid;
+  grid-template-columns: 82px 1fr 12px 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.walk-duration-page__period-toggle {
+  height: 58px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-14);
+  background: var(--color-bg-subtle);
+}
+
+.walk-duration-page__period-toggle button {
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: var(--color-primary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk-duration-page__period-toggle button[aria-pressed='true'] {
+  color: var(--color-primary-pressed);
+  background: var(--color-surface);
+  box-shadow: inset 0 -3px 0 var(--color-primary);
+}
+
+.walk-duration-page__time-number {
+  display: grid;
+  gap: 4px;
+}
+
+.walk-duration-page__time-number span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.walk-duration-page__time-number input {
+  width: 100%;
+  height: 58px;
+  padding: 0 8px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-14);
+  outline: none;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+  text-align: center;
+  appearance: textfield;
+}
+
+.walk-duration-page__time-number input::-webkit-inner-spin-button,
+.walk-duration-page__time-number input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.walk-duration-page__time-number input:focus-visible {
+  border-color: var(--color-primary-pressed);
+  box-shadow: 0 0 0 3px rgba(244, 122, 58, 0.16);
+}
+
+.walk-duration-page__time-colon {
+  padding-bottom: 14px;
+  color: var(--color-text-secondary);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.walk-duration-page__time-preview {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-16);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.walk-duration-page__time-preview span {
+  color: var(--color-text-primary);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+.walk-duration-page__time-preview strong {
+  grid-column: 1;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+}
+
+.walk-duration-page__time-preview svg {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+
+.walk-duration-page__dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.walk-duration-page__dialog-actions button {
+  min-height: 52px;
+  border: 0;
+  border-radius: var(--radius-16);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk-duration-page__dialog-actions button:first-child {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+
+.walk-duration-page__dialog-actions button:last-child {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.walk-duration-page__dialog-actions button:disabled {
+  color: var(--color-text-disabled);
+  background: var(--color-disabled);
+  cursor: not-allowed;
+}
+
+@keyframes walk-duration-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes walk-duration-sheet-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-height: 760px) {
+  .walk-duration-page__time-card { top: 82px; height: 180px; padding-block: 12px; }
+  .walk-duration-page__departure { top: 274px; }
+  .walk-duration-page__map { top: 378px; height: 180px; }
+  .walk-duration-page__continue { bottom: 22px; }
+}

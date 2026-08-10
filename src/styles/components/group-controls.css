@@ -1,0 +1,24 @@
+.group-card { position: relative; width: 100%; height: 150px; display: block; padding: 18px; border: 0; border-radius: var(--radius-18); color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
+.group-card strong, .group-card > span, .group-card small { display: block; }
+.group-card strong { position: absolute; top: 18px; left: 18px; font-size: 17px; line-height: 24px; }
+.group-card > span { position: absolute; top: 50px; left: 18px; color: var(--color-text-secondary); font-size: 13px; line-height: 19px; }
+.group-card img { position: absolute; bottom: 18px; left: 18px; width: 110px; height: 50px; }
+.group-card small { position: absolute; bottom: 30px; left: 146px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.group-card > b { position: absolute; top: 53px; right: 20px; color: var(--color-text-secondary); font-size: 22px; font-weight: 400; }
+.shared-route-row { width: 100%; height: 104px; display: flex; align-items: center; justify-content: space-between; padding: 15px 16px; border: 0; border-radius: 17px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
+.shared-route-row > span { display: grid; gap: 9px; }
+.shared-route-row strong { font-size: 15px; line-height: 23px; }
+.shared-route-row small { color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.shared-route-row > b { color: var(--color-primary); font-size: 13px; font-weight: 500; }
+.shared-course-card { width: 100%; height: 150px; display: flex; align-items: center; gap: 18px; padding: 14px; border: 0; border-radius: var(--radius-18); background: var(--color-surface); color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.shared-course-card > img { width: 120px; height: 122px; border-radius: 12px; object-fit: cover; }
+.shared-course-card > span { display: grid; gap: 10px; }
+.shared-course-card strong { font-size: 16px; line-height: 24px; }
+.shared-course-card small { color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.shared-course-card b { margin-top: 10px; color: var(--color-primary); font-size: 12px; line-height: 18px; font-weight: 500; }
+.group-activity-item { position: relative; height: 120px; overflow: hidden; border-radius: var(--radius-18); background: var(--color-surface); }
+.group-activity-item img { position: absolute; top: 18px; left: 16px; width: 44px; height: 44px; border-radius: 50%; }
+.group-activity-item strong, .group-activity-item span, .group-activity-item small { position: absolute; left: 74px; }
+.group-activity-item strong { top: 18px; font-size: 14px; line-height: 21px; }
+.group-activity-item span { top: 45px; right: 30px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.group-activity-item small { top: 83px; color: var(--color-text-secondary); font-size: 11px; line-height: 16px; }
