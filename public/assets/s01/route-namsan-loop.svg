@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="142.346" height="245" viewBox="0 0 142.346 245" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Route/Primary &#194;&#183; Namsan Trail Loop" filter="url(#filter0_d_0_41)">
+<path d="M5.00073 235C22.0007 198 27.0007 152 30.0007 105C33.0007 62 52.0007 24 83.0007 5.00001C113.001 17 134.001 44 137.001 80C140.001 113 123.001 147 103.001 178C83.0007 208 58.0007 236 26.0007 240" stroke="#E96B2C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<filter id="filter0_d_0_41" x="0" y="2.38419e-07" width="142.346" height="245" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.94 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_41"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_41" result="shape"/>
+</filter>
+</defs>
+</svg>
