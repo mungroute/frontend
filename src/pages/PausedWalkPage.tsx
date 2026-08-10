@@ -1,5 +1,6 @@
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
+import { DistanceModeControl } from '../Components/walk/DistanceModeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
 import '../styles/pages/journey-page.css'
 import '../styles/components/walk-session-glass.css'
@@ -11,9 +12,11 @@ type PausedWalkPageProps = {
   onResume?: () => void
   onStop?: () => void
   onPhoto?: () => void
+  distanceMode?: boolean
+  onDistanceModeChange?: (checked: boolean) => void
 }
 
-export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPhoto }: PausedWalkPageProps) {
+export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPhoto, distanceMode, onDistanceModeChange }: PausedWalkPageProps) {
   return (
     <main className="journey-page paused-walk-page">
       <BaseMapViewport
@@ -33,16 +36,19 @@ export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPh
         <h1 id="paused-walk-title">산책을 잠시 멈췄어요</h1>
         <p>{dogName}가 기다리는 동안 GPS 기록도 일시정지돼요.</p>
 
-        <dl className="paused-walk-page__stats">
-          <div>
-            <dt>현재 시간</dt>
-            <dd>00:17:00</dd>
-          </div>
-          <div>
-            <dt>현재 거리</dt>
-            <dd>1.2km</dd>
-          </div>
-        </dl>
+        <div className="paused-walk-page__summary">
+          <dl className="paused-walk-page__stats">
+            <div>
+              <dt>현재 시간</dt>
+              <dd>00:17:00</dd>
+            </div>
+            <div>
+              <dt>현재 거리</dt>
+              <dd>1.2km</dd>
+            </div>
+          </dl>
+          <DistanceModeControl checked={distanceMode} onChange={onDistanceModeChange} />
+        </div>
 
         <WalkSessionControls mode="paused" onResume={onResume} onStop={onStop} onPhoto={onPhoto} />
       </section>

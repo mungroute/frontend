@@ -433,6 +433,25 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
+  it('keeps the distance mode choice during a walk and changes it only after confirmation', () => {
+    window.history.replaceState({}, '', '/walk/dogs')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('switch', { name: '거리두기 모드' }))
+    fireEvent.click(screen.getByRole('button', { name: '선택 완료' }))
+
+    const activeSwitch = screen.getByRole('switch', { name: '거리두기' })
+    expect(activeSwitch).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(activeSwitch)
+    expect(activeSwitch).toHaveAttribute('aria-checked', 'false')
+
+    fireEvent.click(within(screen.getByRole('dialog', { name: '거리두기 모드 켜기 확인' })).getByRole('button', { name: '켜기' }))
+    expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: '일시정지' }))
+    expect(screen.getByRole('switch', { name: '거리두기' })).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('pauses and resumes the active walk without reloading the document', () => {
     window.history.replaceState({}, '', '/walk/active')
     render(<App />)
