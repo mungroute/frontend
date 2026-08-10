@@ -7,10 +7,6 @@
 .active-walk-page__handle { width: 42px; height: 4px; margin: 0 auto 12px; border-radius: var(--radius-full); background: var(--color-border-strong); }
 .active-walk-page__summary { display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; }
 .active-walk-page__summary > .walk-stats { grid-column: span 2; }
-.active-walk-page__summary > .ui-switch-row { width: 100%; display: grid; grid-template-columns: 1fr; justify-items: center; gap: 4px; }
-.active-walk-page__summary .ui-switch-copy { grid-row: 2; grid-column: 1; }
-.active-walk-page__summary .ui-switch { grid-row: 1; grid-column: 1; }
-.active-walk-page__summary .ui-switch-title { font-size: 11px; line-height: 17px; font-weight: 500; color: var(--color-text-secondary); }
 .active-walk-page__status-row { height: 31px; display: flex; align-items: center; padding-left: 8px; }
 .active-walk-page__status-row h1 { margin: 0; font-size: 16px; line-height: 24px; }
 @media (max-height: 700px) { .active-walk-page__sheet { height: 220px; padding-top: 9px; } .active-walk-page__route { top: 130px; height: 360px; } .active-walk-page__destination { top: 477px; } .active-walk-page__handle { margin-bottom: 7px; } .active-walk-page__status-row { height: 24px; } }

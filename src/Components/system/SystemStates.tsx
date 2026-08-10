@@ -71,6 +71,21 @@ export function WalkEndDialog({ onClose, onConfirm }: CloseableProps & { onConfi
   )
 }
 
+export function DistanceModeConfirmDialog({ nextChecked, onClose, onConfirm }: CloseableProps & { nextChecked: boolean; onConfirm: () => void }) {
+  const action = nextChecked ? '켜기' : '끄기'
+  return (
+    <Overlay label={`거리두기 모드 ${action} 확인`} onClose={onClose}>
+      <div className="system-icon system-icon--soft"><MapPin size={24} /></div>
+      <h2>거리두기 모드를<br />{nextChecked ? '켤까요?' : '끌까요?'}</h2>
+      <p>{nextChecked
+        ? <>산책 중 주변 반려견의<br />접근 방향과 거리를 알려드려요.</>
+        : <>끄면 주변 반려견 접근 알림을<br />받을 수 없어요.</>}</p>
+      <Button onClick={onConfirm}>{action}</Button>
+      <Button variant="ghost" onClick={onClose}>취소</Button>
+    </Overlay>
+  )
+}
+
 export function RecordMoreSheet({ onClose, onDelete, onRename, onShare }: CloseableProps & { onDelete: () => void; onRename?: () => void; onShare?: () => void }) {
   return (
     <Overlay label="기록 더보기" sheet className="system-surface--record-more" onClose={onClose}>

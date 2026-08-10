@@ -1,0 +1,28 @@
+.walk-distance-mode-control {
+  width: 100%;
+}
+
+.walk-distance-mode-control > .ui-switch-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 4px;
+}
+
+.walk-distance-mode-control .ui-switch-copy {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.walk-distance-mode-control .ui-switch {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.walk-distance-mode-control .ui-switch-title {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 17px;
+  font-weight: 500;
+}

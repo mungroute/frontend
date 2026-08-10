@@ -55,15 +55,23 @@
   line-height: 21px;
 }
 
-.paused-walk-page__stats {
+.paused-walk-page__summary {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
+  align-items: center;
   height: 70px;
   margin: 27px 0 30px;
-  padding: 0;
   overflow: hidden;
   border-radius: 16px;
   background: var(--color-bg-subtle);
+}
+
+.paused-walk-page__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .paused-walk-page__stats div {
@@ -90,5 +98,5 @@
 @media (max-height: 700px) {
   .paused-walk-page__waiting { top: 75px; width: 180px; height: 180px; left: 104px; }
   .paused-walk-page__sheet { height: 350px; }
-  .paused-walk-page__stats { margin-top: 18px; margin-bottom: 20px; }
+  .paused-walk-page__summary { margin-top: 18px; margin-bottom: 20px; }
 }

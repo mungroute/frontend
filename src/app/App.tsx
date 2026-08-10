@@ -52,6 +52,7 @@ const isServiceInfoSection = (value: string | null): value is ServiceInfoSection
 export function App() {
   const [location, setLocation] = useState(readLocation)
   const [locationError, setLocationError] = useState(false)
+  const [distanceMode, setDistanceMode] = useState(true)
   const duration = readDuration(location.search)
 
   useEffect(() => {
@@ -167,7 +168,7 @@ export function App() {
   }
 
   if (location.pathname === '/walk/distance-alert') {
-    return <DistanceAlertPage onPause={() => navigate('/walk/paused')} onStop={() => navigate('/walk/complete')} />
+    return <DistanceAlertPage distanceMode={distanceMode} onDistanceModeChange={(checked) => { setDistanceMode(checked); if (!checked) navigate('/walk/active') }} onPause={() => navigate('/walk/paused')} onStop={() => navigate('/walk/complete')} />
   }
 
   if (location.pathname === '/walk/complete') {
@@ -175,15 +176,15 @@ export function App() {
   }
 
   if (location.pathname === '/walk/paused') {
-    return <PausedWalkPage onResume={() => navigate('/walk/active')} onStop={() => navigate('/walk/complete')} />
+    return <PausedWalkPage distanceMode={distanceMode} onDistanceModeChange={setDistanceMode} onResume={() => navigate('/walk/active')} onStop={() => navigate('/walk/complete')} />
   }
 
   if (location.pathname === '/walk/active') {
-    return <ActiveWalkPage onPause={() => navigate('/walk/paused')} onStop={() => navigate('/walk/complete')} />
+    return <ActiveWalkPage distanceMode={distanceMode} onDistanceModeChange={setDistanceMode} onPause={() => navigate('/walk/paused')} onStop={() => navigate('/walk/complete')} />
   }
 
   if (location.pathname === '/walk/dogs') {
-    return <DogSelectionPage onConfirm={() => navigate('/walk/active')} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
+    return <DogSelectionPage onConfirm={(selection) => { setDistanceMode(selection.distanceMode); navigate('/walk/active') }} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
   }
 
   if (location.pathname === '/courses/compare') {

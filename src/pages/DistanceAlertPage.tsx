@@ -1,5 +1,6 @@
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
+import { DistanceModeControl } from '../Components/walk/DistanceModeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
 import { WalkStats } from '../Components/walk/WalkStats'
 import '../styles/pages/journey-page.css'
@@ -11,9 +12,11 @@ type DistanceAlertPageProps = {
   onPause?: () => void
   onStop?: () => void
   onPhoto?: () => void
+  distanceMode?: boolean
+  onDistanceModeChange?: (checked: boolean) => void
 }
 
-export function DistanceAlertPage({ map, onPause, onStop, onPhoto }: DistanceAlertPageProps) {
+export function DistanceAlertPage({ map, onPause, onStop, onPhoto, distanceMode, onDistanceModeChange }: DistanceAlertPageProps) {
   return (
     <main className="journey-page distance-alert-page">
       <BaseMapViewport
@@ -39,7 +42,10 @@ export function DistanceAlertPage({ map, onPause, onStop, onPhoto }: DistanceAle
       </section>
 
       <section className="distance-alert-page__sheet walk-session-glass">
-        <WalkStats time="00:18:22" distance="1.3km" compact />
+        <div className="distance-alert-page__summary">
+          <WalkStats time="00:18:22" distance="1.3km" compact />
+          <DistanceModeControl checked={distanceMode} onChange={onDistanceModeChange} />
+        </div>
         <WalkSessionControls onPause={onPause} onStop={onStop} onPhoto={onPhoto} />
       </section>
     </main>
