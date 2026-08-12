@@ -28,10 +28,7 @@ export function WalkCompletePage({ map, dogName = '망고', onSave }: WalkComple
         className="walk-complete-page__map"
         ariaLabel="완료한 산책 경로 지도"
         map={map}
-        fallback={{
-          src: '/assets/s09/map.jpg',
-          overlay: <img className="walk-complete-page__route" src="/assets/s09/route-completed.svg" alt="" />,
-        }}
+        fallback={{ src: '/assets/s09/map.jpg' }}
       />
 
       <dl className="walk-complete-page__stats" aria-label="완료한 산책 기록">

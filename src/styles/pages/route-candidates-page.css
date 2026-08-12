@@ -6,29 +6,6 @@
   height: 360px;
 }
 
-.route-candidates-page__route {
-  position: absolute;
-  display: block;
-}
-
-.route-candidates-page__route--recommended {
-  top: 25%;
-  right: 23.08%;
-  bottom: 23.06%;
-  left: 18.46%;
-  width: 58.46%;
-  height: 51.94%;
-}
-
-.route-candidates-page__route--alternative {
-  top: 52.22%;
-  right: 16.92%;
-  bottom: 19.43%;
-  left: 18.46%;
-  width: 64.62%;
-  height: 28.35%;
-}
-
 .route-candidates-page__back {
   position: absolute;
   z-index: 3;

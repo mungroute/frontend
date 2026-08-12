@@ -24,17 +24,7 @@ export function RouteComparisonPage({
         className="route-comparison-page__map"
         ariaLabel="평소 코스와 추천 대안 비교 지도"
         map={map}
-        fallback={{
-          src: '/assets/s05/map.jpg',
-          overlay: (
-            <>
-              <img className="route-comparison-page__route" src="/assets/s05/route-alternative-longer.svg" alt="" />
-              <img className="route-comparison-page__route" src="/assets/s05/route-primary-selected.svg" alt="" />
-              <img className="route-comparison-page__changed" src="/assets/s05/route-changed-segment.svg" alt="" />
-              <img className="route-comparison-page__start" src="/assets/s05/marker-start.svg" alt="" />
-            </>
-          ),
-        }}
+        fallback={{ src: '/assets/s05/map.jpg' }}
       />
 
       <section className="route-comparison-page__sheet">

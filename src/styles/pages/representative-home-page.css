@@ -37,38 +37,6 @@
   height: 40px;
 }
 
-.representative-home-page__route {
-  position: absolute;
-  top: 130px;
-  left: 28.72%;
-  width: 142.346px;
-  height: 245px;
-}
-
-.representative-home-page__route > img:first-child {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.representative-home-page__marker {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-}
-
-.representative-home-page__marker--start {
-  left: -8px;
-  bottom: -4px;
-}
-
-.representative-home-page__marker--finish {
-  left: 12px;
-  bottom: -10px;
-  width: 28px;
-  height: 28px;
-}
-
 .representative-home-page__sheet {
   position: absolute;
   z-index: 2;
@@ -219,13 +187,6 @@
 }
 
 @media (max-height: 760px) {
-  .representative-home-page__route {
-    top: 72px;
-    left: 31%;
-    transform: scale(0.72);
-    transform-origin: top left;
-  }
-
   .representative-home-page__sheet {
     bottom: 73px;
     height: 325px;

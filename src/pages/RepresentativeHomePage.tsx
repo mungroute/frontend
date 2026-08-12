@@ -21,16 +21,7 @@ export function RepresentativeHomePage({ onStartWalk = () => undefined, onOpenCo
         className="representative-home-page__map"
         ariaLabel="저녁 남산길 지도"
         map={map}
-        fallback={{
-          src: asset('map-representative-route.png'),
-          overlay: (
-            <div className="representative-home-page__route" aria-hidden="true">
-              <img src={asset('route-namsan-loop.svg')} alt="" />
-              <img className="representative-home-page__marker representative-home-page__marker--start" src={asset('marker-start.svg')} alt="" />
-              <img className="representative-home-page__marker representative-home-page__marker--finish" src={asset('marker-finish.svg')} alt="" />
-            </div>
-          ),
-        }}
+        fallback={{ src: asset('map-representative-route.png') }}
       >
         <img className="representative-home-page__logo" src="/assets/brand/logo-horizontal@2x.png" alt="멍루트" />
         <img className="representative-home-page__profile" src={asset('profile-circle.svg')} alt="" />

@@ -4,7 +4,6 @@
 .management-page__chips .ui-chip--soft[aria-pressed='true'] { font-weight: 700; }
 
 .my-courses-page__map { position: absolute; top: 141px; right: 19px; left: 19px; height: 276px; border-radius: 20px; }
-.my-courses-page__route { position: absolute; top: 116px; left: 24px; width: calc(100% - 48px); height: auto; }
 .my-courses-page__draw { position: absolute; z-index: 3; top: 363px; right: 31px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-full); color: var(--color-surface); background: var(--color-primary); box-shadow: 0 5px 14px rgba(255, 117, 58, .3); font-size: 28px; line-height: 44px; cursor: pointer; }
 .my-courses-page__route-card { position: absolute; top: 437px; right: 19px; left: 19px; }
 .my-courses-page__shade { position: absolute; top: 567px; right: 19px; left: 19px; width: auto; height: 114px; padding: 12px 18px; border: 0; border-radius: 18px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
@@ -15,7 +14,6 @@
 .my-courses-page__shade-times { display: flex; justify-content: space-between; margin-top: 4px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
 
 .course-detail-page__map { position: absolute; top: 75px; right: 19px; left: 19px; height: 350px; border-radius: 20px; }
-.course-detail-page__route { position: absolute; top: 100px; left: 30px; width: calc(100% - 60px); height: auto; }
 .course-detail-page__metrics { position: absolute; top: 445px; right: 19px; left: 19px; height: 94px; }
 .course-detail-page__metrics .management-metrics { height: 100%; }
 .course-detail-page__representative, .walk-record-detail-page__representative { position: absolute; right: 19px; left: 19px; height: 68px; padding: 0 16px 0 18px; border-radius: 16px; background: var(--color-surface); }
@@ -43,7 +41,6 @@
 .walk-record-detail-page__more { min-width: 44px; min-height: 44px; padding: 0; border: 0; color: var(--color-text-secondary); background: transparent; font-size: 18px; font-weight: 700; cursor: pointer; }
 .walk-record-detail-page__date { position: absolute; top: 67px; left: 23px; margin: 0; color: var(--color-text-secondary); font-size: 14px; line-height: 21px; font-weight: 500; }
 .walk-record-detail-page__map { position: absolute; top: 97px; right: 19px; left: 19px; height: 320px; border-radius: 20px; }
-.walk-record-detail-page__route { position: absolute; top: 94px; left: 25px; width: calc(100% - 50px); height: auto; }
 .walk-record-detail-page__metrics { position: absolute; top: 437px; right: 19px; left: 19px; height: 94px; }
 .walk-record-detail-page__metrics .management-metrics { height: 100%; }
 .walk-record-detail-page__representative { top: 551px; }
@@ -60,7 +57,6 @@
 
 @media (max-height: 800px) {
   .walk-record-detail-page__map { height: 200px; }
-  .walk-record-detail-page__route { top: 4px; }
   .walk-record-detail-page__metrics { top: 307px; }
   .walk-record-detail-page__representative { top: 411px; }
   .walk-record-detail-page__alerts { top: 489px; }
@@ -69,7 +65,6 @@
 
 @media (max-height: 700px) {
   .my-courses-page__map { top: 132px; height: 210px; }
-  .my-courses-page__route { top: 82px; }
   .my-courses-page__draw { top: 288px; }
   .my-courses-page__route-card { top: 354px; }
   .my-courses-page__shade { top: 474px; height: 104px; padding-top: 9px; }

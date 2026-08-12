@@ -37,14 +37,6 @@
   border-radius: 20px;
 }
 
-.walk-complete-page__route {
-  position: absolute;
-  top: 88px;
-  left: 32px;
-  width: 284px;
-  height: 91px;
-}
-
 .walk-complete-page__stats {
   position: absolute;
   top: 397px;
@@ -161,7 +153,6 @@
   .walk-complete-page__header { top: 25px; }
   .walk-complete-page__celebration { top: 10px; right: 14px; left: auto; width: 100px; height: 72px; }
   .walk-complete-page__map { top: 104px; height: 186px; }
-  .walk-complete-page__route { top: 65px; left: 8%; width: 84%; height: auto; }
   .walk-complete-page__stats { top: 304px; height: 78px; }
   .walk-complete-page__stats dd { font-size: 20px; line-height: 29px; }
   .walk-complete-page__name { top: 400px; }

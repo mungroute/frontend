@@ -4,14 +4,6 @@
   opacity: .48;
 }
 
-.paused-walk-page__route {
-  position: absolute;
-  top: 180px;
-  left: 60px;
-  width: 255px;
-  height: 270px;
-}
-
 .paused-walk-page__waiting {
   position: absolute;
   z-index: 2;

@@ -32,15 +32,7 @@ export function RouteCandidatesPage({
         className="route-candidates-page__map"
         ariaLabel="후보 코스 지도"
         map={map}
-        fallback={{
-          src: '/assets/s03/map-preview.jpg',
-          overlay: (
-            <>
-              <img className="route-candidates-page__route route-candidates-page__route--recommended" src="/assets/s04/route-recommended.svg" alt="" />
-              <img className="route-candidates-page__route route-candidates-page__route--alternative" src="/assets/s04/route-alternative.svg" alt="" />
-            </>
-          ),
-        }}
+        fallback={{ src: '/assets/s03/map-preview.jpg' }}
       />
 
       <button className="route-candidates-page__back" type="button" onClick={onBack} aria-label="코스 후보에서 뒤로 가기">

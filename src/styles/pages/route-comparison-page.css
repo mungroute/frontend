@@ -1,7 +1,4 @@
 .route-comparison-page__map { position: absolute; inset: -1px -1px auto; height: 320px; }
-.route-comparison-page__route { position: absolute; top: 62px; left: 45px; width: 275px; height: 183px; }
-.route-comparison-page__changed { position: absolute; top: 150px; left: 95px; width: 90px; height: 55px; }
-.route-comparison-page__start { position: absolute; top: 236px; left: 36px; width: 18px; height: 18px; }
 .route-comparison-page__sheet { position: absolute; z-index: 2; top: 285px; right: -1px; bottom: -1px; left: -1px; padding: 29px 24px 24px; border-radius: var(--radius-28) var(--radius-28) 0 0; background: var(--color-bg-base); }
 .route-comparison-page__sheet h1 { margin: 0; font-size: 21px; line-height: 30px; letter-spacing: -.04em; }
 .route-comparison-page__intro { margin: 7px 0 0; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }

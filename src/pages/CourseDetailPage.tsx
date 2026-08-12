@@ -26,10 +26,7 @@ export function CourseDetailPage({ map, onBack, onStart, onShare }: CourseDetail
         className="course-detail-page__map"
         ariaLabel="저녁 남산길 상세 지도"
         map={map}
-        fallback={{
-          src: '/assets/s09/map.jpg',
-          overlay: <img className="course-detail-page__route" src="/assets/c03/route.svg" alt="" />,
-        }}
+        fallback={{ src: '/assets/s09/map.jpg' }}
       />
 
       <div className="course-detail-page__metrics">
