@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
+import { DraggableSheet } from '../Components/ui'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/route-comparison-page.css'
 
 type RouteComparisonPageProps = {
   map?: BaseMapBinding
+  onBack?: () => void
   onStartAlternative?: () => void
   onStartUsual?: () => void
 }
 
 export function RouteComparisonPage({
   map,
+  onBack = () => window.history.back(),
   onStartAlternative = () => undefined,
   onStartUsual = () => undefined,
 }: RouteComparisonPageProps) {
@@ -27,7 +30,11 @@ export function RouteComparisonPage({
         fallback={{ src: '/assets/s05/map.jpg' }}
       />
 
-      <section className="route-comparison-page__sheet">
+      <button className="route-comparison-page__back" type="button" onClick={onBack} aria-label="코스 비교에서 뒤로 가기">
+        <span aria-hidden="true">‹</span> 코스 비교
+      </button>
+
+      <DraggableSheet className="route-comparison-page__sheet">
         <h1>오늘은 이 구간만 바꿔볼까요?</h1>
         <p className="route-comparison-page__intro">익숙한 길은 두고, 붐비는 220m만 우회해요.</p>
         <div className="route-comparison-page__recommendation">
@@ -58,7 +65,7 @@ export function RouteComparisonPage({
             {alternativeSelected ? '평소 코스로 시작' : '대안 코스로 시작'}
           </button>
         </div>
-      </section>
+      </DraggableSheet>
     </main>
   )
 }

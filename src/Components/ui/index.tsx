@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, InputHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, InputHTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { Check, Minus, Pause, Play, Plus, Square } from 'lucide-react'
 import '../../styles/components/ui.css'
 
@@ -162,6 +162,78 @@ export function TimePicker({ value, onChange, min = 10, max = 60, step = 5, vari
   )
 }
 
+export function DraggableSheet({ children, className = '', ...props }: ComponentPropsWithoutRef<'section'>) {
+  const sheetRef = useRef<HTMLElement>(null)
+  const dragRef = useRef({ pointerId: -1, startY: 0, startOffset: 0 })
+  const [offset, setOffset] = useState(0)
+
+  useEffect(() => {
+    const sheet = sheetRef.current
+    const container = sheet?.parentElement
+    const syncMapControl = () => {
+      if (!sheet || !container) return
+      const sheetTop = sheet.getBoundingClientRect().top - container.getBoundingClientRect().top
+      container.style.setProperty('--map-sheet-top', `${sheetTop}px`)
+    }
+    const frame = requestAnimationFrame(syncMapControl)
+    const handleResize = () => syncMapControl()
+    window.addEventListener('resize', handleResize)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', handleResize)
+      container?.style.removeProperty('--map-sheet-top')
+    }
+  }, [])
+
+  const moveTo = (nextOffset: number) => {
+    const sheet = sheetRef.current
+    const container = sheet?.parentElement
+    if (!sheet || !container) return
+    const baseTop = sheet.getBoundingClientRect().top - offset - container.getBoundingClientRect().top
+    const minOffset = 20 - baseTop
+    const maxOffset = container.clientHeight - 104 - baseTop
+    const bounded = Math.min(maxOffset, Math.max(minOffset, nextOffset))
+    setOffset(bounded)
+    container.style.setProperty('--map-sheet-top', `${baseTop + bounded}px`)
+  }
+
+  const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    dragRef.current = { pointerId: event.pointerId, startY: event.clientY, startOffset: offset }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const drag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return
+    moveTo(dragRef.current.startOffset + event.clientY - dragRef.current.startY)
+  }
+
+  const stopDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return
+    dragRef.current.pointerId = -1
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  return (
+    <section ref={sheetRef} className={`ui-draggable-sheet ${className}`.trim()} style={{ transform: `translateY(${offset}px)` }} {...props}>
+      <button
+        type="button"
+        className="ui-draggable-sheet__handle"
+        aria-label="패널 높이 조절"
+        onPointerDown={startDrag}
+        onPointerMove={drag}
+        onPointerUp={stopDrag}
+        onPointerCancel={stopDrag}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowUp') { event.preventDefault(); moveTo(offset - 48) }
+          if (event.key === 'ArrowDown') { event.preventDefault(); moveTo(offset + 48) }
+        }}
+      ><span aria-hidden="true" /></button>
+      {children}
+      <div className="ui-draggable-sheet__tail" aria-hidden="true" />
+    </section>
+  )
+}
+
 export function BottomSheet({ children, className = '', ...props }: ComponentPropsWithoutRef<'section'>) {
-  return <section className={`ui-sheet ${className}`.trim()} {...props}><div className="ui-sheet__handle" aria-hidden="true" />{children}</section>
+  return <DraggableSheet className={`ui-sheet ${className}`.trim()} {...props}>{children}</DraggableSheet>
 }

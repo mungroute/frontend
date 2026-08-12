@@ -1,9 +1,6 @@
 .route-candidates-page__map {
   position: absolute;
-  top: -1px;
-  right: -1px;
-  left: -1px;
-  height: 360px;
+  inset: -1px;
 }
 
 .route-candidates-page__back {
@@ -11,12 +8,16 @@
   z-index: 3;
   top: 14px;
   left: 12px;
-  min-width: 118px;
+  min-width: 126px;
   min-height: 44px;
-  padding: 0 7px;
-  border: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: 16px;
   color: var(--color-text-primary);
-  background: transparent;
+  background: rgba(248, 246, 240, .92);
+  box-shadow: 0 6px 18px rgba(55, 43, 34, .14);
+  -webkit-backdrop-filter: blur(12px) saturate(105%);
+  backdrop-filter: blur(12px) saturate(105%);
   text-align: left;
   font-size: 18px;
   line-height: 24px;
@@ -44,7 +45,7 @@
 
 .route-candidates-page__sheet h1 {
   position: absolute;
-  top: 22px;
+  top: 32px;
   left: 24px;
   margin: 0;
   font-size: 18px;
@@ -55,7 +56,7 @@
 
 .route-candidates-page__cards {
   position: absolute;
-  top: 70px;
+  top: 80px;
   right: 23px;
   left: 23px;
   display: grid;
@@ -143,7 +144,6 @@
 }
 
 @media (max-height: 760px) {
-  .route-candidates-page__map { height: 300px; }
   .route-candidates-page__sheet { top: 270px; }
   .route-candidates-page__cards { top: 60px; gap: 12px; }
   .route-candidates-page__card { height: 110px; }

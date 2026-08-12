@@ -6,7 +6,7 @@
   width: calc(100% + 2px);
   height: 76px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
 }
@@ -26,7 +26,8 @@
   letter-spacing: -0.02em;
 }
 
-.home-bottom-navigation__item img {
+.home-bottom-navigation__item img,
+.home-bottom-navigation__item svg {
   width: 22px;
   height: 22px;
 }

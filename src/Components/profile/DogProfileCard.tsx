@@ -7,10 +7,12 @@ export type DogProfileSummary = {
   profileImageSrc?: string
 }
 
+export const DEFAULT_DOG_PROFILE_IMAGE = '/assets/shared/dog-profile-default.svg'
+
 export function DogAvatar({ name, src, size = 'medium' }: { name: string; src?: string; size?: 'medium' | 'large' }) {
   return (
     <span className={`dog-avatar dog-avatar--${size}`}>
-      {src ? <img src={src} alt={`${name} 프로필`} /> : <><img src="/assets/my01/dog-avatar-base.svg" alt="" /><span aria-hidden="true">🐾</span><span className="sr-only">{name} 프로필</span></>}
+      <img src={src || DEFAULT_DOG_PROFILE_IMAGE} alt={`${name} 프로필`} />
     </span>
   )
 }

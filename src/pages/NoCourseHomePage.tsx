@@ -15,6 +15,7 @@ export function NoCourseHomePage({ onStartWalk = () => undefined, map }: NoCours
         className="no-course-home-page__map"
         ariaLabel="현재 위치 지도"
         map={map}
+        showLocationControl
         fallback={{
           src: '/assets/s02/map-current-location.png',
           overlay: <img className="no-course-home-page__current-location" src="/assets/s02/marker-current-location.svg" alt="현재 위치" />,

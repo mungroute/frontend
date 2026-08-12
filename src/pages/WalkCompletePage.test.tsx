@@ -16,4 +16,12 @@ describe('WalkCompletePage', () => {
 
     expect(onSave).toHaveBeenCalledWith({ name: '아침 공원길', representative: false })
   })
+
+  it('shows the final time and distance measured by the frontend tracker', () => {
+    render(<WalkCompletePage time="00:17:42" distance="1.24km" />)
+
+    expect(screen.getByText('00:17:42')).toBeInTheDocument()
+    expect(screen.getByText('1.24km')).toBeInTheDocument()
+    expect(screen.getByText('126kcal')).toBeInTheDocument()
+  })
 })
