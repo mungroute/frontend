@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 
@@ -32,7 +32,7 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 시작 위치를 알려주세요' })).toBeInTheDocument()
   })
 
-  it('creates a mock account and returns to login', async () => {
+  it('creates a mock account, opens home, and asks for location permission', async () => {
     window.history.replaceState({}, '', '/login')
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: '회원가입' }))
@@ -49,8 +49,9 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /이용약관/ }))
     fireEvent.click(screen.getByRole('button', { name: '가입하기' }))
 
-    expect(window.location.pathname).toBe('/login')
-    expect(screen.getByRole('heading', { name: '로그인' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/home/no-course')
+    expect(screen.getByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '위치 사용 허용' })).toBeInTheDocument()
   })
 
   it('requests the current position after the permission CTA is pressed', () => {
@@ -72,7 +73,7 @@ describe('App location permission route', () => {
     })
   })
 
-  it('moves to the no-course home after location lookup succeeds', () => {
+  it('moves to the no-course home after location lookup succeeds', async () => {
     const getCurrentPosition = vi.fn()
     vi.stubGlobal('navigator', {
       ...window.navigator,
@@ -82,13 +83,13 @@ describe('App location permission route', () => {
 
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: '위치 권한 확인' }))
-    act(() => getCurrentPosition.mock.calls[0][0]())
+    act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.5, longitude: 127 } }))
 
-    expect(window.location.pathname).toBe('/home/no-course')
+    await waitFor(() => expect(window.location.pathname).toBe('/home/no-course'))
     expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
   })
 
-  it('shows the GPS error dialog when location lookup fails', () => {
+  it('shows the GPS error dialog when location lookup fails', async () => {
     const getCurrentPosition = vi.fn()
     vi.stubGlobal('navigator', {
       ...window.navigator,
@@ -100,7 +101,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '위치 권한 확인' }))
     act(() => getCurrentPosition.mock.calls[0][1]())
 
-    expect(screen.getByRole('dialog', { name: 'GPS 오류' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'GPS 오류' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '홈으로 돌아가기' }))
     expect(window.location.pathname).toBe('/home/no-course')
   })

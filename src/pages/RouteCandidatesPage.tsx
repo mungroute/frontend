@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
+import { DraggableSheet } from '../Components/ui'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/route-candidates-page.css'
 
@@ -39,7 +40,7 @@ export function RouteCandidatesPage({
         <span aria-hidden="true">‹</span> 코스 후보
       </button>
 
-      <section className="route-candidates-page__sheet">
+      <DraggableSheet className="route-candidates-page__sheet">
         <h1>{duration}분 안에 걸을 수 있는 코스예요</h1>
         <div className="route-candidates-page__cards">
           {candidates.map((candidate) => {
@@ -68,7 +69,7 @@ export function RouteCandidatesPage({
         >
           이 코스로 선택
         </button>
-      </section>
+      </DraggableSheet>
     </main>
   )
 }

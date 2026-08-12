@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BaseMapViewport } from './BaseMapViewport'
 import { BaseMapProvider } from './BaseMapProvider'
 import type { BaseMapAdapter, BaseMapScene } from './types'
@@ -10,6 +10,8 @@ const scene: BaseMapScene = {
 }
 
 describe('BaseMapViewport', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it('renders the static Figma preview when no map adapter is connected', () => {
     render(
       <BaseMapViewport
@@ -106,5 +108,38 @@ describe('BaseMapViewport', () => {
     expect(mount).toHaveBeenCalledWith(expect.any(HTMLElement), scene)
     await waitFor(() => expect(screen.queryByTestId('base-map-fallback')).not.toBeInTheDocument())
     expect(screen.getByText('추천 경로')).toBeInTheDocument()
+  })
+
+  it('connects map single-click events without placing a pointer-blocking button over an adapter', () => {
+    const onMapClick = vi.fn()
+    const setClickHandler = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), setClickHandler, destroy: vi.fn() })),
+    }
+
+    render(<BaseMapViewport ariaLabel="코스 지도" fallback={{ src: '/map.png' }} map={{ adapter, scene }} onMapClick={onMapClick} />)
+
+    expect(setClickHandler).toHaveBeenCalledWith(expect.any(Function))
+    expect(screen.queryByRole('button', { name: '지도에 지점 추가' })).not.toBeInTheDocument()
+  })
+
+  it('requests geolocation and recenters the map from the shared location control', async () => {
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
+    }
+    const getCurrentPosition = vi.fn((success: PositionCallback) => success({
+      coords: { latitude: 37.5665, longitude: 126.978 } as GeolocationCoordinates,
+    } as GeolocationPosition))
+    vi.stubGlobal('navigator', { ...window.navigator, geolocation: { getCurrentPosition } })
+
+    render(<BaseMapViewport ariaLabel="현재 위치 지도" fallback={{ src: '/map.png' }} map={{ adapter, scene }} showLocationControl />)
+    fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
+
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: { latitude: 37.5665, longitude: 126.978 },
+      zoom: 17,
+    })))
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
   })
 })

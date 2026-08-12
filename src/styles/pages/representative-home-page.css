@@ -1,4 +1,6 @@
 .representative-home-page {
+  --representative-sheet-bottom: 77px;
+  --representative-sheet-height: 310px;
   position: relative;
   width: min(100%, 390px);
   height: var(--app-viewport-height);
@@ -16,7 +18,7 @@
   top: -1px;
   left: -1px;
   width: calc(100% + 2px);
-  height: 510px;
+  height: calc(100% - 76px);
   overflow: hidden;
 }
 
@@ -40,10 +42,10 @@
 .representative-home-page__sheet {
   position: absolute;
   z-index: 2;
-  bottom: 77px;
+  bottom: var(--representative-sheet-bottom);
   left: -1px;
   width: calc(100% + 2px);
-  height: 340px;
+  height: var(--representative-sheet-height);
   border-radius: 28px 28px 0 0;
   background: var(--color-surface);
   box-shadow: var(--elevation-sheet);
@@ -51,7 +53,7 @@
 
 .representative-home-page__course-card {
   position: absolute;
-  top: 18px;
+  top: 30px;
   right: 23px;
   left: 23px;
   height: 120px;
@@ -116,7 +118,7 @@
 
 .representative-home-page__mode {
   position: absolute;
-  top: 154px;
+  top: 159px;
   right: 47px;
   left: 24px;
   display: flex;
@@ -181,27 +183,32 @@
 
 .representative-home-page__start {
   position: absolute;
-  top: 214px;
+  top: 211px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 @media (max-height: 760px) {
+  .representative-home-page {
+    --representative-sheet-bottom: 73px;
+    --representative-sheet-height: 295px;
+  }
+
   .representative-home-page__sheet {
-    bottom: 73px;
-    height: 325px;
+    bottom: var(--representative-sheet-bottom);
+    height: var(--representative-sheet-height);
   }
 
   .representative-home-page__course-card {
-    top: 14px;
+    top: 28px;
   }
 
   .representative-home-page__mode {
-    top: 146px;
+    top: 154px;
   }
 
   .representative-home-page__start {
-    top: 199px;
+    top: 200px;
   }
 }
 

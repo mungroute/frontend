@@ -7,6 +7,8 @@ export type MapMarker = {
   id: string
   position: MapCoordinate
   kind?: 'current-location' | 'start' | 'finish' | 'default'
+  label?: string
+  profileImageSrc?: string
 }
 
 export type MapRoute = {
@@ -23,9 +25,16 @@ export type BaseMapScene = {
   routes?: MapRoute[]
 }
 
+export type MapClickEvent = {
+  coordinate: MapCoordinate
+  xPercent: number
+  yPercent: number
+}
+
 export type BaseMapInstance = {
   ready: Promise<void>
   update: (scene: BaseMapScene) => void
+  setClickHandler?: (handler?: (event: MapClickEvent) => void) => void
   destroy: () => void
 }
 

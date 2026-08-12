@@ -8,10 +8,12 @@ import '../styles/pages/walk-complete-page.css'
 type WalkCompletePageProps = {
   map?: BaseMapBinding
   dogName?: string
+  distance?: string
+  time?: string
   onSave?: (course: { name: string; representative: boolean }) => void
 }
 
-export function WalkCompletePage({ map, dogName = '망고', onSave }: WalkCompletePageProps) {
+export function WalkCompletePage({ map, dogName = '망고', distance = '2.1km', time = '31분', onSave }: WalkCompletePageProps) {
   const [courseName, setCourseName] = useState('저녁 남산길')
   const [representative, setRepresentative] = useState(true)
 
@@ -32,8 +34,8 @@ export function WalkCompletePage({ map, dogName = '망고', onSave }: WalkComple
       />
 
       <dl className="walk-complete-page__stats" aria-label="완료한 산책 기록">
-        <div><dt>거리</dt><dd>2.1km</dd></div>
-        <div><dt>시간</dt><dd>31분</dd></div>
+        <div><dt>시간</dt><dd>{time}</dd></div>
+        <div><dt>거리</dt><dd>{distance}</dd></div>
         <div><dt>소모 칼로리</dt><dd>126kcal</dd></div>
       </dl>
 

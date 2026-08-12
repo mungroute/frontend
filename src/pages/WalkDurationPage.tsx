@@ -87,10 +87,7 @@ export function WalkDurationPage({
         className="walk-duration-page__map"
         ariaLabel="출발 지점 미리보기 지도"
         map={map}
-        fallback={{
-          src: '/assets/s03/map-preview.jpg',
-          overlay: <img className="walk-duration-page__map-marker" src="/assets/s01/marker-finish.svg" alt="출발 지점" />,
-        }}
+        fallback={{ src: '/assets/s03/map-preview.jpg' }}
       />
 
       <button

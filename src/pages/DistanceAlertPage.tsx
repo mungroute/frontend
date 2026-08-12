@@ -3,6 +3,7 @@ import type { BaseMapBinding } from '../Components/map'
 import { DistanceModeControl } from '../Components/walk/DistanceModeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
 import { WalkStats } from '../Components/walk/WalkStats'
+import { DraggableSheet } from '../Components/ui'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/distance-alert-page.css'
 import '../styles/components/walk-session-glass.css'
@@ -14,15 +15,18 @@ type DistanceAlertPageProps = {
   onPhoto?: () => void
   distanceMode?: boolean
   onDistanceModeChange?: (checked: boolean) => void
+  time?: string
+  distance?: string
 }
 
-export function DistanceAlertPage({ map, onPause, onStop, onPhoto, distanceMode, onDistanceModeChange }: DistanceAlertPageProps) {
+export function DistanceAlertPage({ map, onPause, onStop, onPhoto, distanceMode, onDistanceModeChange, time = '00:18:22', distance = '1.3km' }: DistanceAlertPageProps) {
   return (
     <main className="journey-page distance-alert-page">
       <BaseMapViewport
         className="distance-alert-page__map"
         ariaLabel="주변 반려견 접근 알림 지도"
         map={map}
+        showLocationControl
         fallback={{
           src: '/assets/s07/map.jpg',
           overlay: (
@@ -40,13 +44,13 @@ export function DistanceAlertPage({ map, onPause, onStop, onPhoto, distanceMode,
         <div><h1>주변 접근 알림</h1><strong>화면 왼쪽 위 방향 50~100m</strong><p>가까워지고 있어요. 잠시 속도를 줄여주세요.</p></div>
       </section>
 
-      <section className="distance-alert-page__sheet walk-session-glass">
+      <DraggableSheet className="distance-alert-page__sheet walk-session-glass">
         <div className="distance-alert-page__summary">
-          <WalkStats time="00:18:22" distance="1.3km" compact />
+          <WalkStats time={time} distance={distance} compact />
           <DistanceModeControl checked={distanceMode} onChange={onDistanceModeChange} />
         </div>
         <WalkSessionControls onPause={onPause} onStop={onStop} onPhoto={onPhoto} />
-      </section>
+      </DraggableSheet>
     </main>
   )
 }

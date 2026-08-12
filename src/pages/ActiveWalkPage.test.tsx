@@ -8,16 +8,23 @@ describe('ActiveWalkPage', () => {
     const onStop = vi.fn()
     const onPhoto = vi.fn()
     const onDistanceModeChange = vi.fn()
+    const onDistanceRadiusChange = vi.fn()
     render(
       <ActiveWalkPage
         onPause={onPause}
         onStop={onStop}
         onPhoto={onPhoto}
         onDistanceModeChange={onDistanceModeChange}
+        distanceRadius={150}
+        onDistanceRadiusChange={onDistanceRadiusChange}
       />,
     )
 
     expect(screen.getByText('00:17:00')).toBeInTheDocument()
+    const distanceRange = screen.getByRole('slider', { name: '거리두기 알림 범위' })
+    expect(distanceRange).toHaveValue('150')
+    fireEvent.change(distanceRange, { target: { value: '300' } })
+    expect(onDistanceRadiusChange).toHaveBeenCalledWith(300)
     fireEvent.click(screen.getByRole('button', { name: '일시정지' }))
     fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
     const endDialog = screen.getByRole('dialog', { name: '산책 종료 확인' })

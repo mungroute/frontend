@@ -16,7 +16,7 @@ describe('RepresentativeHomePage', () => {
     expect(screen.getByText('29분 · 1.8km')).toBeInTheDocument()
     expect(screen.getByText('그늘 68%')).toBeInTheDocument()
     expect(screen.getByText('산책을 시작하면 작동해요')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: '주요 메뉴' })).toHaveTextContent('홈코스기록마이')
+    expect(screen.getByRole('navigation', { name: '주요 메뉴' })).toHaveTextContent('홈코스그룹기록마이')
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
 

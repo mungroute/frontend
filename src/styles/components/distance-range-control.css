@@ -1,0 +1,82 @@
+.distance-range-control {
+  margin: 8px 0 7px;
+  padding: 11px 14px 9px;
+  border: 1px solid rgba(244, 122, 58, .18);
+  border-radius: 16px;
+  background: rgba(255, 253, 250, .78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+
+.distance-range-control__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.distance-range-control__heading strong {
+  color: var(--color-primary);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.distance-range-control__slider {
+  width: 100%;
+  height: 22px;
+  display: block;
+  margin: 3px 0 0;
+  background: transparent;
+  cursor: ew-resize;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.distance-range-control__slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, var(--color-primary) 0 var(--distance-range-progress), var(--color-border-strong) var(--distance-range-progress) 100%);
+}
+
+.distance-range-control__slider::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 2px 7px rgba(190, 76, 28, .3);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.distance-range-control__slider::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+}
+
+.distance-range-control__slider::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.distance-range-control__slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 2px 7px rgba(190, 76, 28, .3);
+}
+
+.distance-range-control__limits {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -1px;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  line-height: 13px;
+}

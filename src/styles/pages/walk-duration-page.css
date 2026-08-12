@@ -103,14 +103,6 @@
   height: 214px;
 }
 
-.walk-duration-page__map-marker {
-  position: absolute;
-  top: 45.8%;
-  left: 47.4%;
-  width: 24px;
-  height: 24px;
-}
-
 .walk-duration-page__continue {
   position: absolute;
   right: 34px;

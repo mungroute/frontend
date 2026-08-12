@@ -1,5 +1,12 @@
-const CACHE_NAME = 'mungroute-shell-v1'
-const APP_SHELL = ['/', '/manifest.webmanifest']
+const CACHE_NAME = 'mungroute-shell-v2'
+const APP_SHELL = [
+  '/',
+  '/manifest.webmanifest',
+  '/assets/icons/mungroute-pwa-192.png',
+  '/assets/icons/mungroute-pwa-512.png',
+  '/assets/icons/mungroute-maskable-192.png',
+  '/assets/icons/mungroute-maskable-512.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))

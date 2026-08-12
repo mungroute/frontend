@@ -27,7 +27,7 @@ export function GroupListPage({ onBack, onCreateGroup, onJoinGroup, onOpenGroup 
       <div className="group-list-page__list">
         {groups.map((group) => <GroupCard key={group.id} group={group} onClick={() => onOpenGroup?.(group.id)} />)}
       </div>
-      <HomeBottomNavigation active="profile" />
+      <HomeBottomNavigation active="groups" />
     </main>
   )
 }
