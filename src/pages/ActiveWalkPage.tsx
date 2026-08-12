@@ -27,7 +27,7 @@ export function ActiveWalkPage({ map, onPause, onStop, onPhoto, distanceMode, on
         className="active-walk-page__map"
         ariaLabel="진행 중인 산책 경로 지도"
         map={map}
-        fallback={{ src: '/assets/s07/map.jpg', overlay: <><img className="active-walk-page__route" src="/assets/s07/route-active.svg" alt="" /><img className="active-walk-page__destination" src="/assets/s07/marker-destination.svg" alt="" /></> }}
+        fallback={{ src: '/assets/s07/map.jpg', overlay: <img className="active-walk-page__destination" src="/assets/s07/marker-destination.svg" alt="" /> }}
       />
       <div className="active-walk-page__gps" role="status"><span>●</span> GPS 신호 좋음</div>
       <section className="active-walk-page__sheet walk-session-glass">

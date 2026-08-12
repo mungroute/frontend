@@ -1,5 +1,5 @@
 import '../../styles/components/course-visuals.css'
-import { initialCoursePoints, recommendedShadeHour } from './course-data'
+import { recommendedShadeHour } from './course-data'
 import type { CoursePoint } from './course-data'
 
 const shadeBars = [
@@ -10,15 +10,6 @@ const shadeBars = [
   { hour: 19, height: 68 },
   { hour: 20, height: 36 },
 ]
-
-export function ShadeMapOverlay() {
-  return (
-    <div className="shade-map-overlay" aria-hidden="true">
-      <img className="shade-map-overlay__route" src="/assets/c02/route-shade-timeline.svg" alt="" />
-      <img className="shade-map-overlay__segment" src="/assets/c02/route-shaded-segment.svg" alt="" />
-    </div>
-  )
-}
 
 export function ShadeTimelineChart() {
   return (
@@ -38,8 +29,8 @@ export function ShadeTimelineChart() {
 }
 
 export function EditableCourseOverlay({ points }: { points: CoursePoint[] }) {
-  const addedSegments = points.slice(initialCoursePoints.length).map((point, index) => {
-    const from = points[initialCoursePoints.length + index - 1]
+  const segments = points.slice(1).map((point, index) => {
+    const from = points[index]
     return {
       key: `${from.x}-${from.y}-${point.x}-${point.y}`,
       from,
@@ -49,9 +40,8 @@ export function EditableCourseOverlay({ points }: { points: CoursePoint[] }) {
 
   return (
     <div className="editable-course-overlay" aria-hidden="true">
-      <img className="editable-course-overlay__route" src="/assets/c04/route-editable-course.svg" alt="" />
       <svg className="editable-course-overlay__extensions" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {addedSegments.map(({ key, from, to }) => (
+        {segments.map(({ key, from, to }) => (
           <line key={key} x1={from.x} y1={from.y} x2={to.x} y2={to.y} vectorEffect="non-scaling-stroke" />
         ))}
       </svg>

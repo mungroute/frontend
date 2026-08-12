@@ -32,7 +32,7 @@ export function GroupRoomPage({ map, onBack, onOpenSharedCourse, onOpenActivity,
         map={map}
         fallback={{
           src: '/assets/g02/map.jpg',
-          overlay: <><span className="group-room-page__map-note">실시간 위치가 아닌 공유 코스만 표시</span><img className="group-room-page__route group-room-page__route--shared" src="/assets/g02/route-shared.svg" alt="" /><img className="group-room-page__route group-room-page__route--alternative" src="/assets/g02/route-alternative.svg" alt="" /></>,
+          overlay: <span className="group-room-page__map-note">실시간 위치가 아닌 공유 코스만 표시</span>,
         }}
       />
       <section className="group-room-page__sheet">

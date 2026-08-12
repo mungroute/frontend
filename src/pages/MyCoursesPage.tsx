@@ -30,10 +30,7 @@ export function MyCoursesPage({ map, onBack, onOpenCourse, onOpenShadeTimeline, 
         className="my-courses-page__map"
         ariaLabel="저녁 남산길 지도"
         map={map}
-        fallback={{
-          src: '/assets/s09/map.jpg',
-          overlay: <img className="my-courses-page__route" src="/assets/c01/route.svg" alt="" />,
-        }}
+        fallback={{ src: '/assets/s09/map.jpg' }}
       />
       <button className="my-courses-page__draw" type="button" aria-label="직접 코스 그리기" onClick={onOpenDrawCourse}>＋</button>
 

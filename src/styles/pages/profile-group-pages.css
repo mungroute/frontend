@@ -18,9 +18,6 @@
 .group-room-page__map { position: absolute; top: 73px; right: 19px; left: 19px; height: 312px; border-radius: 20px; }
 .group-room-page__activity { min-width: 44px; height: 36px; padding: 0; border: 0; color: var(--color-primary); background: transparent; font-size: 13px; font-weight: 700; cursor: pointer; }
 .group-room-page__map-note { position: absolute; z-index: 2; top: 16px; left: 18px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; font-weight: 500; }
-.group-room-page__route { position: absolute; z-index: 1; width: 290px; height: auto; }
-.group-room-page__route--shared { top: 115px; left: 25px; }
-.group-room-page__route--alternative { top: 80px; left: 40px; }
 .group-room-page__sheet { position: absolute; top: 357px; right: -1px; bottom: -1px; left: -1px; padding: 26px 20px; border-radius: 28px 28px 0 0; background: var(--color-bg-base); }
 .group-room-page__sheet h2 { margin: 0; font-size: 21px; line-height: 31px; }
 .group-room-page__sheet > p { margin: 1px 0 18px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }

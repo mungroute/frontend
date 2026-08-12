@@ -37,10 +37,7 @@ export function WalkRecordDetailPage({ map, onBack, onMore, onDelete, onOpenDist
         className="walk-record-detail-page__map"
         ariaLabel="8월 7일 산책 경로 지도"
         map={map}
-        fallback={{
-          src: '/assets/s09/map.jpg',
-          overlay: <img className="walk-record-detail-page__route" src="/assets/r02/route.svg" alt="" />,
-        }}
+        fallback={{ src: '/assets/s09/map.jpg' }}
       />
 
       <div className="walk-record-detail-page__metrics">

@@ -1,5 +1,4 @@
 .active-walk-page__map { position: absolute; inset: -1px; }
-.active-walk-page__route { position: absolute; top: 160px; left: 53px; width: 288px; height: 420px; }
 .active-walk-page__destination { position: absolute; top: 567px; left: 329px; width: 20px; height: 20px; }
 .active-walk-page__gps { position: absolute; z-index: 3; top: 30px; left: 20px; display: flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: var(--radius-full); color: #6b9c72; background: rgba(255,255,255,.92); box-shadow: var(--elevation-floating); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .active-walk-page__gps span { color: #55a76a; font-size: 10px; }
@@ -9,4 +8,4 @@
 .active-walk-page__summary > .walk-stats { grid-column: span 2; }
 .active-walk-page__status-row { height: 31px; display: flex; align-items: center; padding-left: 8px; }
 .active-walk-page__status-row h1 { margin: 0; font-size: 16px; line-height: 24px; }
-@media (max-height: 700px) { .active-walk-page__sheet { height: 220px; padding-top: 9px; } .active-walk-page__route { top: 130px; height: 360px; } .active-walk-page__destination { top: 477px; } .active-walk-page__handle { margin-bottom: 7px; } .active-walk-page__status-row { height: 24px; } }
+@media (max-height: 700px) { .active-walk-page__sheet { height: 220px; padding-top: 9px; } .active-walk-page__destination { top: 477px; } .active-walk-page__handle { margin-bottom: 7px; } .active-walk-page__status-row { height: 24px; } }

@@ -23,10 +23,7 @@ export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPh
         className="paused-walk-page__map"
         ariaLabel="일시정지된 산책 경로 지도"
         map={map}
-        fallback={{
-          src: '/assets/s07/map.jpg',
-          overlay: <img className="paused-walk-page__route" src="/assets/st02/route-paused.svg" alt="" />,
-        }}
+        fallback={{ src: '/assets/s07/map.jpg' }}
       />
 
       <img className="paused-walk-page__waiting" src="/assets/mascot/animated/05-pause-wait.gif" alt="산책 재개를 기다리는 강아지" />

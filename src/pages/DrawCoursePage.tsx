@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { EditableCourseOverlay } from '../Components/courses/CourseVisuals'
-import { drawnCourseSummary, initialCoursePoints } from '../Components/courses/course-data'
+import { drawnCourseSummary } from '../Components/courses/course-data'
 import type { CoursePoint } from '../Components/courses/course-data'
 import { Button, ManagementPageHeader } from '../Components/ui'
 import { clamp } from '../utils/number'
@@ -17,7 +17,7 @@ type DrawCoursePageProps = {
 }
 
 export function DrawCoursePage({ map, onBack, onSave }: DrawCoursePageProps) {
-  const [points, setPoints] = useState<CoursePoint[]>(initialCoursePoints)
+  const [points, setPoints] = useState<CoursePoint[]>([])
 
   const addPoint = (event: MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()

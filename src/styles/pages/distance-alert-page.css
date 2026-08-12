@@ -1,5 +1,4 @@
 .distance-alert-page__map { position: absolute; inset: -1px; }
-.distance-alert-page__route { position: absolute; top: 170px; left: 54px; width: 270px; height: 355px; }
 .distance-alert-page__direction { position: absolute; top: 174px; left: 18px; width: 174px; height: 178px; }
 .distance-alert-page__nearby { position: absolute; top: 155px; left: 63px; width: 44px; height: 50px; }
 .distance-alert-page__current { position: absolute; top: 350px; left: 184px; width: 42px; height: 42px; }

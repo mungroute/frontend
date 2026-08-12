@@ -27,7 +27,6 @@ export function DistanceAlertPage({ map, onPause, onStop, onPhoto, distanceMode,
           src: '/assets/s07/map.jpg',
           overlay: (
             <>
-              <img className="distance-alert-page__route" src="/assets/s08/route-active.svg" alt="" />
               <img className="distance-alert-page__direction" src="/assets/s08/safe-direction.svg" alt="" />
               <img className="distance-alert-page__nearby" src="/assets/s08/marker-nearby-dog.svg" alt="" />
               <img className="distance-alert-page__current" src="/assets/s08/marker-current-location.svg" alt="" />
