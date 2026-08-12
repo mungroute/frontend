@@ -1,11 +1,11 @@
-const CACHE_NAME = 'mungroute-shell-v3'
+const CACHE_NAME = 'mungroute-shell-v8'
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
-  '/assets/icons/mungroute-dog-pwa-192.png',
-  '/assets/icons/mungroute-dog-pwa-512.png',
-  '/assets/icons/mungroute-dog-maskable-192.png',
-  '/assets/icons/mungroute-dog-maskable-512.png',
+  '/assets/icons/mungroute-dog-wordmark-pwa-192.png',
+  '/assets/icons/mungroute-dog-wordmark-pwa-512.png',
+  '/assets/icons/mungroute-dog-wordmark-maskable-192.png',
+  '/assets/icons/mungroute-dog-wordmark-maskable-512.png',
 ]
 
 self.addEventListener('install', (event) => {
