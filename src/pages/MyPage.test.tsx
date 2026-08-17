@@ -25,4 +25,13 @@ describe('MyPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /산책 통계/ }))
     expect(onOpenStats).toHaveBeenCalledOnce()
   })
+
+  it('keeps the welcome copy and logout action in the page header', () => {
+    const onLogout = vi.fn()
+    render(<MyPage userNickname="aaaa" onLogout={onLogout} />)
+
+    expect(screen.getByText('aaaa님')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '로그아웃' }))
+    expect(onLogout).toHaveBeenCalledOnce()
+  })
 })

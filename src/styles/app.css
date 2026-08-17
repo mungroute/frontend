@@ -1,3 +1,4 @@
 #root {
+  position: relative;
   min-height: var(--app-viewport-height);
 }

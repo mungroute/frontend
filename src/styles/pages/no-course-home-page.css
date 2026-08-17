@@ -49,15 +49,54 @@
 .no-course-home-page__start {
   position: absolute;
   z-index: 2;
-  bottom: 107px;
+  bottom: 276px;
   left: 50%;
   transform: translateX(-50%);
 }
+
+.no-course-home-page .base-map-viewport__location-control {
+  top: auto;
+  right: 16px;
+  bottom: 180px;
+  transform: none;
+}
+
+.no-course-home-page__course-actions {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  bottom: 92px;
+  left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.no-course-home-page__course-actions button {
+  min-width: 0;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-16);
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: var(--elevation-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.no-course-home-page__course-actions strong { font-size: 14px; line-height: 20px; }
+.no-course-home-page__course-actions span { margin-top: 2px; overflow-wrap: anywhere; color: var(--color-text-secondary); font-size: 11px; line-height: 16px; }
 
 @media (max-height: 760px) {
   .no-course-home-page__current-location {
     top: 43%;
   }
+  .no-course-home-page__start { bottom: 250px; }
+  .no-course-home-page__course-actions button { min-height: 62px; }
+  .no-course-home-page .base-map-viewport__location-control { bottom: 160px; }
 }
 
 @media (min-width: 391px) {

@@ -5,18 +5,26 @@ import '../styles/pages/profile-group-pages.css'
 
 type MyPageProps = {
   profileImageSrc?: string
+  userNickname?: string
   onOpenProfile?: () => void
   onOpenStats?: () => void
   onOpenDogs?: () => void
   onOpenGroups?: () => void
   onOpenNotifications?: () => void
   onOpenServiceInfo?: () => void
+  onLogout?: () => void
 }
 
-export function MyPage({ profileImageSrc, onOpenProfile, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo }: MyPageProps) {
+export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo, onLogout }: MyPageProps) {
   return (
     <main className="journey-page profile-group-page my-page">
-      <h1>마이</h1>
+      <header className="my-page__header">
+        <div>
+          {userNickname && <p className="my-page__welcome"><strong>{userNickname}님</strong>, 반가워요.</p>}
+          <h1>마이</h1>
+        </div>
+        {onLogout && <button className="my-page__logout" type="button" onClick={onLogout}>로그아웃</button>}
+      </header>
       <div className="my-page__profile">
         <DogProfileCard dog={{ id: 'mango', name: '망고', detail: '골든 리트리버 · 4살', profileImageSrc }} actionLabel="프로필 관리" onAction={onOpenProfile} large />
       </div>

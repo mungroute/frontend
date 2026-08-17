@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { Footprints, ShieldCheck, Users } from 'lucide-react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
-import { DraggableSheet, Switch } from '../Components/ui'
+import { DraggableSheet } from '../Components/ui'
 import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
 import type { DogProfileSummary } from '../Components/profile/DogProfileCard'
+import type { WalkPresenceMode } from '../api/walks'
+import { PresenceModeConfirmDialog } from '../Components/system'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/dog-selection-page.css'
 
@@ -13,8 +16,10 @@ type DogSelectionPageProps = {
   map?: BaseMapBinding
   dogs?: DogProfile[]
   onBack?: () => void
-  onConfirm?: (selection: { dogIds: string[]; distanceMode: boolean }) => void
+  onConfirm?: (selection: { dogIds: string[]; mode: WalkPresenceMode }) => void
   onRegisterDog?: () => void
+  starting?: boolean
+  errorMessage?: string
 }
 
 const defaultDogs: DogProfile[] = [
@@ -22,15 +27,24 @@ const defaultDogs: DogProfile[] = [
   { id: 'cookie', name: '쿠키', detail: '말티즈 · 5살' },
 ]
 
-export function DogSelectionPage({ dogs = defaultDogs, map, onBack = () => window.history.back(), onConfirm = () => undefined, onRegisterDog = () => undefined }: DogSelectionPageProps) {
+export function DogSelectionPage({ dogs = defaultDogs, map, onBack = () => window.history.back(), onConfirm = () => undefined, onRegisterDog = () => undefined, starting = false, errorMessage }: DogSelectionPageProps) {
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>(() => dogs[0] ? [dogs[0].id] : [])
-  const [distanceMode, setDistanceMode] = useState(true)
+  const [mode, setMode] = useState<WalkPresenceMode>('distance')
+  const [confirmingMode, setConfirmingMode] = useState(false)
 
   const toggleDog = (dogId: string) => {
     setSelectedDogIds((current) => {
       if (!current.includes(dogId)) return [...current, dogId]
       return current.length === 1 ? current : current.filter((id) => id !== dogId)
     })
+  }
+
+  const confirmSelection = () => {
+    if (mode === 'off') {
+      onConfirm({ dogIds: selectedDogIds, mode })
+      return
+    }
+    setConfirmingMode(true)
   }
 
   return (
@@ -52,19 +66,52 @@ export function DogSelectionPage({ dogs = defaultDogs, map, onBack = () => windo
                   <img src={dog.profileImageSrc || DEFAULT_DOG_PROFILE_IMAGE} alt={`${dog.name} 프로필`} />
                 </span>
                 <span><strong>{dog.name}</strong><small>{dog.detail}</small></span>
-                <span className="dog-selection-page__radio"><img src={selected ? '/assets/m04/radio-selected.svg' : '/assets/m04/radio-default.svg'} alt="" />{selected && <b aria-hidden="true">✓</b>}</span>
+                <span className="dog-selection-page__radio" aria-hidden="true">{selected && <b>✓</b>}</span>
               </button>
             )
           })}
         </div>
 
         <button className="dog-selection-page__register" type="button" aria-label="반려견 등록하기" onClick={onRegisterDog}>＋ 반려견 등록하기</button>
-        <div className="dog-selection-page__distance-card">
-          <Switch checked={distanceMode} onChange={setDistanceMode} label="거리두기 모드" ariaLabel="거리두기 모드" description="내 위치를 흐리게 공유하고 있어요" />
-          <span>약 100m 범위로 표시</span>
-        </div>
-        <button className="journey-page__primary-action dog-selection-page__confirm" type="button" disabled={selectedDogIds.length === 0} onClick={() => onConfirm({ dogIds: selectedDogIds, distanceMode })}>선택 완료</button>
+        <section className="dog-selection-page__mode-section" aria-labelledby="walk-mode-title">
+          <div className="dog-selection-page__mode-heading">
+            <span>WALK MODE</span>
+            <h2 id="walk-mode-title">오늘은 어떻게 걸을까요?</h2>
+          </div>
+          <div className="dog-selection-page__mode-options" role="radiogroup" aria-label="산책 모드 선택">
+            <button type="button" role="radio" aria-checked={mode === 'off'} onClick={() => setMode('off')}>
+              <span className="dog-selection-page__mode-index">01</span>
+              <span className="dog-selection-page__mode-icon"><Footprints size={19} /></span>
+              <span><strong>일반 산책</strong><small>주변 사용자 기능 없이 걸어요.</small></span>
+              <i aria-hidden="true" />
+            </button>
+            <button type="button" role="radio" aria-checked={mode === 'distance'} onClick={() => setMode('distance')}>
+              <span className="dog-selection-page__mode-index">02</span>
+              <span className="dog-selection-page__mode-icon"><ShieldCheck size={19} /></span>
+              <span><strong>거리두기 산책</strong><small>가까워지는 방향만 익명으로 알려줘요.</small></span>
+              <i aria-hidden="true" />
+            </button>
+            <button type="button" role="radio" aria-checked={mode === 'meet'} onClick={() => setMode('meet')}>
+              <span className="dog-selection-page__mode-index">03</span>
+              <span className="dog-selection-page__mode-icon"><Users size={19} /></span>
+              <span><strong>산책 친구 만나기</strong><small>서로 동의한 친구와 만날 수 있어요.</small></span>
+              <i aria-hidden="true" />
+            </button>
+          </div>
+          {mode !== 'off' && <p className="dog-selection-page__mode-lock">이번 산책에서는 선택한 모드만 켜고 끌 수 있어요.</p>}
+        </section>
+        {errorMessage && <p className="dog-selection-page__error" role="alert">{errorMessage}</p>}
       </DraggableSheet>
+      <button className="journey-page__primary-action dog-selection-page__confirm" type="button" disabled={selectedDogIds.length === 0 || starting} onClick={confirmSelection}>{starting ? '산책 시작 중…' : '이 설정으로 산책 시작'}</button>
+      {confirmingMode && mode !== 'off' && <PresenceModeConfirmDialog
+        mode={mode}
+        nextEnabled
+        onClose={() => setConfirmingMode(false)}
+        onConfirm={() => {
+          setConfirmingMode(false)
+          onConfirm({ dogIds: selectedDogIds, mode })
+        }}
+      />}
     </main>
   )
 }

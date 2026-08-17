@@ -51,6 +51,25 @@
   cursor: pointer;
 }
 
+.auth-page__api-error,
+.auth-page__api-message {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-12);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.auth-page__api-error {
+  color: #b42318;
+  background: #fff1ef;
+}
+
+.auth-page__api-message {
+  color: #15703d;
+  background: #edf9f1;
+}
+
 .auth-page__duplicate {
   min-width: 82px;
   min-height: 50px;

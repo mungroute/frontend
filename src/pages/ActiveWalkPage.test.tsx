@@ -3,6 +3,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { ActiveWalkPage } from './ActiveWalkPage'
 
 describe('ActiveWalkPage', () => {
+  it('draws the selected course in gray and the walked trail in orange', () => {
+    const { container } = render(
+      <ActiveWalkPage
+        plannedRouteCoordinates={[
+          { latitude: 37.56, longitude: 126.996 },
+          { latitude: 37.559, longitude: 126.998 },
+          { latitude: 37.558, longitude: 126.997 },
+        ]}
+        walkedCoordinates={[
+          { latitude: 37.56, longitude: 126.996 },
+          { latitude: 37.5595, longitude: 126.997 },
+        ]}
+      />,
+    )
+
+    expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
+    expect(container.querySelector('.active-walk-page__route-planned')).toBeInTheDocument()
+    expect(container.querySelector('.active-walk-page__route-walked')).toBeInTheDocument()
+  })
+
   it('exposes the active walk controls and distance mode', () => {
     const onPause = vi.fn()
     const onStop = vi.fn()
@@ -34,24 +54,24 @@ describe('ActiveWalkPage', () => {
     const photoInput = screen.getByLabelText('산책 사진 선택')
     const photoPicker = vi.spyOn(photoInput, 'click')
     fireEvent.click(screen.getByRole('button', { name: '사진 촬영' }))
-    const distanceMode = screen.getByRole('switch', { name: '거리두기' })
+    const distanceMode = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     fireEvent.click(distanceMode)
 
-    const distanceModeDialog = screen.getByRole('dialog', { name: '거리두기 모드 끄기 확인' })
+    const distanceModeDialog = screen.getByRole('dialog', { name: '거리두기 알림 끄기 확인' })
     expect(distanceMode).toHaveAttribute('aria-checked', 'true')
     expect(onDistanceModeChange).not.toHaveBeenCalled()
-    fireEvent.click(within(distanceModeDialog).getByRole('button', { name: '취소' }))
+    fireEvent.click(within(distanceModeDialog).getByRole('button', { name: '계속 사용' }))
     expect(onDistanceModeChange).not.toHaveBeenCalled()
     expect(distanceMode).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(distanceMode)
-    fireEvent.click(within(screen.getByRole('dialog', { name: '거리두기 모드 끄기 확인' })).getByRole('button', { name: '끄기' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '거리두기 알림 끄기 확인' })).getByRole('button', { name: '거리두기 알림 끄기' }))
 
     expect(onPause).toHaveBeenCalledOnce()
     expect(onStop).toHaveBeenCalledOnce()
     expect(onPhoto).toHaveBeenCalledOnce()
     expect(photoPicker).toHaveBeenCalledOnce()
     expect(onDistanceModeChange).toHaveBeenCalledWith(false)
-    expect(distanceMode).toHaveAttribute('aria-checked', 'false')
+    expect(distanceMode).toHaveAttribute('aria-checked', 'true')
   })
 })
