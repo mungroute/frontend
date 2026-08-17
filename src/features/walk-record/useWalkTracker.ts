@@ -3,7 +3,16 @@ import type { MapCoordinate } from '../../Components/map'
 import { GEOLOCATION_OPTIONS } from '../../Components/map/geolocation'
 
 const EARTH_RADIUS_METERS = 6_371_000
+const MAX_USABLE_ACCURACY_METERS = 40
+const MAX_WALKING_SPEED_METERS_PER_SECOND = 4.5
+const MAX_SINGLE_SEGMENT_METERS = 80
 const toRadians = (degrees: number) => degrees * Math.PI / 180
+
+type AcceptedPosition = {
+  coordinate: MapCoordinate
+  accuracy: number
+  observedAt: number
+}
 
 export function distanceBetween(from: MapCoordinate, to: MapCoordinate) {
   const latitudeDelta = toRadians(to.latitude - from.latitude)
@@ -26,44 +35,150 @@ export function formatWalkDistance(distanceMeters: number) {
   return `${(distanceMeters / 1000).toFixed(2)}km`
 }
 
-export function useWalkTracker(isTracking: boolean) {
+export type TrackedWalkPoint = MapCoordinate & {
+  recordedAt: string
+  accuracy: number
+}
+
+export type TrackedPresenceFix = TrackedWalkPoint & {
+  heading: number | null
+  stationary: boolean
+}
+
+export type GpsSignal = 'waiting' | 'good' | 'weak' | 'error'
+
+export function useWalkTracker(
+  isTracking: boolean,
+  onPoint?: (point: TrackedWalkPoint) => void | Promise<void>,
+  onPresenceFix?: (point: TrackedPresenceFix) => void | Promise<void>,
+) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [distanceMeters, setDistanceMeters] = useState(0)
-  const lastCoordinateRef = useRef<MapCoordinate | undefined>(undefined)
+  const [walkedCoordinates, setWalkedCoordinates] = useState<MapCoordinate[]>([])
+  const [gpsSignal, setGpsSignal] = useState<GpsSignal>('waiting')
+  const lastAcceptedPositionRef = useRef<AcceptedPosition | undefined>(undefined)
+  const lastObservedPositionRef = useRef<AcceptedPosition | undefined>(undefined)
+  const lastPresenceSentAtRef = useRef<number | undefined>(undefined)
+  const onPointRef = useRef(onPoint)
+  const onPresenceFixRef = useRef(onPresenceFix)
+
+  useEffect(() => {
+    onPointRef.current = onPoint
+  }, [onPoint])
+
+  useEffect(() => {
+    onPresenceFixRef.current = onPresenceFix
+  }, [onPresenceFix])
 
   useEffect(() => {
     if (!isTracking) {
-      lastCoordinateRef.current = undefined
+      lastAcceptedPositionRef.current = undefined
+      lastObservedPositionRef.current = undefined
+      lastPresenceSentAtRef.current = undefined
       return
     }
 
     const timerId = window.setInterval(() => setElapsedSeconds((current) => current + 1), 1000)
     const watchId = typeof navigator.geolocation?.watchPosition === 'function'
-      ? navigator.geolocation.watchPosition(({ coords }) => {
+      ? navigator.geolocation.watchPosition(({ coords, timestamp }) => {
         const coordinate = { latitude: coords.latitude, longitude: coords.longitude }
-        const previous = lastCoordinateRef.current
-        lastCoordinateRef.current = coordinate
-        if (!previous) return
+        const recordedAt = new Date().toISOString()
+        const accuracy = Number.isFinite(coords.accuracy)
+          ? Math.min(9999.9, Math.max(0, coords.accuracy))
+          : 9999.9
 
-        const segmentMeters = distanceBetween(previous, coordinate)
-        // Ignore tiny GPS jitter and clearly invalid jumps.
-        if (segmentMeters >= 2 && segmentMeters <= 250) {
-          setDistanceMeters((current) => current + segmentMeters)
+        // Low-quality fixes are not allowed to move the last accepted point. If they
+        // did, the next good fix would draw a long straight line across the map.
+        if (accuracy > MAX_USABLE_ACCURACY_METERS) {
+          setGpsSignal('weak')
+          return
         }
-      }, () => undefined, GEOLOCATION_OPTIONS)
+
+        setGpsSignal('good')
+        const observedAt = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now()
+        const previousObserved = lastObservedPositionRef.current
+        const observedElapsedSeconds = previousObserved
+          ? Math.max((observedAt - previousObserved.observedAt) / 1000, 0.25)
+          : undefined
+        const observedDistanceMeters = previousObserved
+          ? distanceBetween(previousObserved.coordinate, coordinate)
+          : undefined
+        const stationary = observedDistanceMeters !== undefined
+          && observedElapsedSeconds !== undefined
+          && observedDistanceMeters / observedElapsedSeconds < 0.5
+        lastObservedPositionRef.current = { coordinate, accuracy, observedAt }
+
+        const presenceIntervalMs = stationary ? 10_000 : 4_000
+        const lastPresenceSentAt = lastPresenceSentAtRef.current
+        if (lastPresenceSentAt === undefined || observedAt - lastPresenceSentAt >= presenceIntervalMs) {
+          lastPresenceSentAtRef.current = observedAt
+          const heading = Number.isFinite(coords.heading) && coords.heading !== null
+            ? Math.min(359.99, Math.max(0, coords.heading))
+            : null
+          void onPresenceFixRef.current?.({
+            ...coordinate,
+            recordedAt,
+            accuracy,
+            heading,
+            stationary,
+          })
+        }
+
+        const previous = lastAcceptedPositionRef.current
+        if (!previous) {
+          lastAcceptedPositionRef.current = { coordinate, accuracy, observedAt }
+          setWalkedCoordinates((current) => [...current, coordinate])
+          void onPointRef.current?.({
+            ...coordinate,
+            recordedAt,
+            accuracy,
+          })
+          return
+        }
+
+        const segmentMeters = distanceBetween(previous.coordinate, coordinate)
+        const elapsedSeconds = Math.max((observedAt - previous.observedAt) / 1000, 0.25)
+        const speedMetersPerSecond = segmentMeters / elapsedSeconds
+        const minimumMovementMeters = Math.max(
+          3,
+          Math.min(10, Math.max(previous.accuracy, accuracy) * 0.25),
+        )
+
+        // Ignore stationary GPS jitter, implausibly fast movement and one-off jumps.
+        // Rejected fixes never become the next segment's starting point.
+        if (
+          segmentMeters >= minimumMovementMeters
+          && segmentMeters <= MAX_SINGLE_SEGMENT_METERS
+          && speedMetersPerSecond <= MAX_WALKING_SPEED_METERS_PER_SECOND
+        ) {
+          lastAcceptedPositionRef.current = { coordinate, accuracy, observedAt }
+          setDistanceMeters((current) => current + segmentMeters)
+          setWalkedCoordinates((current) => [...current, coordinate])
+          void onPointRef.current?.({
+            ...coordinate,
+            recordedAt,
+            accuracy,
+          })
+        }
+      }, () => setGpsSignal('error'), GEOLOCATION_OPTIONS)
       : undefined
 
     return () => {
       window.clearInterval(timerId)
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId)
-      lastCoordinateRef.current = undefined
+      lastAcceptedPositionRef.current = undefined
+      lastObservedPositionRef.current = undefined
+      lastPresenceSentAtRef.current = undefined
     }
   }, [isTracking])
 
   const reset = () => {
     setElapsedSeconds(0)
     setDistanceMeters(0)
-    lastCoordinateRef.current = undefined
+    setWalkedCoordinates([])
+    lastAcceptedPositionRef.current = undefined
+    lastObservedPositionRef.current = undefined
+    lastPresenceSentAtRef.current = undefined
   }
 
   return {
@@ -71,6 +186,8 @@ export function useWalkTracker(isTracking: boolean) {
     distanceMeters,
     formattedTime: formatWalkTime(elapsedSeconds),
     formattedDistance: formatWalkDistance(distanceMeters),
+    walkedCoordinates,
+    gpsSignal,
     reset,
   }
 }

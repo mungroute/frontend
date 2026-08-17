@@ -142,4 +142,44 @@ describe('BaseMapViewport', () => {
     })))
     expect(getCurrentPosition).toHaveBeenCalledOnce()
   })
+
+  it('recenters on refresh when geolocation permission was already granted', async () => {
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
+    }
+    const getCurrentPosition = vi.fn((success: PositionCallback) => success({
+      coords: { latitude: 37.5012, longitude: 127.0396 } as GeolocationCoordinates,
+    } as GeolocationPosition))
+    const query = vi.fn(() => Promise.resolve({ state: 'granted' } as PermissionStatus))
+    vi.stubGlobal('navigator', { ...window.navigator, permissions: { query }, geolocation: { getCurrentPosition } })
+
+    render(
+      <BaseMapProvider adapter={adapter} defaultScene={scene}>
+        <BaseMapViewport ariaLabel="현재 위치 지도" fallback={{ src: '/map.png' }} />
+      </BaseMapProvider>,
+    )
+
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: { latitude: 37.5012, longitude: 127.0396 },
+      zoom: 17,
+    })))
+    expect(query).toHaveBeenCalledWith({ name: 'geolocation' })
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
+  })
+
+  it('does not prompt for location automatically when permission is not granted', async () => {
+    const getCurrentPosition = vi.fn()
+    const query = vi.fn(() => Promise.resolve({ state: 'prompt' } as PermissionStatus))
+    vi.stubGlobal('navigator', { ...window.navigator, permissions: { query }, geolocation: { getCurrentPosition } })
+
+    render(
+      <BaseMapProvider defaultScene={scene}>
+        <BaseMapViewport ariaLabel="기본 지도" fallback={{ src: '/map.png' }} />
+      </BaseMapProvider>,
+    )
+
+    await waitFor(() => expect(query).toHaveBeenCalledOnce())
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+  })
 })

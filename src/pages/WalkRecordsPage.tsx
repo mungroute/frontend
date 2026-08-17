@@ -1,19 +1,35 @@
 import { useState } from 'react'
 import { FilterChip, HomeBottomNavigation, ManagementPageHeader } from '../Components/ui'
+import type { WalkRecordSummary } from '../api/walks'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/management-pages.css'
 
-const records = [
+const fallbackRecords = [
   { id: 'august-7-evening', month: '이번 달', title: '8월 7일 저녁 산책', metrics: '31분 · 2.1km', detail: '망고 · 거리두기 1회', image: '/assets/r01/route-orange.svg' },
   { id: 'august-5-morning', month: '이번 달', title: '8월 5일 아침 산책', metrics: '22분 · 1.4km', detail: '망고 · 맑음', image: '/assets/r01/route-green.svg' },
   { id: 'august-2-park', month: '이번 달', title: '8월 2일 공원 산책', metrics: '48분 · 3.2km', detail: '망고, 쿠키 · 그늘 72%', image: '/assets/r01/route-green.svg' },
 ]
 
-type WalkRecordsPageProps = { onBack?: () => void; onOpenRecord?: (id: string) => void }
+type WalkRecordsPageProps = {
+  records?: WalkRecordSummary[]
+  onBack?: () => void
+  onOpenRecord?: (id: string | number) => void
+}
 
-export function WalkRecordsPage({ onBack, onOpenRecord }: WalkRecordsPageProps) {
+const formatDuration = (durationSec: number) => `${Math.max(1, Math.round(durationSec / 60))}분`
+const formatDistance = (distanceM: number) => `${(distanceM / 1000).toFixed(1)}km`
+
+export function WalkRecordsPage({ records, onBack, onOpenRecord }: WalkRecordsPageProps) {
   const [month, setMonth] = useState('이번 달')
-  const visibleRecords = records.filter((record) => record.month === month)
+  const visibleRecords = records === undefined
+    ? fallbackRecords.filter((record) => record.month === month)
+    : records.map((record) => ({
+      id: record.sessionId,
+      title: record.courseName,
+      metrics: `${formatDuration(record.durationSec)} · ${formatDistance(record.distanceM)}`,
+      detail: record.representative ? '대표 코스' : new Date(record.endedAt).toLocaleDateString('ko-KR'),
+      image: '/assets/r01/route-orange.svg',
+    }))
 
   return (
     <main className="journey-page management-page walk-records-page">

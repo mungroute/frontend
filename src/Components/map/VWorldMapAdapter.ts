@@ -10,7 +10,7 @@ import { defaults as defaultControls } from 'ol/control/defaults.js'
 import { fromLonLat, toLonLat } from 'ol/proj.js'
 import XYZ from 'ol/source/XYZ.js'
 import VectorSource from 'ol/source/Vector.js'
-import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style.js'
+import { Circle as CircleStyle, Fill, Stroke, Style, Text } from 'ol/style.js'
 import { unByKey } from 'ol/Observable.js'
 import type { EventsKey } from 'ol/events.js'
 import type { Geometry } from 'ol/geom.js'
@@ -29,6 +29,23 @@ export function buildVWorldTileUrl(apiKey: string, layer = 'Base') {
 function markerStyle(marker: MapMarker) {
   const finish = marker.kind === 'finish'
   const current = marker.kind === 'current-location'
+  const start = marker.kind === 'start'
+
+  if (start || finish) {
+    return new Style({
+      image: new CircleStyle({
+        radius: 11,
+        fill: new Fill({ color: finish ? '#25242a' : '#ffffff' }),
+        stroke: new Stroke({ color: finish ? '#ffffff' : '#f47a3a', width: 3 }),
+      }),
+      text: new Text({
+        text: finish ? 'E' : 'S',
+        font: '900 9px Arial, sans-serif',
+        fill: new Fill({ color: finish ? '#ffffff' : '#e9682d' }),
+      }),
+    })
+  }
+
   return new Style({
     image: new CircleStyle({
       radius: current ? 8 : 7,
@@ -36,6 +53,17 @@ function markerStyle(marker: MapMarker) {
       stroke: new Stroke({ color: '#ffffff', width: 3 }),
     }),
   })
+}
+
+function createSelectedSegmentElement(marker: MapMarker) {
+  const element = document.createElement('div')
+  element.className = 'map-selected-segment-label'
+  const text = document.createElement('strong')
+  text.textContent = `${marker.label ?? ''}번 구간`
+  const pointer = document.createElement('span')
+  pointer.setAttribute('aria-hidden', 'true')
+  element.append(text, pointer)
+  return element
 }
 
 function createDogLocationElement(marker: MapMarker) {
@@ -60,12 +88,22 @@ function createDogLocationElement(marker: MapMarker) {
   return element
 }
 
-function applyScene(map: Map, source: VectorSource<Feature<Geometry>>, markerOverlays: Overlay[], scene: BaseMapScene, updateView = true) {
+function applyScene(
+  map: Map,
+  source: VectorSource<Feature<Geometry>>,
+  markerOverlays: Overlay[],
+  animatedStrokes: Stroke[],
+  pulsingStrokes: Array<{ stroke: Stroke; baseWidth: number }>,
+  scene: BaseMapScene,
+  updateView = true,
+) {
   if (updateView) {
     map.getView().setCenter(fromLonLat([scene.center.longitude, scene.center.latitude]))
     map.getView().setZoom(scene.zoom)
   }
   source.clear()
+  animatedStrokes.length = 0
+  pulsingStrokes.length = 0
   markerOverlays.forEach((overlay) => map.removeOverlay(overlay))
   markerOverlays.length = 0
 
@@ -74,10 +112,52 @@ function applyScene(map: Map, source: VectorSource<Feature<Geometry>>, markerOve
       geometry: new LineString(route.coordinates.map((coordinate) => fromLonLat([coordinate.longitude, coordinate.latitude]))),
     })
     feature.setId(route.id)
-    feature.setStyle(new Style({
-      stroke: new Stroke({ color: route.color ?? '#f47a3a', width: route.width ?? 5 }),
-    }))
+    const routeWidth = route.width ?? 5
+    const lineCap = route.lineCap ?? 'round'
+    const routeStyles = [
+      ...(route.outlineColor ? [new Style({
+        stroke: new Stroke({
+          color: route.outlineColor,
+          width: route.outlineWidth ?? routeWidth + 4,
+          lineCap,
+          lineJoin: 'round',
+        }),
+      })] : []),
+      new Style({
+        stroke: new Stroke({
+          color: route.color ?? '#f47a3a',
+          width: routeWidth,
+          lineCap,
+          lineJoin: 'round',
+        }),
+      }),
+    ]
+    if (route.pulse) {
+      const baseWidth = (route.outlineWidth ?? routeWidth + 4) + 3
+      const pulseStroke = new Stroke({
+        color: 'rgba(255, 255, 255, .22)',
+        width: baseWidth,
+        lineCap,
+        lineJoin: 'round',
+      })
+      routeStyles.unshift(new Style({ stroke: pulseStroke }))
+      pulsingStrokes.push({ stroke: pulseStroke, baseWidth })
+    }
+    if (route.animated) {
+      const animatedStroke = new Stroke({
+        color: 'rgba(255, 255, 255, .68)',
+        width: 3,
+        lineDash: [1, 16],
+        lineDashOffset: 0,
+        lineCap,
+        lineJoin: 'round',
+      })
+      routeStyles.push(new Style({ stroke: animatedStroke }))
+      animatedStrokes.push(animatedStroke)
+    }
+    feature.setStyle(routeStyles)
     source.addFeature(feature)
+
   })
 
   scene.markers?.forEach((marker) => {
@@ -86,6 +166,18 @@ function applyScene(map: Map, source: VectorSource<Feature<Geometry>>, markerOve
         element: createDogLocationElement(marker),
         position: fromLonLat([marker.position.longitude, marker.position.latitude]),
         positioning: 'bottom-center',
+        stopEvent: false,
+      })
+      markerOverlays.push(overlay)
+      map.addOverlay(overlay)
+      return
+    }
+    if (marker.kind === 'selected-segment') {
+      const overlay = new Overlay({
+        element: createSelectedSegmentElement(marker),
+        position: fromLonLat([marker.position.longitude, marker.position.latitude]),
+        positioning: 'bottom-center',
+        offset: [0, -9],
         stopEvent: false,
       })
       markerOverlays.push(overlay)
@@ -113,6 +205,8 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
       })
       const vectorSource = new VectorSource<Feature<Geometry>>()
       const markerOverlays: Overlay[] = []
+      const animatedStrokes: Stroke[] = []
+      const pulsingStrokes: Array<{ stroke: Stroke; baseWidth: number }> = []
       const map = new Map({
         target: container,
         layers: [
@@ -128,7 +222,22 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
         controls: defaultControls({ zoom: false, rotate: false }),
       })
 
-      applyScene(map, vectorSource, markerOverlays, initialScene)
+      applyScene(map, vectorSource, markerOverlays, animatedStrokes, pulsingStrokes, initialScene)
+
+      let animationFrameId: number | undefined
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      const animateRoutes = (timestamp: number) => {
+        const dashOffset = -((timestamp / 42) % 17)
+        animatedStrokes.forEach((stroke) => stroke.setLineDashOffset(dashOffset))
+        const pulseProgress = (Math.sin(timestamp / 360) + 1) / 2
+        pulsingStrokes.forEach(({ stroke, baseWidth }) => {
+          stroke.setWidth(baseWidth + pulseProgress * 4)
+          stroke.setColor(`rgba(255, 255, 255, ${0.12 + pulseProgress * 0.28})`)
+        })
+        if (animatedStrokes.length || pulsingStrokes.length) vectorSource.changed()
+        animationFrameId = window.requestAnimationFrame(animateRoutes)
+      }
+      if (!reduceMotion) animationFrameId = window.requestAnimationFrame(animateRoutes)
 
       let currentScene = initialScene
       let clickHandler: ((event: MapClickEvent) => void) | undefined
@@ -179,7 +288,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           const viewChanged = nextScene.center.latitude !== currentScene.center.latitude
             || nextScene.center.longitude !== currentScene.center.longitude
             || nextScene.zoom !== currentScene.zoom
-          applyScene(map, vectorSource, markerOverlays, nextScene, viewChanged)
+          applyScene(map, vectorSource, markerOverlays, animatedStrokes, pulsingStrokes, nextScene, viewChanged)
           currentScene = nextScene
         },
         setClickHandler(nextHandler) {
@@ -190,6 +299,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           if (tileReadyKey) unByKey(tileReadyKey)
           if (tileErrorKey) unByKey(tileErrorKey)
           if (timeoutId) clearTimeout(timeoutId)
+          if (animationFrameId !== undefined) window.cancelAnimationFrame(animationFrameId)
           unByKey(mapClickKey)
           map.setTarget(undefined)
           map.dispose()

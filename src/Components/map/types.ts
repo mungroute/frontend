@@ -6,7 +6,7 @@ export type MapCoordinate = {
 export type MapMarker = {
   id: string
   position: MapCoordinate
-  kind?: 'current-location' | 'start' | 'finish' | 'default'
+  kind?: 'current-location' | 'start' | 'finish' | 'selected-segment' | 'default'
   label?: string
   profileImageSrc?: string
 }
@@ -16,6 +16,11 @@ export type MapRoute = {
   coordinates: MapCoordinate[]
   color?: string
   width?: number
+  outlineColor?: string
+  outlineWidth?: number
+  lineCap?: 'butt' | 'round' | 'square'
+  animated?: boolean
+  pulse?: boolean
 }
 
 export type BaseMapScene = {

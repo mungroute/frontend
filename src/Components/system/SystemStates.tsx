@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, Copy, Link2, MapPin, Square, WifiOff } from 'lucide-react'
+import { AlertTriangle, Check, Copy, Link2, MapPin, ShieldCheck, Square, Users, WifiOff } from 'lucide-react'
+import type { LockedWalkPresenceMode } from '../../api/walks'
 import type { CourseShareOption } from '../courses/course-data'
 import { BaseMapViewport } from '../map'
 import { BottomSheet, Button, TextField } from '../ui'
@@ -71,19 +72,64 @@ export function WalkEndDialog({ onClose, onConfirm }: CloseableProps & { onConfi
   )
 }
 
-export function DistanceModeConfirmDialog({ nextChecked, onClose, onConfirm }: CloseableProps & { nextChecked: boolean; onConfirm: () => void }) {
-  const action = nextChecked ? '켜기' : '끄기'
+export function RepresentativeUnavailableDialog({ onClose }: CloseableProps) {
   return (
-    <Overlay label={`거리두기 모드 ${action} 확인`} onClose={onClose}>
-      <div className="system-icon system-icon--soft"><MapPin size={24} /></div>
-      <h2>거리두기 모드를<br />{nextChecked ? '켤까요?' : '끌까요?'}</h2>
-      <p>{nextChecked
-        ? <>산책 중 주변 반려견의<br />접근 방향과 거리를 알려드려요.</>
-        : <>끄면 주변 반려견 접근 알림을<br />받을 수 없어요.</>}</p>
-      <Button onClick={onConfirm}>{action}</Button>
-      <Button variant="ghost" onClick={onClose}>취소</Button>
+    <Overlay label="대표 코스 설정 불가" className="system-surface--compact" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle size={25} /></div>
+      <h2>대표 코스로 설정할 수 없어요</h2>
+      <p>GPS 지점이 부족해요.<br />이 코스는 일반 코스로 저장할 수 있어요.</p>
+      <Button onClick={onClose}>확인</Button>
     </Overlay>
   )
+}
+
+export function WalkProcessingAlertDialog({ message, onClose }: CloseableProps & { message: string }) {
+  return (
+    <Overlay label="산책 처리 안내" className="system-surface--compact" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle size={25} /></div>
+      <h2>{message}</h2>
+      <p>현재 산책 완료 화면에서<br />코스 정보를 확인해 주세요.</p>
+      <Button onClick={onClose}>확인</Button>
+    </Overlay>
+  )
+}
+
+export function CourseAlternativeUnavailableDialog({ message, onClose }: CloseableProps & { message: string }) {
+  return (
+    <Overlay label="추천 대안 생성 안내" className="system-surface--compact" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle size={25} /></div>
+      <h2>추천 대안을 만들지 못했어요</h2>
+      <p>{message}<br />기존 코스는 그대로 이용할 수 있어요.</p>
+      <Button onClick={onClose}>기존 코스 확인</Button>
+    </Overlay>
+  )
+}
+
+export function PresenceModeConfirmDialog({ mode, nextEnabled, onClose, onConfirm }: CloseableProps & { mode: LockedWalkPresenceMode; nextEnabled: boolean; onConfirm: () => void }) {
+  const isDistance = mode === 'distance'
+  const modeLabel = isDistance ? '거리두기 알림' : '산책 친구 만나기'
+  const modeLabelWithParticle = isDistance ? '거리두기 알림을' : '산책 친구 만나기를'
+  const action = nextEnabled ? '켜기' : '끄기'
+  return (
+    <Overlay label={`${modeLabel} ${action} 확인`} className={`system-surface--presence system-surface--presence-${mode}`} onClose={onClose}>
+      <span className="system-presence-kicker">LOCKED · {isDistance ? 'DISTANCE' : 'MEET'}</span>
+      <div className="system-icon system-icon--soft">{isDistance ? <ShieldCheck size={25} /> : <Users size={25} />}</div>
+      <h2>{modeLabelWithParticle}<br />{nextEnabled ? '켤까요?' : '끌까요?'}</h2>
+      <p>{nextEnabled
+        ? isDistance
+          ? <>현재 위치를 최대 30초 동안 임시로 사용해<br />주변 접근 방향만 익명으로 알려드려요.</>
+          : <>서로 동의한 산책 친구에게만<br />제한된 위치와 프로필을 공개해요.</>
+        : isDistance
+          ? <>접근 알림이 중단되고<br />임시 위치정보가 즉시 삭제돼요.</>
+          : <>진행 중인 만남 연결이 종료되고<br />임시 위치정보가 즉시 삭제돼요.</>}</p>
+      <Button onClick={onConfirm}>{nextEnabled ? '동의하고 켜기' : `${modeLabel} 끄기`}</Button>
+      <Button variant="ghost" onClick={onClose}>{nextEnabled ? '취소' : '계속 사용'}</Button>
+    </Overlay>
+  )
+}
+
+export function DistanceModeConfirmDialog({ nextChecked, onClose, onConfirm }: CloseableProps & { nextChecked: boolean; onConfirm: () => void }) {
+  return <PresenceModeConfirmDialog mode="distance" nextEnabled={nextChecked} onClose={onClose} onConfirm={onConfirm} />
 }
 
 export function RecordMoreSheet({ onClose, onDelete, onRename, onShare }: CloseableProps & { onDelete: () => void; onRename?: () => void; onShare?: () => void }) {

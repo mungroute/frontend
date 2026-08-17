@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { BaseMapContext } from './BaseMapContext'
 import { requestBrowserLocation } from './geolocation'
@@ -18,6 +18,18 @@ export function BaseMapProvider({ adapter, defaultScene, children }: BaseMapProv
     setCurrentLocation(coordinate)
     return coordinate
   }, [])
+
+  useEffect(() => {
+    let active = true
+    if (!navigator.permissions?.query || !navigator.geolocation) return () => { active = false }
+
+    void navigator.permissions.query({ name: 'geolocation' }).then((permission) => {
+      if (!active || permission.state !== 'granted') return
+      void requestCurrentLocation().catch(() => undefined)
+    }).catch(() => undefined)
+
+    return () => { active = false }
+  }, [requestCurrentLocation])
   const locationScene = useMemo<BaseMapScene>(() => currentLocation ? {
     ...defaultScene,
     center: currentLocation,

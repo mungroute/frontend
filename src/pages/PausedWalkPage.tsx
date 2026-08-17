@@ -1,6 +1,7 @@
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
-import { DistanceModeControl } from '../Components/walk/DistanceModeControl'
+import { PresenceModeControl } from '../Components/walk/DistanceModeControl'
+import type { LockedWalkPresenceMode } from '../api/walks'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
 import { DraggableSheet } from '../Components/ui'
 import '../styles/pages/journey-page.css'
@@ -15,11 +16,16 @@ type PausedWalkPageProps = {
   onPhoto?: () => void
   distanceMode?: boolean
   onDistanceModeChange?: (checked: boolean) => void
+  presenceMode?: LockedWalkPresenceMode | null
+  presenceEnabled?: boolean
+  onPresenceEnabledChange?: (enabled: boolean) => void
   time?: string
   distance?: string
 }
 
-export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPhoto, distanceMode, onDistanceModeChange, time = '00:17:00', distance = '1.2km' }: PausedWalkPageProps) {
+export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPhoto, distanceMode, onDistanceModeChange, presenceMode, presenceEnabled, onPresenceEnabledChange, time = '00:17:00', distance = '1.2km' }: PausedWalkPageProps) {
+  const resolvedMode = presenceMode === undefined ? 'distance' : presenceMode
+  const resolvedEnabled = presenceEnabled ?? distanceMode ?? true
   return (
     <main className="journey-page paused-walk-page">
       <BaseMapViewport
@@ -47,7 +53,7 @@ export function PausedWalkPage({ map, dogName = '망고', onResume, onStop, onPh
               <dd>{distance}</dd>
             </div>
           </dl>
-          <DistanceModeControl checked={distanceMode} onChange={onDistanceModeChange} />
+          <PresenceModeControl mode={resolvedMode} enabled={resolvedEnabled} onChange={onPresenceEnabledChange ?? onDistanceModeChange} />
         </div>
 
         <WalkSessionControls mode="paused" onResume={onResume} onStop={onStop} onPhoto={onPhoto} />

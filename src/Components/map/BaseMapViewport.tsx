@@ -13,11 +13,12 @@ type BaseMapViewportProps = {
     src: string
     alt?: string
     overlay?: ReactNode
+    hideOverlayWhenReady?: boolean
   }
   map?: BaseMapBinding
   children?: ReactNode
   showLocationControl?: boolean
-  sceneOverlay?: Pick<BaseMapScene, 'markers' | 'routes'>
+  sceneOverlay?: Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'markers' | 'routes'>>
   onMapClick?: (event: MapClickEvent) => void
   mapClickLabel?: string
 }
@@ -41,6 +42,8 @@ export function BaseMapViewport({
     if (!localBaseScene || !sceneOverlay) return localBaseScene
     return {
       ...localBaseScene,
+      center: sceneOverlay.center ?? localBaseScene.center,
+      zoom: sceneOverlay.zoom ?? localBaseScene.zoom,
       markers: [...(localBaseScene.markers ?? []), ...(sceneOverlay.markers ?? [])],
       routes: [...(localBaseScene.routes ?? []), ...(sceneOverlay.routes ?? [])],
     }
@@ -158,7 +161,7 @@ export function BaseMapViewport({
           onClick={addFallbackPoint}
         />
       )}
-      {fallback.overlay && <div className="base-map-viewport__fallback-overlay">{fallback.overlay}</div>}
+      {fallback.overlay && (!providerReady || !fallback.hideOverlayWhenReady) && <div className="base-map-viewport__fallback-overlay">{fallback.overlay}</div>}
       {children && <div className="base-map-viewport__overlay">{children}</div>}
       {showLocationControl && (
         <div className="base-map-viewport__location-control">

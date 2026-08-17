@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { NoCourseHomePage } from './NoCourseHomePage'
@@ -27,6 +27,13 @@ describe('NoCourseHomePage', () => {
     expect(onStartWalk).toHaveBeenCalledOnce()
   })
 
+  it('separates direct walking, drawing, and time-matched recommendations', () => {
+    render(<NoCourseHomePage />)
+    expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /지도에서 코스 그리기/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /시간 맞춤 코스 추천받기/ })).toBeInTheDocument()
+  })
+
   it('passes the current-location scene to a future base-map adapter', () => {
     const update = vi.fn()
     const adapter: BaseMapAdapter = {
@@ -37,5 +44,15 @@ describe('NoCourseHomePage', () => {
 
     expect(adapter.mount).toHaveBeenCalledOnce()
     expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), mapScene)
+  })
+
+  it('removes the static location dot after the live map is ready', async () => {
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
+    }
+
+    render(<NoCourseHomePage map={{ adapter, scene: mapScene }} />)
+
+    await waitFor(() => expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument())
   })
 })

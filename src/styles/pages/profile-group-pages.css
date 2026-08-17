@@ -1,12 +1,22 @@
 .profile-group-page .home-bottom-navigation { height: 85px; bottom: -1px; padding-bottom: 8px; }
-.my-page > h1 { position: absolute; top: 29px; left: 23px; margin: 0; font-size: 24px; line-height: 36px; }
+.my-page__header { position: absolute; z-index: 2; top: 22px; right: 22px; left: 22px; min-height: 60px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.my-page__header h1 { margin: 2px 0 0; font-size: 26px; line-height: 36px; letter-spacing: -.03em; }
+.my-page__welcome { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.my-page__welcome strong { color: var(--color-primary); font-weight: 700; }
+.my-page__logout { min-width: 64px; height: 34px; margin-top: 3px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text-secondary); background: rgba(255,255,255,.7); font-size: 12px; font-weight: 600; cursor: pointer; }
+.my-page__logout:active { color: var(--color-primary); border-color: rgba(255,113,57,.35); background: var(--color-primary-soft); }
 .my-page__profile, .my-page__stats, .my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service { position: absolute; right: 19px; left: 19px; }
-.my-page__profile { top: 81px; }
-.my-page__stats { top: 233px; }
-.my-page__dogs { top: 313px; }
-.my-page__groups { top: 393px; }
-.my-page__notifications { top: 473px; }
-.my-page__service { top: 553px; }
+.my-page__profile { top: 100px; }
+.my-page__stats { top: 247px; }
+.my-page__dogs { top: 327px; }
+.my-page__groups { top: 407px; }
+.my-page__notifications { top: 487px; }
+.my-page__service { top: 567px; }
+.my-page__profile .dog-profile-card { height: 124px; padding: 18px; border: 1px solid rgba(255,113,57,.08); box-shadow: 0 7px 22px rgba(72,52,38,.05); }
+.my-page__profile .dog-profile-card__copy { padding-right: 78px; }
+.my-page__profile .dog-profile-card > button { top: 50%; right: 16px; min-height: 34px; padding: 0 12px; border-radius: 999px; background: var(--color-primary-soft); transform: translateY(-50%); }
+.my-page__stats .management-detail-row { border: 1px solid rgba(255,113,57,.12); background: linear-gradient(110deg, rgba(255,247,241,.92), var(--color-surface) 62%); }
+.my-page :is(.my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service) .management-detail-row { border: 1px solid rgba(72,52,38,.04); }
 
 .dog-management-page__list { position: absolute; top: 107px; right: 19px; left: 19px; display: grid; gap: 18px; }
 .dog-management-page__register { position: absolute; top: 381px; right: 19px; left: 19px; width: auto; height: 52px; }
@@ -39,12 +49,15 @@
 .create-group-page__submit { position: absolute; top: 719px; right: 19px; left: 19px; width: auto; height: 56px; }
 
 @media (max-height: 700px) {
-  .my-page__profile { top: 72px; }
-  .my-page__stats { top: 214px; }
-  .my-page__dogs { top: 286px; }
-  .my-page__groups { top: 358px; }
-  .my-page__notifications { top: 430px; }
-  .my-page__service { top: 502px; }
+  .my-page__header { top: 15px; }
+  .my-page__profile { top: 82px; }
+  .my-page__profile .dog-profile-card { height: 112px; }
+  .my-page__stats { top: 207px; }
+  .my-page__dogs { top: 277px; }
+  .my-page__groups { top: 347px; }
+  .my-page__notifications { top: 417px; }
+  .my-page__service { top: 487px; }
+  .my-page :is(.my-page__stats, .my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service) .management-detail-row { height: 60px; }
   .dog-management-page__list { top: 96px; gap: 12px; }
   .dog-management-page__register { top: 338px; }
   .group-list-page__list { gap: 12px; }

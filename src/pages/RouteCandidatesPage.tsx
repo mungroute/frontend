@@ -2,36 +2,45 @@ import { useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { DraggableSheet } from '../Components/ui'
+import { CourseCandidateSection } from '../Components/courses/CourseCandidateCard'
+import { getCourseCandidates } from '../Components/courses/course-data'
+import type { CourseCandidate } from '../Components/courses/course-data'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/route-candidates-page.css'
-
-type RouteId = 'namsan-loop-a' | 'jangchung-park-b'
 
 type RouteCandidatesPageProps = {
   duration?: number
   map?: BaseMapBinding
   onBack?: () => void
-  onConfirm?: (routeId: RouteId) => void
+  candidates?: CourseCandidate[]
+  onConfirm?: (candidate: CourseCandidate) => void
 }
-
-const candidates: Array<{ id: RouteId; name: string; duration: number; distance: string; shade: number }> = [
-  { id: 'namsan-loop-a', name: '남산 둘레길 A', duration: 29, distance: '1.8km', shade: 68 },
-  { id: 'jangchung-park-b', name: '장충단 공원길 B', duration: 29, distance: '1.8km', shade: 68 },
-]
 
 export function RouteCandidatesPage({
   duration = 30,
   map,
+  candidates = getCourseCandidates(duration),
   onBack = () => window.history.back(),
   onConfirm = () => undefined,
 }: RouteCandidatesPageProps) {
-  const [selectedRouteId, setSelectedRouteId] = useState<RouteId>('namsan-loop-a')
+  const savedCandidates = candidates.filter((candidate) => candidate.source === 'saved')
+  const generatedCandidates = candidates.filter((candidate) => candidate.source === 'generated')
+  const defaultCandidate = savedCandidates.find((candidate) => candidate.isRepresentative && candidate.withinTargetTime)
+    ?? generatedCandidates[0]
+    ?? savedCandidates[0]
+  const [selectedRouteId, setSelectedRouteId] = useState(defaultCandidate?.id ?? '')
+  const selectedCandidate = candidates.find((candidate) => candidate.id === selectedRouteId) ?? defaultCandidate
+  const confirmLabel = !selectedCandidate?.withinTargetTime
+    ? '그래도 이 코스로 걷기'
+    : selectedCandidate.source === 'saved'
+      ? '이 코스로 산책 시작'
+      : '추천 코스로 산책 시작'
 
   return (
     <main className="journey-page route-candidates-page">
       <BaseMapViewport
         className="route-candidates-page__map"
-        ariaLabel="후보 코스 지도"
+        ariaLabel={selectedCandidate ? `${selectedCandidate.name} 경로 지도` : '후보 코스 지도'}
         map={map}
         fallback={{ src: '/assets/s03/map-preview.jpg' }}
       />
@@ -42,32 +51,17 @@ export function RouteCandidatesPage({
 
       <DraggableSheet className="route-candidates-page__sheet">
         <h1>{duration}분 안에 걸을 수 있는 코스예요</h1>
-        <div className="route-candidates-page__cards">
-          {candidates.map((candidate) => {
-            const selected = candidate.id === selectedRouteId
-            return (
-              <button
-                className="route-candidates-page__card"
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setSelectedRouteId(candidate.id)}
-                key={candidate.id}
-              >
-                <strong>{candidate.name}</strong>
-                <span>{candidate.duration}분 · {candidate.distance}</span>
-                <small>그늘 {candidate.shade}%</small>
-                <b aria-hidden="true">›</b>
-              </button>
-            )
-          })}
+        <div className="route-candidates-page__content">
+          <CourseCandidateSection title="내 코스" candidates={savedCandidates} selectedId={selectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
+          <CourseCandidateSection title="새 추천 코스" candidates={generatedCandidates} selectedId={selectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
         </div>
-        <p>두 코스 모두 목표 시간에 맞아요</p>
         <button
           className="journey-page__primary-action route-candidates-page__confirm"
           type="button"
-          onClick={() => onConfirm(selectedRouteId)}
+          disabled={!selectedCandidate}
+          onClick={() => selectedCandidate && onConfirm(selectedCandidate)}
         >
-          이 코스로 선택
+          {confirmLabel}
         </button>
       </DraggableSheet>
     </main>

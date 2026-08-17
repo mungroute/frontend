@@ -16,15 +16,21 @@
 .route-comparison-page__card b { position: absolute; top: 38px; right: 19px; color: var(--color-text-secondary); font-family: Arial, sans-serif; font-size: 26px; font-weight: 400; }
 .route-comparison-page__card[aria-pressed='true'] b { color: var(--color-primary); }
 .route-comparison-page__difference { margin: 13px 0 0; color: var(--color-nature); font-size: 12px; line-height: 18px; }
+.route-comparison-page__diagnostic { margin-top: 9px; padding: 9px 11px; border-radius: 12px; background: #fff3e9; }
+.route-comparison-page__diagnostic strong { color: var(--color-primary-pressed); font-size: 11px; line-height: 16px; }
+.route-comparison-page__diagnostic p { margin: 2px 0 0; display: -webkit-box; overflow: hidden; color: var(--color-text-primary); font-size: 10px; line-height: 15px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.route-comparison-page__diagnostic span { display: block; margin-top: 2px; color: var(--color-nature); font-size: 10px; font-weight: 700; }
 .route-comparison-page__actions { position: absolute; right: 34px; bottom: 32px; left: 34px; display: grid; gap: 4px; }
 .route-comparison-page__usual { height: 42px; border: 0; color: var(--color-text-secondary); background: transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
 @media (max-height: 760px) {
-  .route-comparison-page__sheet { top: 210px; padding-top: 28px; }
+  .route-comparison-page__sheet { top: 140px; padding-top: 28px; }
   .route-comparison-page__intro { margin-top: 2px; }
   .route-comparison-page__recommendation { margin-top: 6px; }
   .route-comparison-page__cards { gap: 7px; margin-top: 5px; }
   .route-comparison-page__card { height: 98px; }
   .route-comparison-page__card b { top: 29px; }
   .route-comparison-page__difference { margin-top: 5px; }
+  .route-comparison-page__diagnostic { margin-top: 5px; padding-block: 6px; }
+  .route-comparison-page__diagnostic p { -webkit-line-clamp: 1; }
   .route-comparison-page__actions { position: static; margin: 10px 10px 0; }
 }
