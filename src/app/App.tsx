@@ -496,6 +496,10 @@ export function App() {
     return <SystemStatesPreviewPage selectedCase={isSystemStateCase(requestedCase) ? requestedCase : undefined} onSelect={(next) => navigate(next ? `/preview/system-states?case=${next}` : '/preview/system-states')} />
   }
 
+  if (location.pathname === '/preview/location-permission') {
+    return <SystemStatesPreviewPage selectedCase="m01" onSelect={() => navigate('/preview/system-states')} />
+  }
+
   if (location.pathname === '/login') {
     return <LoginPage
       onLogin={async ({ email, password }) => {

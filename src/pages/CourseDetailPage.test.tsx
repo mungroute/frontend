@@ -56,6 +56,7 @@ describe('CourseDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
     expect(screen.getByText(/2구간 · 주의가 필요한 구간/)).toBeInTheDocument()
     expect(screen.getByText('40.1°C')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '구간 정보 닫기' }))
     expect(screen.queryByText(/2구간 · 주의가 필요한 구간/)).not.toBeInTheDocument()
 

@@ -50,7 +50,7 @@ function Overlay({ children, onClose, label, sheet = false, className = '' }: Cl
 
 export function LocationPermissionSheet({ onClose, onAllow = onClose }: CloseableProps & { onAllow?: () => void }) {
   return (
-    <Overlay label="위치 권한 안내" sheet onClose={onClose}>
+    <Overlay label="위치 권한 안내" sheet className="system-surface--location-permission" onClose={onClose}>
       <div className="system-icon system-icon--soft"><MapPin /></div>
       <h2>현재 위치를 사용해도 될까요?</h2>
       <p>가까운 산책 코스를 추천하고<br />출발 지점을 정확하게 찾을 수 있어요.</p>
