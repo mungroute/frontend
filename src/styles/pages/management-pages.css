@@ -12,7 +12,8 @@
 .my-courses-page__shade-track { position: relative; height: 10px; margin-top: 8px; overflow: hidden; border-radius: var(--radius-full); background: var(--color-bg-subtle); }
 .my-courses-page__shade-track span { position: absolute; left: 30%; width: 40%; height: 100%; border-radius: inherit; background: var(--color-primary); }
 .my-courses-page__shade-times { display: flex; justify-content: space-between; margin-top: 4px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
-.my-courses-page__course-list { position: absolute; z-index: 2; top: 437px; right: 19px; bottom: 90px; left: 19px; display: grid; align-content: start; gap: 10px; overflow-y: auto; padding-bottom: 12px; }
+.my-courses-page__course-list { position: absolute; z-index: 2; top: 437px; right: 19px; bottom: 90px; left: 19px; display: grid; align-content: start; gap: 10px; overflow-x: hidden; overflow-y: auto; padding-bottom: 12px; scrollbar-width: none; -ms-overflow-style: none; }
+.my-courses-page__course-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .my-courses-page__course-card { position: relative; min-height: 112px; display: grid; gap: 5px; padding: 14px 42px 14px 17px; border: 1px solid var(--color-border); border-radius: 18px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
 .my-courses-page__course-card[aria-pressed='true'] { border: 2px solid var(--color-primary); padding: 13px 41px 13px 16px; }
 .my-courses-page__course-title { display: flex; align-items: center; gap: 8px; }
@@ -56,7 +57,7 @@
 .course-detail-page__thermal-scale > i b { position: absolute; top: 50%; width: 4px; height: 17px; border-radius: 999px; background: #fff; box-shadow: 0 2px 7px rgba(0,0,0,.4); transform: translate(-50%, -50%); }
 .course-detail-page__thermal-scale > small { color: rgba(255,255,255,.64); font-size: 8px; line-height: 11px; text-align: right; }
 .course-detail-page__thermal-night { position: relative; z-index: 1; margin: 5px 0 0; color: rgba(255,255,255,.62); font-size: 9px; line-height: 12px; }
-.course-detail-page__thermal-segments { position: relative; z-index: 1; display: flex; gap: 5px; margin-top: 7px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+.course-detail-page__thermal-segments { position: relative; z-index: 1; width: 100%; min-width: 0; max-width: 100%; display: flex; gap: 5px; margin-top: 7px; padding: 2px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-inline: contain; scroll-padding-inline: 2px; scrollbar-width: none; }
 .course-detail-page__thermal-segments::-webkit-scrollbar { display: none; }
 .course-detail-page__thermal-segments button { width: 34px; height: 38px; flex: 0 0 34px; display: grid; place-items: center; align-content: center; gap: 0; padding: 0; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; color: white; background: linear-gradient(155deg, color-mix(in srgb, var(--segment-color) 88%, white), var(--segment-color)); box-shadow: 0 4px 10px rgba(0,0,0,.17); text-shadow: 0 1px 2px rgba(30,25,29,.26); cursor: pointer; transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease; }
 .course-detail-page__thermal-segments button span { font-size: 10px; line-height: 12px; font-weight: 900; }
@@ -86,15 +87,26 @@
 .course-detail-page__delete-dialog button { height: 42px; border: 0; border-radius: 12px; font-weight: 700; cursor: pointer; }
 .course-detail-page__delete-dialog button:last-child { color: #fff; background: #d95b50; }
 
-.walk-records-page__list { position: absolute; top: 145px; right: 19px; left: 19px; display: grid; gap: 20px; }
+.walk-records-page__filters { display: grid; gap: 8px; }
+.walk-records-page__filters .ui-chip-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.walk-records-page__filters .ui-chip-row::-webkit-scrollbar { display: none; }
+.walk-records-page__dog-filter { padding-top: 2px; }
+.walk-records-page__list { position: absolute; top: 205px; right: 19px; bottom: 86px; left: 19px; display: grid; align-content: start; gap: 12px; overflow-y: auto; padding-bottom: 18px; scrollbar-width: none; }
+.walk-records-page__list::-webkit-scrollbar { display: none; }
 .walk-records-page__empty { margin: 56px 0 0; color: var(--color-text-secondary); text-align: center; font-size: 14px; }
-.walk-record-card { position: relative; width: 100%; height: 154px; display: flex; align-items: flex-start; padding: 14px; border: 0; border-radius: 18px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
-.walk-record-card__preview { width: 110px; height: 126px; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border-radius: 14px; background: var(--color-bg-subtle); }
-.walk-record-card__preview img { width: 100%; height: 100%; object-fit: cover; }
+.walk-records-page__state { margin: 16px 0; color: var(--color-text-secondary); text-align: center; font-size: 13px; }
+.walk-records-page__more { width: 100%; min-height: 44px; border: 1px solid var(--color-border); border-radius: 14px; color: var(--color-primary); background: var(--color-surface); font-weight: 700; cursor: pointer; }
+.walk-record-card { position: relative; width: 100%; min-height: 136px; display: flex; align-items: flex-start; padding: 13px; border: 1px solid rgba(232,222,212,.72); border-radius: 18px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); box-shadow: 0 7px 18px rgba(55,43,34,.045); cursor: pointer; }
+.walk-record-card__preview { width: 102px; height: 110px; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border-radius: 14px; background: #f2eee8; }
+.walk-record-card__preview svg { width: 100%; height: 100%; }
+.walk-record-card__preview svg > path:not(.walk-record-card__empty-route) { fill: none; stroke: #e0d9d1; stroke-width: 1.1; }
+.walk-record-card__preview polyline, .walk-record-card__empty-route { fill: none; stroke: var(--color-primary); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.walk-record-card__empty-route { opacity: .65; }
 .walk-record-card__copy { display: grid; gap: 7px; padding: 3px 0 0 18px; }
 .walk-record-card__copy strong { font-size: 16px; line-height: 24px; }
 .walk-record-card__copy > span { color: var(--color-text-secondary); font-size: 14px; line-height: 21px; }
 .walk-record-card__copy small { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; white-space: nowrap; }
+.walk-record-card__copy em { width: fit-content; padding: 3px 8px; border-radius: 999px; color: var(--color-primary); background: var(--color-primary-soft); font-size: 10px; font-style: normal; font-weight: 800; }
 .walk-record-card__chevron { position: absolute; top: 49px; right: 20px; color: var(--color-text-secondary); font-size: 22px; }
 
 .walk-record-detail-page__more { min-width: 44px; min-height: 44px; padding: 0; border: 0; color: var(--color-text-secondary); background: transparent; font-size: 18px; font-weight: 700; cursor: pointer; }
@@ -106,6 +118,8 @@
 .walk-record-detail-page__alerts, .walk-record-detail-page__dogs { position: absolute; right: 19px; left: 19px; }
 .walk-record-detail-page__alerts { top: 639px; }
 .walk-record-detail-page__dogs { top: 719px; }
+.walk-record-detail-page__loading { margin: 150px 24px 0; color: var(--color-text-secondary); text-align: center; font-size: 14px; }
+.walk-record-detail-page__dog-description { white-space: pre-line; }
 
 @media (max-width: 350px) {
   .walk-record-card__preview { width: 92px; }
@@ -218,3 +232,133 @@
 .course-detail-page__sheet .course-detail-page__compare { height: 46px; margin-top: 8px; border-radius: 15px; }
 .course-detail-page__sheet .course-detail-page__share { height: 40px; margin-top: 3px; }
 .course-detail-page__sheet .course-detail-page__delete { position: static; width: 100%; height: 36px; color: #ae544b; }
+
+/* Keep the map dominant while matching floating controls to the warm app surfaces. */
+.course-detail-page__thermal-time {
+  border-color: rgba(232,222,212,.9);
+  background: rgba(250,247,242,.94);
+  box-shadow: 0 8px 22px rgba(55,43,34,.13);
+}
+.course-detail-page__thermal-time button { color: var(--color-text-secondary); }
+.course-detail-page__thermal-time button[aria-pressed='true'] {
+  color: var(--color-primary-pressed);
+  background: var(--color-primary-soft);
+  box-shadow: 0 3px 10px rgba(217,97,39,.14);
+}
+.course-detail-page__thermal-controls {
+  position: absolute;
+  right: 16px;
+  bottom: calc(100% - var(--map-sheet-top, calc(100% - 154px)) + 12px);
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.course-detail-page__thermal-toggle {
+  width: 58px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(232,222,212,.94);
+  border-radius: 11px;
+  color: var(--color-text-primary);
+  background: rgba(250,247,242,.96);
+  box-shadow: 0 5px 14px rgba(55,43,34,.12);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.course-detail-page__thermal-toggle:active { transform: scale(.97); }
+.course-detail-page__thermal-card {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+  color: var(--color-text-primary);
+  border-color: rgba(255,255,255,.7);
+  background: rgba(250,247,242,.78);
+  box-shadow: 0 10px 26px rgba(55,43,34,.15), inset 0 1px 0 rgba(255,255,255,.8);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+.course-detail-page__segment-heading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.course-detail-page__segment-heading > div { min-width: 0; display: grid; gap: 2px; }
+.course-detail-page__segment-heading span { color: var(--color-primary-pressed); font-size: 8px; line-height: 11px; font-weight: 800; }
+.course-detail-page__segment-heading strong { overflow: hidden; font-size: 14px; line-height: 19px; letter-spacing: -.03em; text-overflow: ellipsis; white-space: nowrap; }
+.course-detail-page__segment-heading button {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(232,222,212,.9);
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  background: rgba(255,255,255,.72);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.course-detail-page__segment-facts {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 9px 0 0;
+}
+.course-detail-page__segment-facts > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 7px 6px;
+  border: 1px solid rgba(232,222,212,.72);
+  border-radius: 11px;
+  background: rgba(255,255,255,.62);
+}
+.course-detail-page__segment-facts dt { color: var(--color-text-secondary); font-size: 8px; line-height: 11px; white-space: nowrap; }
+.course-detail-page__segment-facts dd { margin: 0; color: var(--color-text-primary); font-size: 12px; line-height: 15px; font-weight: 800; letter-spacing: -.025em; }
+.course-detail-page__segment-summary {
+  position: relative;
+  z-index: 1;
+  margin: 7px 0 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  line-height: 13px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.course-detail-page__thermal-card::after { background: radial-gradient(circle, rgba(244,122,58,.12), transparent 67%); }
+.course-detail-page__thermal-title > span,
+.course-detail-page__thermal-title strong small,
+.course-detail-page__thermal-hottest small,
+.course-detail-page__thermal-scale > div,
+.course-detail-page__thermal-scale > small,
+.course-detail-page__thermal-night,
+.course-detail-page__thermal-explanation { color: var(--color-text-secondary); }
+.course-detail-page__thermal-title > span i { box-shadow: 0 0 0 4px rgba(32,191,169,.1); }
+.course-detail-page__thermal-hottest {
+  border-color: rgba(244,122,58,.18);
+  background: rgba(253,231,216,.72);
+}
+.course-detail-page__thermal-hottest span { color: var(--color-primary-pressed); }
+.course-detail-page__thermal-scale > i { border-color: rgba(55,43,34,.1); }
+.course-detail-page__thermal-scale > i b { box-shadow: 0 2px 7px rgba(55,43,34,.28); }
+.course-detail-page__thermal-explanation b { color: var(--color-text-primary); }
+.course-detail-page__sheet {
+  top: calc(100% - 128px);
+  height: 460px;
+  padding: 28px 20px 18px;
+}
+.course-detail-page__sheet .ui-draggable-sheet__handle { height: 28px; }

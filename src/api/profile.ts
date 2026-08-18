@@ -40,6 +40,12 @@ export const profileApi = {
   updateMe(input: { nickname?: string; profileImageUrl?: string | null }) {
     return apiRequest<AuthUser>('/api/users/me', { method: 'PATCH', body: JSON.stringify(input) })
   },
+  async checkNickname(nickname: string) {
+    const response = await apiRequest<{ available: boolean }>(
+      `/api/users/me/check-nickname?nickname=${encodeURIComponent(nickname)}`,
+    )
+    return response.available
+  },
   deactivate() {
     return apiRequest<void>('/api/users/me', { method: 'DELETE' })
   },

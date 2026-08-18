@@ -48,7 +48,7 @@ import { formatWalkDistance, formatWalkTime, useWalkTracker } from '../features/
 import '../styles/app.css'
 import { getCourseRouteCoordinates } from '../Components/courses/course-data'
 import { walkApi } from '../api/walks'
-import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail, WalkRecordSummary } from '../api/walks'
+import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail } from '../api/walks'
 import { getValidAccessToken } from '../api/http'
 import { connectPresenceSocket } from '../api/presenceSocket'
 import type { PresenceSocketClient } from '../api/presenceSocket'
@@ -151,7 +151,6 @@ export function App() {
   const [meetCandidates, setMeetCandidates] = useState<MeetCandidate[]>([])
   const [meetRequests, setMeetRequests] = useState<MeetRequest[]>([])
   const [meetConnection, setMeetConnection] = useState<MeetConnection>()
-  const [walkRecords, setWalkRecords] = useState<WalkRecordSummary[]>()
   const [selectedWalkRecord, setSelectedWalkRecord] = useState<WalkRecordDetail>()
   const [representativeCourse, setRepresentativeCourse] = useState<CourseDetail>()
   const walkSessionIdRef = useRef<number | undefined>(undefined)
@@ -303,14 +302,7 @@ export function App() {
       })
       .catch(() => undefined)
     return () => { active = false }
-  }, [authenticatedUser?.userId])
-
-  useEffect(() => {
-    if (location.pathname !== '/records') return
-    void walkApi.list()
-      .then(setWalkRecords)
-      .catch(() => undefined)
-  }, [location.pathname])
+  }, [authenticatedUser])
 
   useEffect(() => {
     if (location.pathname !== '/records/detail') return
@@ -318,7 +310,7 @@ export function App() {
     if (!Number.isSafeInteger(sessionId) || sessionId < 1) return
     void walkApi.detail(sessionId)
       .then(setSelectedWalkRecord)
-      .catch(() => setSelectedWalkRecord(undefined))
+      .catch((error: Error) => setWalkApiError(error.message))
   }, [location.pathname, location.search])
 
   useEffect(() => {
@@ -592,6 +584,7 @@ export function App() {
       email={authenticatedUser?.email ?? ''}
       profileImageSrc={authenticatedUser?.profileImageUrl}
       onBack={() => navigate('/profile')}
+      onCheckNickname={(nickname) => profileApi.checkNickname(nickname)}
       onSave={async (value) => {
         const user = await profileApi.updateMe(value)
         setAuthenticatedUser(user)
@@ -615,7 +608,12 @@ export function App() {
   }
 
   if (location.pathname === '/profile/stats') {
-    return <WalkStatisticsPage onBack={() => navigate('/profile')} onOpenRecords={() => navigate('/records')} />
+    return <WalkStatisticsPage
+      dogs={dogs.map((dog) => ({ id: Number(dog.id), name: dog.name })).filter((dog) => Number.isSafeInteger(dog.id) && dog.id > 0)}
+      onBack={() => navigate('/profile')}
+      onOpenRecords={() => navigate('/records')}
+      onOpenRecord={(sessionId) => navigate(`/records/detail?id=${sessionId}&returnTo=%2Fprofile%2Fstats`)}
+    />
   }
 
   if (location.pathname === '/profile/dogs/edit') {
@@ -691,9 +689,14 @@ export function App() {
   }
 
   if (location.pathname === '/records/detail') {
+    const requestedRecordId = Number(new URLSearchParams(location.search).get('id'))
+    const recordReturnTo = new URLSearchParams(location.search).get('returnTo') === '/profile/stats' ? '/profile/stats' : '/records'
+    const currentRecord = selectedWalkRecord?.sessionId === requestedRecordId ? selectedWalkRecord : undefined
     return <WalkRecordDetailPage
-      record={selectedWalkRecord}
-      onBack={() => navigate('/records')}
+      key={requestedRecordId}
+      record={currentRecord}
+      errorMessage={walkApiError}
+      onBack={() => navigate(recordReturnTo)}
       onRepresentativeChange={(representative) => {
         if (!selectedWalkRecord) return
         void walkApi.setRepresentative(selectedWalkRecord.sessionId, representative)
@@ -702,19 +705,28 @@ export function App() {
       }}
       onDelete={() => {
         if (!selectedWalkRecord) {
-          navigate('/records')
+          navigate(recordReturnTo)
           return
         }
         void walkApi.delete(selectedWalkRecord.sessionId)
-          .then(() => navigate('/records'))
+          .then(() => navigate(recordReturnTo))
           .catch((error: Error) => setWalkApiError(error.message))
+      }}
+      onRename={async (name) => {
+        if (!selectedWalkRecord) return
+        const updated = await walkApi.rename(selectedWalkRecord.sessionId, name)
+        setSelectedWalkRecord(updated)
       }}
       onShareCourse={() => navigate('/groups/courses')}
     />
   }
 
   if (location.pathname === '/records') {
-    return <WalkRecordsPage records={walkRecords} onBack={() => navigate('/home')} onOpenRecord={(id) => navigate(`/records/detail?id=${id}`)} />
+    return <WalkRecordsPage
+      dogs={dogs.map((dog) => ({ id: Number(dog.id), name: dog.name })).filter((dog) => Number.isSafeInteger(dog.id) && dog.id > 0)}
+      onBack={() => navigate('/home')}
+      onOpenRecord={(id) => navigate(`/records/detail?id=${id}`)}
+    />
   }
 
   if (location.pathname === '/courses/detail') {

@@ -9,14 +9,15 @@ export type WeeklyDistance = {
 
 type WeeklyDistanceChartProps = {
   data: WeeklyDistance[]
+  title?: string
 }
 
-export function WeeklyDistanceChart({ data }: WeeklyDistanceChartProps) {
+export function WeeklyDistanceChart({ data, title = '요일별 거리' }: WeeklyDistanceChartProps) {
   const maximum = Math.max(...data.map((item) => item.value), 1)
 
   return (
-    <figure className="weekly-distance-chart" role="img" aria-label="요일별 주간 거리">
-      <figcaption>주간 거리</figcaption>
+    <figure className="weekly-distance-chart" role="img" aria-label={title}>
+      <figcaption>{title}</figcaption>
       <div className="weekly-distance-chart__plot">
         {data.map((item) => (
           <div className="weekly-distance-chart__column" key={item.day}>

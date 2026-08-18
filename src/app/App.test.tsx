@@ -41,6 +41,17 @@ const savedWalkRecord = {
   sessionId: 27, courseName: '저녁 남산길', startedAt: '2026-08-15T09:00:00+09:00',
   endedAt: '2026-08-15T09:45:00+09:00', distanceM: 1800, durationSec: 2700,
   representative: true, loop: false, matchStatus: 'MATCHED' as const,
+  dogNames: ['망고'], distanceAlertCount: 1, averageSpeedKmh: 2.4,
+  routePreviewGeoJson: { type: 'LineString' as const, coordinates: [[126.98, 37.56], [126.99, 37.57]] as [number, number][] },
+}
+const savedWalkDetail = {
+  ...savedWalkRecord,
+  matchFailureReason: null,
+  matchedSegmentIds: [101, 102],
+  pointCount: 42,
+  usablePointCount: 40,
+  trackGeoJson: savedWalkRecord.routePreviewGeoJson,
+  dogs: [{ dogId: 1, name: '망고', breed: '골든 리트리버' }],
 }
 
 const { authResponse } = vi.hoisted(() => ({
@@ -100,6 +111,13 @@ describe('App location permission route', () => {
       changedAt: '2026-08-14T14:31:00+09:00',
     }))
     vi.spyOn(walkApi, 'list').mockResolvedValue([savedWalkRecord])
+    vi.spyOn(walkApi, 'detail').mockResolvedValue(savedWalkDetail)
+    vi.spyOn(walkApi, 'statistics').mockResolvedValue({
+      month: '2026-08', dogId: null, walkCount: 1, totalDistanceM: 1800,
+      totalDurationSec: 2700, averageDistanceM: 1800, averageDurationSec: 2700,
+      weekdayDistances: [{ dayOfWeek: 6, distanceM: 1800 }],
+      favoriteCourse: { courseName: '저녁 남산길', walkCount: 1, averageDurationSec: 2700 },
+    })
     vi.spyOn(courseCatalogApi, 'list').mockResolvedValue([catalogCourse])
     vi.spyOn(courseCatalogApi, 'detail').mockResolvedValue(catalogDetail)
     vi.spyOn(courseCatalogApi, 'setRepresentative').mockResolvedValue(catalogDetail)
@@ -500,7 +518,7 @@ describe('App location permission route', () => {
     unmount()
     window.history.replaceState({}, '', '/records')
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: /8월 7일 저녁 산책/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /저녁 남산길/ }))
     expect(window.location.pathname).toBe('/records/detail')
     expect(screen.getByRole('heading', { name: '산책 기록 상세' })).toBeInTheDocument()
   })
@@ -516,11 +534,11 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/groups/courses')
   })
 
-  it('opens record detail information instead of leaving dead rows', () => {
-    window.history.replaceState({}, '', '/records/detail')
+  it('opens record detail information instead of leaving dead rows', async () => {
+    window.history.replaceState({}, '', '/records/detail?id=27')
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: /거리두기 알림/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /거리두기 알림/ }))
     expect(screen.getByRole('dialog', { name: '거리두기 알림 상세' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '확인' }))
 
@@ -528,11 +546,11 @@ describe('App location permission route', () => {
     expect(screen.getByRole('dialog', { name: '함께한 반려견 상세' })).toBeInTheDocument()
   })
 
-  it('shares a saved record course into the group course list', () => {
-    window.history.replaceState({}, '', '/records/detail')
+  it('shares a saved record course into the group course list', async () => {
+    window.history.replaceState({}, '', '/records/detail?id=27')
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: '기록 더보기' }))
+    fireEvent.click(await screen.findByRole('button', { name: '기록 더보기' }))
     fireEvent.click(screen.getByRole('button', { name: '그룹에 코스 공유' }))
     fireEvent.click(screen.getByRole('button', { name: '선택한 코스 공유' }))
 

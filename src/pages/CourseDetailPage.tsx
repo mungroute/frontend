@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { BaseMapViewport } from '../Components/map'
-import type { BaseMapBinding, MapMarker } from '../Components/map'
+import type { BaseMapBinding, MapClickEvent, MapMarker, MapRoute } from '../Components/map'
 import { courseRouteCoordinates } from '../Components/courses/course-map'
-import { COURSE_REFERENCE_HOURS, requestedAtForHour, temperatureColor } from '../Components/courses/course-thermal'
+import { COURSE_REFERENCE_HOURS, requestedAtForHour } from '../Components/courses/course-thermal'
+import { splitLineIntoGradientPieces } from '../Components/courses/route-gradient'
 import { Button, DraggableSheet, ManagementPageHeader, MetricGrid, Switch } from '../Components/ui'
 import { CourseShareSheet } from '../Components/system'
 import { courseShareOptions } from '../Components/courses/course-data'
@@ -45,6 +46,7 @@ type DiagnosticLeg = {
   estimatedSurfaceTempC: number
   temperatureGrade: CourseTemperatureGrade
   explanation: string
+  shadeRatio: number | null
 }
 
 const temperatureGradeFor = (temperature: number): CourseTemperatureGrade => {
@@ -54,14 +56,21 @@ const temperatureGradeFor = (temperature: number): CourseTemperatureGrade => {
   return 'VERY_HIGH'
 }
 
-const temperatureScalePosition = (temperature: number) => (
-  Math.min(100, Math.max(0, ((temperature - 30) / 25) * 100))
-)
+const routeTemperatureColor = (grade: CourseTemperatureGrade) => ({
+  LOW: '#20BFA9',
+  MODERATE: '#F2A14B',
+  HIGH: '#F47A50',
+  VERY_HIGH: '#DE5A4F',
+}[grade])
 
 const mergeSegmentCoordinates = (segments: CourseSegmentDiagnostic[]) => segments.flatMap((segment, index) => {
   const coordinates = courseRouteCoordinates(segment.route)
   return index === 0 ? coordinates : coordinates.slice(1)
 })
+
+const formatLegDistance = (lengthM: number) => lengthM >= 1000
+  ? `${(lengthM / 1000).toFixed(1)}km`
+  : `${Math.round(lengthM)}m`
 
 export function CourseDetailPage({
   source,
@@ -79,8 +88,9 @@ export function CourseDetailPage({
   const [selectedHour, setSelectedHour] = useState<number | 'current'>('current')
   const [selectedLegSequence, setSelectedLegSequence] = useState<number>()
   const [segmentFocusActive, setSegmentFocusActive] = useState(false)
-  const [diagnosticsExpanded, setDiagnosticsExpanded] = useState(false)
+  const [diagnosticsVisible, setDiagnosticsVisible] = useState(false)
   const selectedLegButtonRef = useRef<HTMLButtonElement>(null)
+  const segmentListRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
@@ -112,7 +122,17 @@ export function CourseDetailPage({
   }, [api, source, courseId, selectedHour])
 
   useEffect(() => {
-    selectedLegButtonRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'center' })
+    const list = segmentListRef.current
+    const selectedButton = selectedLegButtonRef.current
+    if (!list || !selectedButton) return
+    const centeredLeft = selectedButton.offsetLeft - (list.clientWidth - selectedButton.offsetWidth) / 2
+    const maxScrollLeft = Math.max(0, list.scrollWidth - list.clientWidth)
+    const nextScrollLeft = Math.max(0, Math.min(maxScrollLeft, centeredLeft))
+    if (typeof list.scrollTo === 'function') {
+      list.scrollTo({ left: nextScrollLeft, behavior: 'smooth' })
+    } else {
+      list.scrollLeft = nextScrollLeft
+    }
   }, [selectedLegSequence])
 
   const routeCoordinates = useMemo(() => courseRouteCoordinates(course?.route), [course?.route])
@@ -134,6 +154,11 @@ export function CourseDetailPage({
         (current, segment) => segment.estimatedSurfaceTempC > current.estimatedSurfaceTempC ? segment : current,
         segments[0],
       )
+      const shadedSegments = segments.filter((segment) => segment.shadeRatio !== null)
+      const shadeLength = shadedSegments.reduce((sum, segment) => sum + segment.lengthM, 0)
+      const shadeRatio = shadeLength > 0
+        ? shadedSegments.reduce((sum, segment) => sum + (segment.shadeRatio ?? 0) * segment.lengthM, 0) / shadeLength
+        : null
       return {
         sequence,
         segments,
@@ -141,6 +166,7 @@ export function CourseDetailPage({
         estimatedSurfaceTempC,
         temperatureGrade: temperatureGradeFor(estimatedSurfaceTempC),
         explanation: hottest.explanation,
+        shadeRatio,
       }
     })
   }, [diagnostics])
@@ -152,10 +178,27 @@ export function CourseDetailPage({
           longitude: routeCoordinates.reduce((sum, coordinate) => sum + coordinate.longitude, 0) / routeCoordinates.length,
         }
       : undefined
+    const drawGroupId = `course-detail-${source}-${courseId}`
+    const chevronRoute: MapRoute | undefined = routeCoordinates.length > 1 ? {
+      id: 'course-direction-chevrons',
+      coordinates: routeCoordinates,
+      color: 'rgba(0, 0, 0, 0)',
+      width: 0,
+      drawOnLoad: true,
+      drawGroupId,
+      drawOrder: 1,
+      chevrons: true,
+    } : undefined
     if (routeCoordinates.length > 1) {
       routeMarkers.push(
         { id: 'course-start', position: routeCoordinates[0], kind: 'start', label: '출발' },
-        { id: 'course-finish', position: routeCoordinates[routeCoordinates.length - 1], kind: 'finish', label: '도착' },
+        {
+          id: 'course-finish',
+          position: routeCoordinates[routeCoordinates.length - 1],
+          kind: 'finish',
+          label: '도착',
+          revealAfterDraw: drawGroupId,
+        },
       )
     }
     const selectedDiagnosticLeg = diagnosticLegs.find((leg) => leg.sequence === selectedLegSequence)
@@ -163,7 +206,7 @@ export function CourseDetailPage({
       ? mergeSegmentCoordinates(selectedDiagnosticLeg.segments)
       : []
     let selectedFocusPosition: MapMarker['position'] | undefined
-    if (selectedDiagnosticLeg && selectedDiagnosticCoordinates.length > 1) {
+    if (segmentFocusActive && selectedDiagnosticLeg && selectedDiagnosticCoordinates.length > 1) {
       const midpointIndex = Math.floor((selectedDiagnosticCoordinates.length - 1) / 2)
       const midpointStart = selectedDiagnosticCoordinates[midpointIndex]
       const midpointEnd = selectedDiagnosticCoordinates[midpointIndex + 1]
@@ -171,12 +214,6 @@ export function CourseDetailPage({
         latitude: (midpointStart.latitude + midpointEnd.latitude) / 2,
         longitude: (midpointStart.longitude + midpointEnd.longitude) / 2,
       }
-      routeMarkers.push({
-        id: 'course-selected-segment',
-        kind: 'selected-segment',
-        label: String(selectedDiagnosticLeg.sequence),
-        position: selectedFocusPosition,
-      })
     }
     const focusedMapCenter = segmentFocusActive && selectedFocusPosition
       ? {
@@ -186,73 +223,86 @@ export function CourseDetailPage({
       : routeCenter
 
     if (!diagnostics?.segments.length) {
+      const plainPieces = splitLineIntoGradientPieces(routeCoordinates, '#F47A3A', '#F47A3A', 24)
       return routeCoordinates.length
         ? {
-            routes: [{
-              id: 'course-detail',
-              coordinates: routeCoordinates,
-              color: '#f47a3a',
-              width: 7,
-              outlineColor: 'rgba(255, 255, 255, .9)',
-              outlineWidth: 11,
-              animated: true,
-            }],
+            routes: [
+              ...plainPieces.map((piece, index) => ({
+                id: `course-detail-${index}`,
+                coordinates: piece.coordinates,
+                color: '#f47a3a',
+                width: 8,
+                outlineColor: 'rgba(255, 255, 255, .94)',
+                outlineWidth: 12,
+                drawOnLoad: true,
+                drawGroupId,
+                drawOrder: piece.progress,
+              })),
+              ...(chevronRoute ? [chevronRoute] : []),
+            ],
             markers: routeMarkers,
             center: routeCenter,
             zoom: 17.2,
           }
         : undefined
     }
+    const routePieces: MapRoute[] = diagnostics.segments.flatMap((segment, segmentIndex) => {
+      const coordinates = courseRouteCoordinates(segment.route)
+      const nextSegment = diagnostics.segments[segmentIndex + 1]
+      const pieces = splitLineIntoGradientPieces(
+        coordinates,
+        routeTemperatureColor(segment.temperatureGrade),
+        routeTemperatureColor(nextSegment?.temperatureGrade ?? segment.temperatureGrade),
+        6,
+      )
+      const totalPieceCount = Math.max(1, diagnostics.segments.length * 6)
+      return pieces.map((piece, pieceIndex) => {
+        const selected = segmentFocusActive && segment.legSequence === selectedLegSequence
+        return {
+          id: `course-segment-${segment.sequence}-${pieceIndex}`,
+          coordinates: piece.coordinates,
+          color: piece.color,
+          width: selected ? 10 : 8,
+          outlineColor: selected ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, .94)',
+          outlineWidth: selected ? 15 : 12,
+          lineCap: 'round' as const,
+          interactive: true,
+          interactionId: `course-leg-${segment.legSequence}`,
+          selected,
+          drawOnLoad: true,
+          drawGroupId,
+          drawOrder: (segmentIndex * 6 + pieceIndex + 1) / totalPieceCount,
+        }
+      })
+    })
     return {
-      routes: [
-        ...(routeCoordinates.length > 1 ? [{
-          id: 'course-thermal-outline',
-          coordinates: routeCoordinates,
-          color: 'rgba(255, 253, 248, .92)',
-          width: 10,
-        }] : []),
-        ...(selectedDiagnosticCoordinates.length > 1 ? [{
-          id: 'course-selected-leg-highlight',
-          coordinates: selectedDiagnosticCoordinates,
-          color: 'rgba(0, 0, 0, 0)',
-          width: 0,
-          outlineColor: 'rgba(255, 255, 255, 1)',
-          outlineWidth: 19,
-          pulse: true,
-        }] : []),
-        ...diagnostics.segments.map((segment) => ({
-          id: `course-segment-${segment.sequence}`,
-          coordinates: courseRouteCoordinates(segment.route),
-          color: segment.legSequence === selectedLegSequence
-            ? temperatureColor(segment.temperatureGrade)
-            : `${temperatureColor(segment.temperatureGrade)}9E`,
-          width: segment.legSequence === selectedLegSequence ? 11 : 6,
-          lineCap: 'butt' as const,
-        })).filter((route) => route.coordinates.length > 1),
-        ...(routeCoordinates.length > 1 ? [{
-          id: 'course-direction-flow',
-          coordinates: routeCoordinates,
-          color: 'rgba(0, 0, 0, 0)',
-          width: 0,
-          animated: true,
-        }] : []),
-      ],
+      routes: [...routePieces, ...(chevronRoute ? [chevronRoute] : [])],
       markers: routeMarkers,
       center: focusedMapCenter,
       zoom: segmentFocusActive ? 17.5 : 17.2,
     }
-  }, [diagnostics, diagnosticLegs, routeCoordinates, selectedLegSequence, segmentFocusActive])
+  }, [courseId, diagnostics, diagnosticLegs, routeCoordinates, selectedLegSequence, segmentFocusActive, source])
   const selectedLeg = diagnosticLegs.find((leg) => leg.sequence === selectedLegSequence)
   const hottestLeg = diagnosticLegs.reduce<DiagnosticLeg | undefined>(
     (hottest, leg) => !hottest || leg.estimatedSurfaceTempC > hottest.estimatedSurfaceTempC ? leg : hottest,
     undefined,
   )
-  const selectedTemperaturePosition = selectedLeg
-    ? temperatureScalePosition(selectedLeg.estimatedSurfaceTempC)
-    : 50
-  const averageTemperaturePosition = diagnostics
-    ? temperatureScalePosition(diagnostics.courseAverageSurfaceTempC)
-    : 50
+  const coolestLeg = diagnosticLegs.reduce<DiagnosticLeg | undefined>(
+    (coolest, leg) => !coolest || leg.estimatedSurfaceTempC < coolest.estimatedSurfaceTempC ? leg : coolest,
+    undefined,
+  )
+  const selectedLegDescription = selectedLeg?.sequence === coolestLeg?.sequence
+    ? '가장 쾌적한 구간'
+    : selectedLeg?.sequence === hottestLeg?.sequence
+      ? '주의가 필요한 구간'
+      : selectedLeg ? temperatureGradeLabel[selectedLeg.temperatureGrade] : ''
+  const selectMapLeg = (event: MapClickEvent) => {
+    const matched = event.featureId?.match(/^course-leg-(\d+)$/)
+    if (!matched) return
+    setSelectedLegSequence(Number(matched[1]))
+    setSegmentFocusActive(true)
+    setDiagnosticsVisible(true)
+  }
   const metrics = course?.metrics
   const metricItems = [
     { label: '거리', value: metrics ? `${(metrics.lengthM / 1000).toFixed(2)}km` : '-' },
@@ -300,6 +350,7 @@ export function CourseDetailPage({
         ariaLabel="저장 코스 상세 지도"
         map={map}
         sceneOverlay={sceneOverlay}
+        onMapClick={selectMapLeg}
         fallback={{ src: '/assets/s09/map.jpg' }}
       >
         <div className="course-detail-page__thermal-time" aria-label="노면온도 기준 시각">
@@ -318,40 +369,38 @@ export function CourseDetailPage({
           ))}
         </div>
         {diagnostics && (
-          <div className={`course-detail-page__thermal-card${diagnosticsExpanded ? '' : ' course-detail-page__thermal-card--collapsed'}`}>
-            <div className="course-detail-page__thermal-heading">
-              <div className="course-detail-page__thermal-title">
-                <span><i />THERMAL ROUTE · {String(diagnostics.referenceHour).padStart(2, '0')}:00</span>
-                <strong>{diagnostics.courseAverageSurfaceTempC.toFixed(1)}<small>°C 평균</small></strong>
-              </div>
-              <button
-                type="button"
-                aria-expanded={diagnosticsExpanded}
-                onClick={() => setDiagnosticsExpanded((expanded) => !expanded)}
-              >{diagnosticsExpanded ? '지도만 보기' : '구간 분석 보기'}<span aria-hidden="true">↗</span></button>
-            </div>
-            {!diagnosticsExpanded && (
-              <div className="course-detail-page__thermal-preview" aria-hidden="true">
-                <i><b style={{ left: `${averageTemperaturePosition}%` }} /></i>
-                <span>구간별 온도 레이어</span>
-              </div>
-            )}
-            {diagnosticsExpanded && (
-              <>
-                <div className="course-detail-page__thermal-insight">
-                  <div className="course-detail-page__thermal-hottest">
-                    <span>HOTTEST</span>
-                    <strong>{hottestLeg?.estimatedSurfaceTempC.toFixed(1) ?? '-'}°</strong>
-                    <small>{hottestLeg?.sequence ?? '-'}번 연결 구간</small>
-                  </div>
-                  <div className="course-detail-page__thermal-scale" aria-label="노면온도 색상 범례">
-                    <div><span>쾌적</span><span>매우 더움</span></div>
-                    <i><b style={{ left: `${selectedTemperaturePosition}%` }} /></i>
-                    <small>선택 구간 · {selectedLeg ? temperatureGradeLabel[selectedLeg.temperatureGrade] : '-'}</small>
-                  </div>
+          <div className="course-detail-page__thermal-controls">
+            <button
+              className="course-detail-page__thermal-toggle"
+              type="button"
+              aria-expanded={diagnosticsVisible}
+              aria-controls="course-thermal-details"
+              onClick={() => {
+                setDiagnosticsVisible((visible) => !visible)
+                if (!diagnosticsVisible && selectedLegSequence !== undefined) setSegmentFocusActive(true)
+              }}
+            >{diagnosticsVisible ? '닫기' : '구간 정보'}</button>
+            {diagnosticsVisible && <div className="course-detail-page__thermal-card" id="course-thermal-details">
+            {selectedLeg && <>
+              <div className="course-detail-page__segment-heading">
+                <div>
+                  <span>{String(diagnostics.referenceHour).padStart(2, '0')}시 기준</span>
+                  <strong>{selectedLeg.sequence}구간 · {selectedLegDescription}</strong>
                 </div>
-                {diagnostics.shadeMessage && <p className="course-detail-page__thermal-night">{diagnostics.shadeMessage} 18시 온도를 참고해요.</p>}
-                <div className="course-detail-page__thermal-segments" aria-label="코스 구간 선택">
+                <button type="button" aria-label="구간 정보 닫기" onClick={() => {
+                  setDiagnosticsVisible(false)
+                  setSegmentFocusActive(false)
+                }}>×</button>
+              </div>
+              <dl className="course-detail-page__segment-facts">
+                {selectedLeg.shadeRatio !== null && <div><dt>🌳 그늘 비율</dt><dd>{Math.round(selectedLeg.shadeRatio * 100)}%</dd></div>}
+                <div><dt>🌡 노면 온도</dt><dd>{selectedLeg.estimatedSurfaceTempC.toFixed(1)}°C</dd></div>
+                <div><dt>🚶 예상 거리</dt><dd>{formatLegDistance(selectedLeg.lengthM)}</dd></div>
+              </dl>
+              <p className="course-detail-page__segment-summary">{selectedLeg.explanation}</p>
+              {diagnostics.shadeMessage && <p className="course-detail-page__thermal-night">{diagnostics.shadeMessage}</p>}
+            </>}
+            <div ref={segmentListRef} className="course-detail-page__thermal-segments" aria-label="코스 구간 선택">
                   {diagnosticLegs.map((leg) => (
                     <button
                       key={leg.sequence}
@@ -359,19 +408,16 @@ export function CourseDetailPage({
                       type="button"
                       aria-label={`${leg.sequence}번 연결 구간 ${leg.estimatedSurfaceTempC.toFixed(1)}도`}
                       aria-pressed={leg.sequence === selectedLegSequence}
-                      style={{ '--segment-color': temperatureColor(leg.temperatureGrade) } as CSSProperties}
+                      style={{ '--segment-color': routeTemperatureColor(leg.temperatureGrade) } as CSSProperties}
                       onClick={() => {
                         setSelectedLegSequence(leg.sequence)
                         setSegmentFocusActive(true)
+                        setDiagnosticsVisible(true)
                       }}
                     ><span>{leg.sequence}</span><small>{leg.estimatedSurfaceTempC.toFixed(0)}°</small></button>
                   ))}
-                </div>
-                {selectedLeg && (
-                  <p className="course-detail-page__thermal-explanation"><b>{selectedLeg.sequence}번 연결 구간 {selectedLeg.estimatedSurfaceTempC.toFixed(1)}℃</b> · 내부 노면 {selectedLeg.segments.length}개 평균 · {selectedLeg.explanation}</p>
-                )}
-              </>
-            )}
+            </div>
+          </div>}
           </div>
         )}
       </BaseMapViewport>

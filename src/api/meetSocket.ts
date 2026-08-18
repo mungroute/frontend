@@ -1,5 +1,6 @@
 import type { MeetEvent, MeetPresenceResult } from './meet'
 import type { PresenceUpdatePayload } from './walks'
+import { webSocketUrl } from './url'
 
 export type MeetSocketClient = { send: (payload: PresenceUpdatePayload) => boolean; close: () => void }
 
@@ -21,8 +22,7 @@ export function connectMeetSocket(options: Options): MeetSocketClient {
 
   const open = () => {
     if (stopped) return
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const current = new WebSocket(`${protocol}//${window.location.host}/ws`)
+    const current = new WebSocket(webSocketUrl('/ws'))
     socket = current
     current.onopen = () => void options.tokenProvider().then((token) => {
       if (!stopped && current.readyState === WebSocket.OPEN) current.send(frame('CONNECT', {

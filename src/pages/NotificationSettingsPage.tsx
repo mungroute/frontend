@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { NotificationSettings } from '../api/profile'
 import { ManagementPageHeader, Switch } from '../Components/ui'
 import '../styles/pages/journey-page.css'
@@ -25,11 +25,11 @@ type NotificationSettingsPageProps = {
 }
 
 export function NotificationSettingsPage({ onBack, value, onChange }: NotificationSettingsPageProps) {
-  const [settings, setSettings] = useState(value ?? initialSettings)
-  useEffect(() => { if (value) setSettings(value) }, [value])
+  const [localSettings, setLocalSettings] = useState(initialSettings)
+  const settings = value ?? localSettings
   const update = (key: keyof NotificationSettings, checked: boolean) => {
     const next = { ...settings, [key]: checked }
-    setSettings(next)
+    setLocalSettings(next)
     void onChange?.(next)
   }
 

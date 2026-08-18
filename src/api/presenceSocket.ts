@@ -1,4 +1,5 @@
 import type { PresenceUpdatePayload, PresenceUpdateResult } from './walks'
+import { webSocketUrl } from './url'
 
 type PresenceSocketOptions = {
   tokenProvider: () => Promise<string>
@@ -39,11 +40,6 @@ const parseFrame = (raw: string): StompFrame | undefined => {
     return colon < 0 ? [line, ''] : [line.slice(0, colon), line.slice(colon + 1)]
   }))
   return { command, headers, body }
-}
-
-const websocketUrl = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}/ws`
 }
 
 export function connectPresenceSocket(options: PresenceSocketOptions): PresenceSocketClient {
@@ -94,7 +90,7 @@ export function connectPresenceSocket(options: PresenceSocketOptions): PresenceS
   async function open() {
     if (stopped || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return
     frameBuffer = ''
-    const nextSocket = new WebSocket(websocketUrl())
+    const nextSocket = new WebSocket(webSocketUrl('/ws'))
     socket = nextSocket
     nextSocket.onopen = () => {
       void options.tokenProvider()

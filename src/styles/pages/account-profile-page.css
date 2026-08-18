@@ -2,6 +2,10 @@
 .account-profile-page__photo-action { position: absolute; top: 244px; left: 50%; color: var(--color-primary); font-size: 13px; font-weight: 800; cursor: pointer; transform: translateX(-50%); }
 .account-profile-page__nickname, .account-profile-page__email { position: absolute; right: 24px; left: 24px; }
 .account-profile-page__nickname { top: 300px; }
-.account-profile-page__email { top: 400px; }
+.account-profile-page__email { top: 416px; }
+.account-profile-page__duplicate { min-width: 82px; border: 1px solid rgba(255, 116, 53, .34); border-radius: 12px; padding: 0 12px; color: var(--color-primary); background: #fff4ed; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.account-profile-page__duplicate:disabled { color: #b9aaa2; border-color: var(--color-border); background: #f4f0ed; cursor: not-allowed; }
+.account-profile-page__email .ui-field__input:disabled { color: #8a7d75; background: #f4f0ed; cursor: not-allowed; }
+.account-profile-page__error { position: absolute; top: 528px; right: 24px; left: 24px; margin: 0; color: var(--color-alert); font-size: 12px; line-height: 18px; text-align: center; }
 .account-profile-page__save { position: absolute; right: 24px; bottom: 92px; left: 24px; width: auto; }
 .account-profile-page__deactivate { position: absolute; bottom: 48px; left: 50%; border: 0; color: #9a766c; background: transparent; font-size: 12px; text-decoration: underline; cursor: pointer; transform: translateX(-50%); }

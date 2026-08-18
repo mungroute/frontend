@@ -6,9 +6,10 @@ export type MapCoordinate = {
 export type MapMarker = {
   id: string
   position: MapCoordinate
-  kind?: 'current-location' | 'start' | 'finish' | 'selected-segment' | 'default'
+  kind?: 'current-location' | 'start' | 'finish' | 'default'
   label?: string
   profileImageSrc?: string
+  revealAfterDraw?: string
 }
 
 export type MapRoute = {
@@ -21,6 +22,13 @@ export type MapRoute = {
   lineCap?: 'butt' | 'round' | 'square'
   animated?: boolean
   pulse?: boolean
+  interactive?: boolean
+  interactionId?: string
+  selected?: boolean
+  drawOnLoad?: boolean
+  drawGroupId?: string
+  drawOrder?: number
+  chevrons?: boolean
 }
 
 export type BaseMapScene = {
@@ -34,6 +42,7 @@ export type MapClickEvent = {
   coordinate: MapCoordinate
   xPercent: number
   yPercent: number
+  featureId?: string
 }
 
 export type BaseMapInstance = {

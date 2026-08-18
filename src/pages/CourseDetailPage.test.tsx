@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CourseCatalogApi, CourseDetail, CourseDiagnostics } from '../api/courses'
+import type { BaseMapBinding, MapClickEvent } from '../Components/map'
 import { CourseDetailPage } from './CourseDetailPage'
 
 const dayCourse: CourseDetail = {
@@ -51,8 +52,12 @@ describe('CourseDetailPage', () => {
     expect(await screen.findByText('주말 산책길')).toBeInTheDocument()
     expect(screen.getByText('1.42km')).toBeInTheDocument()
     expect(screen.getByText('42%')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '구간 분석 보기' }))
-    expect(screen.getByText(/2번 연결 구간 40.1℃/)).toBeInTheDocument()
+    expect(screen.queryByText(/2구간 · 주의가 필요한 구간/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+    expect(screen.getByText(/2구간 · 주의가 필요한 구간/)).toBeInTheDocument()
+    expect(screen.getByText('40.1°C')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보 닫기' }))
+    expect(screen.queryByText(/2구간 · 주의가 필요한 구간/)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('switch', { name: '대표 코스로 설정' }))
     await waitFor(() => expect(api.setRepresentative).toHaveBeenCalledWith('custom', 42, true))
@@ -85,7 +90,7 @@ describe('CourseDetailPage', () => {
     render(<CourseDetailPage source="custom" courseId={42} api={apiFor(night, nightDiagnostics)} />)
     expect(await screen.findByText('야간·미산출')).toBeInTheDocument()
     expect(screen.queryByText('42%')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '구간 분석 보기' }))
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
     expect(screen.getByText(/일몰 후에는 그늘 지도를 제공하지 않아요/)).toBeInTheDocument()
   })
 
@@ -107,14 +112,13 @@ describe('CourseDetailPage', () => {
     }
     render(<CourseDetailPage source="custom" courseId={42} api={apiFor(dayCourse, groupedDiagnostics)} />)
     await screen.findByText('주말 산책길')
-    fireEvent.click(screen.getByRole('button', { name: '구간 분석 보기' }))
-
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
     expect(screen.getAllByRole('button', { name: /연결 구간 .*도/ })).toHaveLength(2)
     expect(screen.queryByRole('button', { name: /3번 연결 구간/ })).not.toBeInTheDocument()
-    expect(screen.getByText(/내부 노면 2개 평균/)).toBeInTheDocument()
+    expect(screen.getByText('720m')).toBeInTheDocument()
   })
 
-  it('places the selected-temperature marker on the absolute 30–55 degree scale', async () => {
+  it('shows the actual selected leg temperature without a relative heat scale', async () => {
     const coolDiagnostics: CourseDiagnostics = {
       ...diagnostics,
       courseAverageSurfaceTempC: 33.8,
@@ -126,8 +130,74 @@ describe('CourseDetailPage', () => {
     }
     render(<CourseDetailPage source="custom" courseId={42} api={apiFor(dayCourse, coolDiagnostics)} />)
     await screen.findByText('주말 산책길')
-    fireEvent.click(screen.getByRole('button', { name: '구간 분석 보기' }))
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+    expect(screen.getByText('34.5°C')).toBeInTheDocument()
+    expect(screen.queryByLabelText('노면온도 색상 범례')).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByLabelText('노면온도 색상 범례').querySelector('b')).toHaveStyle({ left: '18%' })
+  it('scrolls only the segment strip when selecting the last segment', async () => {
+    const manySegments: CourseDiagnostics = {
+      ...diagnostics,
+      segments: Array.from({ length: 8 }, (_, index) => ({
+        ...diagnostics.segments[0],
+        sequence: index + 1,
+        legSequence: index + 1,
+        segmentId: index + 1,
+        estimatedSurfaceTempC: index === 0 ? 50 : 34 + index,
+      })),
+    }
+    render(<CourseDetailPage source="custom" courseId={42} api={apiFor(dayCourse, manySegments)} />)
+    await screen.findByText('주말 산책길')
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+
+    const segmentStrip = screen.getByLabelText('코스 구간 선택') as HTMLDivElement
+    const lastSegment = screen.getByRole('button', { name: /8번 연결 구간/ }) as HTMLButtonElement
+    const scrollTo = vi.fn()
+    Object.defineProperties(segmentStrip, {
+      clientWidth: { value: 150, configurable: true },
+      scrollWidth: { value: 310, configurable: true },
+      scrollTo: { value: scrollTo, configurable: true },
+    })
+    Object.defineProperties(lastSegment, {
+      offsetLeft: { value: 270, configurable: true },
+      offsetWidth: { value: 34, configurable: true },
+    })
+
+    fireEvent.click(lastSegment)
+
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ left: 160, behavior: 'smooth' }))
+  })
+
+  it('opens the bottom sheet only after a map route segment is selected', async () => {
+    let mapClickHandler: ((event: MapClickEvent) => void) | undefined
+    const updateMap = vi.fn()
+    const map = {
+      scene: { center: { latitude: 37.56, longitude: 126.98 }, zoom: 16 },
+      adapter: {
+        mount: () => ({
+          ready: Promise.resolve(),
+          update: updateMap,
+          setClickHandler: (handler?: (event: MapClickEvent) => void) => { mapClickHandler = handler },
+          destroy: vi.fn(),
+        }),
+      },
+    } as BaseMapBinding
+    render(<CourseDetailPage source="custom" courseId={42} api={apiFor()} map={map} />)
+    await screen.findByText('주말 산책길')
+    await waitFor(() => expect(updateMap.mock.calls.some(([scene]) => (
+      scene.routes?.some((route: { chevrons?: boolean }) => route.chevrons)
+    ))).toBe(true))
+    expect(screen.queryByText(/1구간 · 가장 쾌적한 구간/)).not.toBeInTheDocument()
+
+    mapClickHandler?.({
+      coordinate: { latitude: 37.56, longitude: 126.98 },
+      xPercent: 50,
+      yPercent: 50,
+      featureId: 'course-leg-1',
+    })
+
+    expect(await screen.findByText(/1구간 · 가장 쾌적한 구간/)).toBeInTheDocument()
+    expect(screen.getByText('50%')).toBeInTheDocument()
+    expect(screen.getByText('700m')).toBeInTheDocument()
   })
 })

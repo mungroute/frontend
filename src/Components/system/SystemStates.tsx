@@ -162,7 +162,7 @@ export function DeleteRecordDialog({ onClose, onConfirm }: CloseableProps & { on
 
 export function RecordInfoDialog({ title, description, onClose }: CloseableProps & { title: string; description: ReactNode }) {
   return (
-    <Overlay label={`${title} 상세`} onClose={onClose}>
+    <Overlay label={`${title} 상세`} className="system-surface--record-info" onClose={onClose}>
       <h2>{title}</h2>
       <div className="system-record-info">{description}</div>
       <Button onClick={onClose}>확인</Button>

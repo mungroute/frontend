@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './http'
 import { walkApi } from './walks'
+import { apiUrl } from './url'
 
 describe('walkApi', () => {
   beforeEach(() => setAccessToken('test-access-token'))
@@ -20,7 +21,7 @@ describe('walkApi', () => {
       accuracy: 7,
     })
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/walks/42/points', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith(apiUrl('/api/walks/42/points'), expect.objectContaining({
       method: 'POST',
       credentials: 'include',
       body: JSON.stringify({
@@ -74,6 +75,6 @@ describe('walkApi', () => {
       radiusM: 100,
     })
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/presence', expect.objectContaining({ method: 'PUT' }))
+    expect(fetchMock).toHaveBeenCalledWith(apiUrl('/api/presence'), expect.objectContaining({ method: 'PUT' }))
   })
 })
