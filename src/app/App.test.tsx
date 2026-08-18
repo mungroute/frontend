@@ -4,6 +4,8 @@ import { App } from './App'
 import { walkApi } from '../api/walks'
 import { courseCatalogApi } from '../api/courses'
 import type { CourseComparison, CourseDetail, CourseDiagnostics, CourseSummary } from '../api/courses'
+import { groupApi } from '../api/groups'
+import type { GroupDetail, GroupSharedCourse } from '../api/groups'
 
 const courseMetrics = {
   lengthM: 1800, durationMin: 45, shadeRatio: 0.68, estimatedSurfaceTempC: 34,
@@ -52,6 +54,16 @@ const savedWalkDetail = {
   usablePointCount: 40,
   trackGeoJson: savedWalkRecord.routePreviewGeoJson,
   dogs: [{ dogId: 1, name: '망고', breed: '골든 리트리버' }],
+}
+const sharedGroupCourse: GroupSharedCourse = {
+  sharedCourseId: 31, groupId: 10, sharedByUserId: 1, sharerNickname: '망고 보호자', saveCount: 2,
+  sharedAt: '2026-08-18T12:00:00+09:00', course: catalogDetail,
+}
+const groupDetail: GroupDetail = {
+  groupId: 10, name: '남산 댕댕이 산책단', description: '같이 걸어요', visibility: 'PUBLIC', joinPolicy: 'OPEN', myRole: 'OWNER', memberCount: 2,
+  sharedCourseCount: 1, latestActivityAt: '2026-08-18T12:00:00+09:00', createdAt: '2026-08-18T09:00:00+09:00',
+  members: [{ userId: 1, nickname: '망고 보호자', profileImageUrl: null, role: 'OWNER', joinedAt: '2026-08-18T09:00:00+09:00' }],
+  recentCourses: [sharedGroupCourse],
 }
 
 const { authResponse } = vi.hoisted(() => ({
@@ -125,6 +137,23 @@ describe('App location permission route', () => {
     vi.spyOn(courseCatalogApi, 'delete').mockResolvedValue(undefined)
     vi.spyOn(courseCatalogApi, 'comparison').mockResolvedValue(catalogComparison)
     vi.spyOn(courseCatalogApi, 'diagnostics').mockResolvedValue(catalogDiagnostics)
+    vi.spyOn(groupApi, 'list').mockResolvedValue([groupDetail])
+    vi.spyOn(groupApi, 'discover').mockResolvedValue([])
+    vi.spyOn(groupApi, 'create').mockResolvedValue(groupDetail)
+    vi.spyOn(groupApi, 'join').mockResolvedValue(groupDetail)
+    vi.spyOn(groupApi, 'joinOpen').mockResolvedValue(groupDetail)
+    vi.spyOn(groupApi, 'detail').mockResolvedValue(groupDetail)
+    vi.spyOn(groupApi, 'update').mockResolvedValue(groupDetail)
+    vi.spyOn(groupApi, 'delete').mockResolvedValue(undefined)
+    vi.spyOn(groupApi, 'leave').mockResolvedValue(undefined)
+    vi.spyOn(groupApi, 'removeMember').mockResolvedValue(undefined)
+    vi.spyOn(groupApi, 'issueInvite').mockResolvedValue({ groupId: 10, groupName: groupDetail.name, inviteCode: 'MUNG24', expiresAt: '2026-08-25T12:00:00+09:00' })
+    vi.spyOn(groupApi, 'courses').mockResolvedValue([sharedGroupCourse])
+    vi.spyOn(groupApi, 'sharedCourse').mockResolvedValue(sharedGroupCourse)
+    vi.spyOn(groupApi, 'shareCourse').mockResolvedValue(sharedGroupCourse)
+    vi.spyOn(groupApi, 'unshareCourse').mockResolvedValue(undefined)
+    vi.spyOn(groupApi, 'saveSharedCourse').mockResolvedValue({ sharedCourseId: 31, courseSource: 'custom', courseId: 77 })
+    vi.spyOn(groupApi, 'activities').mockResolvedValue([{ activityId: 1, actorUserId: 1, actorNickname: '망고 보호자', actorProfileImageUrl: null, activityType: 'COURSE_SHARED', subject: '저녁 남산길', message: '새 코스를 공유했어요', createdAt: '2026-08-18T12:00:00+09:00' }])
   })
 
   afterEach(() => {
@@ -347,11 +376,11 @@ describe('App location permission route', () => {
     ['/profile', '마이'],
     ['/profile/dogs', '반려견 관리'],
     ['/groups', '그룹'],
-    ['/groups/detail', '남산 댕댕이 산책단'],
-    ['/groups/courses', '공유 코스'],
+    ['/groups/detail?id=10', '남산 댕댕이 산책단'],
+    ['/groups/courses?id=10', '공유 코스'],
     ['/groups/new', '그룹 만들기'],
     ['/groups/join', '그룹 참여'],
-    ['/groups/activity', '그룹 활동'],
+    ['/groups/activity?id=10', '그룹 활동'],
     ['/profile/notifications', '알림 설정'],
     ['/profile/dogs/edit', '반려견 정보'],
     ['/profile/service', '서비스 정보'],
@@ -394,7 +423,7 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/home')
   })
 
-  it('moves through profile, groups, and group creation without reloading', () => {
+  it('moves through profile, groups, and group creation without reloading', async () => {
     window.history.replaceState({}, '', '/profile')
     render(<App />)
 
@@ -411,7 +440,8 @@ describe('App location permission route', () => {
 
     fireEvent.change(screen.getByLabelText('그룹 이름'), { target: { value: '남산 모임' } })
     fireEvent.click(screen.getByRole('button', { name: '그룹 만들기' }))
-    expect(window.location.pathname).toBe('/groups/detail')
+    await waitFor(() => expect(window.location.pathname).toBe('/groups/detail'))
+    expect(window.location.search).toBe('?id=10')
   })
 
   it('opens group invitation and notification settings from their existing entry points', () => {
@@ -428,7 +458,7 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/profile/notifications')
   })
 
-  it('opens dog editing, group activity, and service information from their management screens', () => {
+  it('opens dog editing, group activity, and service information from their management screens', async () => {
     window.history.replaceState({}, '', '/profile/dogs')
     const dogView = render(<App />)
 
@@ -437,10 +467,11 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '반려견 정보' })).toBeInTheDocument()
 
     dogView.unmount()
-    window.history.replaceState({}, '', '/groups/detail')
+    window.history.replaceState({}, '', '/groups/detail?id=10')
     const groupView = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '그룹 활동 보기' }))
+    fireEvent.click(await screen.findByRole('button', { name: '그룹 활동 보기' }))
     expect(window.location.pathname).toBe('/groups/activity')
+    expect(window.location.search).toBe('?id=10')
 
     groupView.unmount()
     window.history.replaceState({}, '', '/profile')
@@ -525,7 +556,7 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 기록 상세' })).toBeInTheDocument()
   })
 
-  it('opens course sharing and moves to shared courses after confirmation', async () => {
+  it('shares a course after choosing a group', async () => {
     window.history.replaceState({}, '', '/courses/detail?source=custom&id=42')
     render(<App />)
 
@@ -533,7 +564,11 @@ describe('App location permission route', () => {
     const dialog = screen.getByRole('dialog', { name: '코스 공유' })
     fireEvent.click(within(dialog).getByRole('button', { name: '선택한 코스 공유' }))
 
-    expect(window.location.pathname).toBe('/groups/courses')
+    expect(window.location.pathname).toBe('/groups')
+    expect(window.location.search).toContain('shareSource=custom')
+    fireEvent.click(await screen.findByRole('button', { name: /남산 댕댕이 산책단/ }))
+    await waitFor(() => expect(window.location.pathname).toBe('/groups/detail'))
+    expect(groupApi.shareCourse).toHaveBeenCalledWith(10, 'custom', 42)
   })
 
   it('opens record detail information instead of leaving dead rows', async () => {
@@ -548,7 +583,7 @@ describe('App location permission route', () => {
     expect(screen.getByRole('dialog', { name: '함께한 반려견 상세' })).toBeInTheDocument()
   })
 
-  it('shares a saved record course into the group course list', async () => {
+  it('shares a saved record course after choosing a group', async () => {
     window.history.replaceState({}, '', '/records/detail?id=27')
     render(<App />)
 
@@ -556,22 +591,27 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '그룹에 코스 공유' }))
     fireEvent.click(screen.getByRole('button', { name: '선택한 코스 공유' }))
 
-    expect(window.location.pathname).toBe('/groups/courses')
+    expect(window.location.pathname).toBe('/groups')
+    expect(window.location.search).toContain('shareSource=walk')
+    fireEvent.click(await screen.findByRole('button', { name: /남산 댕댕이 산책단/ }))
+    await waitFor(() => expect(window.location.pathname).toBe('/groups/detail'))
+    expect(groupApi.shareCourse).toHaveBeenCalledWith(10, 'walk', 27)
   })
 
-  it('opens a shared route detail from the group room and shared list', () => {
-    window.history.replaceState({}, '', '/groups/detail')
+  it('opens a shared route detail from the group room and shared list', async () => {
+    window.history.replaceState({}, '', '/groups/detail?id=10')
     const view = render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: '민지님이 공유한 남산 코스 보기' }))
-    expect(window.location.pathname).toBe('/courses/detail')
-    expect(window.location.search).toContain('id=namsan')
+    fireEvent.click(await screen.findByRole('button', { name: '저녁 남산길 보기' }))
+    expect(window.location.pathname).toBe('/groups/course')
+    expect(window.location.search).toBe('?id=10&sharedCourseId=31')
 
     view.unmount()
-    window.history.replaceState({}, '', '/groups/courses')
+    window.history.replaceState({}, '', '/groups/courses?id=10')
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: /저녁 남산길/ }))
-    expect(window.location.pathname).toBe('/courses/detail')
+    fireEvent.click(await screen.findByRole('button', { name: /저녁 남산길 상세 보기/ }))
+    expect(window.location.pathname).toBe('/groups/course')
+    expect(window.location.search).toBe('?id=10&sharedCourseId=31')
   })
 
   it('opens direct course drawing from saved courses', () => {

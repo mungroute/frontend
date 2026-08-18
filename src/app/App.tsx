@@ -33,6 +33,7 @@ import type { DogProfileFormValue } from '../pages/DogProfileFormPage'
 import type { DogProfileSummary } from '../Components/profile/DogProfileCard'
 import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
 import { GroupActivityPage } from '../pages/GroupActivityPage'
+import { GroupCourseDetailPage } from '../pages/GroupCourseDetailPage'
 import { ServiceInfoPage } from '../pages/ServiceInfoPage'
 import type { ServiceInfoSection } from '../pages/ServiceInfoPage'
 import { WalkStatisticsPage } from '../pages/WalkStatisticsPage'
@@ -55,6 +56,7 @@ import type { PresenceSocketClient } from '../api/presenceSocket'
 import { authApi } from '../api/auth'
 import type { AuthUser } from '../api/auth'
 import { courseCatalogApi } from '../api/courses'
+import { groupApi } from '../api/groups'
 import type { CourseDetail, CourseSource } from '../api/courses'
 import { meetApi } from '../api/meet'
 import type { MeetCandidate, MeetConnection, MeetPresenceResult, MeetRequest } from '../api/meet'
@@ -525,27 +527,53 @@ export function App() {
   }
 
   if (location.pathname === '/groups/join') {
-    return <JoinGroupPage onBack={() => navigate('/groups')} onConfirm={() => navigate('/groups/detail')} />
+    return <JoinGroupPage defaultCode="" onBack={() => navigate('/groups')} onConfirm={async (code) => {
+      const group = await groupApi.join(code)
+      navigate(`/groups/detail?id=${group.groupId}`)
+    }} />
   }
 
   if (location.pathname === '/groups/new') {
-    return <CreateGroupPage onBack={() => navigate('/groups')} onCreate={() => navigate('/groups/detail')} />
+    return <CreateGroupPage onBack={() => navigate('/groups')} onCreate={async (input) => {
+      const group = await groupApi.create(input)
+      navigate(`/groups/detail?id=${group.groupId}`)
+    }} />
   }
 
   if (location.pathname === '/groups/courses') {
-    return <SharedCoursesPage onBack={() => navigate('/groups/detail')} onOpenCourse={(title) => navigate(`/courses/detail?source=group&title=${encodeURIComponent(title)}`)} />
+    const groupId = Number(new URLSearchParams(location.search).get('id'))
+    if (!Number.isSafeInteger(groupId) || groupId < 1) return <NotFoundPage onHome={() => navigate('/groups')} />
+    return <SharedCoursesPage groupId={groupId} onBack={() => navigate(`/groups/detail?id=${groupId}`)} onOpenCourse={(sharedCourseId) => navigate(`/groups/course?id=${groupId}&sharedCourseId=${sharedCourseId}`)} />
   }
 
   if (location.pathname === '/groups/activity') {
-    return <GroupActivityPage onBack={() => navigate('/groups/detail')} />
+    const groupId = Number(new URLSearchParams(location.search).get('id'))
+    if (!Number.isSafeInteger(groupId) || groupId < 1) return <NotFoundPage onHome={() => navigate('/groups')} />
+    return <GroupActivityPage groupId={groupId} onBack={() => navigate(`/groups/detail?id=${groupId}`)} />
+  }
+
+  if (location.pathname === '/groups/course') {
+    const params = new URLSearchParams(location.search)
+    const groupId = Number(params.get('id'))
+    const sharedCourseId = Number(params.get('sharedCourseId'))
+    if (!Number.isSafeInteger(groupId) || groupId < 1 || !Number.isSafeInteger(sharedCourseId) || sharedCourseId < 1) return <NotFoundPage onHome={() => navigate('/groups')} />
+    return <GroupCourseDetailPage groupId={groupId} sharedCourseId={sharedCourseId} currentUserId={authenticatedUser?.userId} onBack={() => navigate(`/groups/detail?id=${groupId}`)} onSaved={(courseId) => navigate(`/courses/detail?source=custom&id=${courseId}`)} onUnshared={() => navigate(`/groups/detail?id=${groupId}`)} />
   }
 
   if (location.pathname === '/groups/detail') {
-    return <GroupRoomPage onBack={() => navigate('/groups')} onOpenSharedCourse={(id) => navigate(`/courses/detail?source=group&id=${id}`)} onOpenActivity={() => navigate('/groups/activity')} onShareCourse={() => navigate('/groups/courses')} />
+    const groupId = Number(new URLSearchParams(location.search).get('id'))
+    if (!Number.isSafeInteger(groupId) || groupId < 1) return <NotFoundPage onHome={() => navigate('/groups')} />
+    return <GroupRoomPage groupId={groupId} onBack={() => navigate('/groups')} onOpenSharedCourse={(sharedCourseId) => navigate(`/groups/course?id=${groupId}&sharedCourseId=${sharedCourseId}`)} onOpenActivity={() => navigate(`/groups/activity?id=${groupId}`)} onOpenAllCourses={() => navigate(`/groups/courses?id=${groupId}`)} onClosed={() => navigate('/groups')} />
   }
 
   if (location.pathname === '/groups') {
-    return <GroupListPage onBack={() => navigate('/profile')} onCreateGroup={() => navigate('/groups/new')} onJoinGroup={() => navigate('/groups/join')} onOpenGroup={() => navigate('/groups/detail')} />
+    const params = new URLSearchParams(location.search)
+    const shareSource = params.get('shareSource')
+    const shareCourseId = Number(params.get('shareCourseId'))
+    const pendingShare = (shareSource === 'walk' || shareSource === 'custom') && Number.isSafeInteger(shareCourseId) && shareCourseId > 0
+      ? { courseSource: shareSource as 'walk' | 'custom', courseId: shareCourseId }
+      : undefined
+    return <GroupListPage pendingShare={pendingShare} onBack={() => navigate('/profile')} onCreateGroup={() => navigate('/groups/new')} onJoinGroup={() => navigate('/groups/join')} onOpenGroup={(groupId) => navigate(`/groups/detail?id=${groupId}`)} />
   }
 
   if (location.pathname === '/profile/notifications') {
@@ -732,7 +760,7 @@ export function App() {
         const updated = await walkApi.rename(selectedWalkRecord.sessionId, name)
         setSelectedWalkRecord(updated)
       }}
-      onShareCourse={() => navigate('/groups/courses')}
+      onShareCourse={() => selectedWalkRecord && navigate(`/groups?shareSource=walk&shareCourseId=${selectedWalkRecord.sessionId}`)}
     />
   }
 
@@ -758,7 +786,7 @@ export function App() {
       onStart={(course) => navigate(walkSelectionUrl('/courses/detail', { entry: 'course-detail', courseSource: course.courseSource, courseId: course.courseId, duration: course.metrics?.durationMin ?? 30 }))}
       onCompare={(course) => navigate(`/courses/compare?returnTo=%2Fcourses%2Fdetail&source=${course.courseSource}&id=${course.courseId}`)}
       onDeleted={() => navigate('/courses')}
-      onShare={() => navigate('/groups/courses')}
+      onShare={() => navigate(`/groups?shareSource=${source}&shareCourseId=${courseId}`)}
     />
   }
 

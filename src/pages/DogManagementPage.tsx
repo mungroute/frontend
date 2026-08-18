@@ -20,10 +20,10 @@ export function DogManagementPage({ dogs = defaultDogs, onBack, onEditDog, onReg
   return (
     <main className="journey-page profile-group-page dog-management-page">
       <ManagementPageHeader title="반려견 관리" subtitle="산책 기록에 함께 저장할 친구들" onBack={onBack} />
+      <Button className="dog-management-page__register" variant="secondary" aria-label="반려견 등록하기" onClick={onRegisterDog}>＋ 반려견 등록하기</Button>
       <div className="dog-management-page__list">
         {dogs.map((dog) => <DogProfileCard key={dog.id} dog={dog} actionLabel="편집" onAction={() => onEditDog?.(dog.id)} />)}
       </div>
-      <Button className="dog-management-page__register" variant="secondary" aria-label="반려견 등록하기" onClick={onRegisterDog}>＋ 반려견 등록하기</Button>
     </main>
   )
 }

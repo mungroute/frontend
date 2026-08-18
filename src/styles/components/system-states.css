@@ -7,7 +7,7 @@
 .system-surface .ui-sheet__handle, .system-network-sheet .ui-sheet__handle { width: 42px; margin-bottom: 24px; }
 .system-surface--record-more { min-height: 426px; }
 .system-surface--invite { min-height: 512px; }
-.system-surface--course-share { min-height: 624px; display: flex; flex-direction: column; }
+.system-surface--course-share { --draggable-sheet-background: #faf7f2; min-height: 624px; display: flex; flex-direction: column; overflow-y: hidden; padding-top: 28px; background: #faf7f2; }
 .system-surface--course-share > .ui-button { margin-top: auto; }
 .system-surface--gps-error { min-height: 580px; display: flex; flex-direction: column; justify-content: center; }
 .system-surface--rename { min-height: 350px; }
@@ -41,7 +41,9 @@
 .system-invite-code { min-height: 88px; margin: 10px 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--color-border); border-radius: 18px; padding: 0 20px; background: var(--color-surface); }
 .system-invite-code span { color: var(--color-text-secondary); font-size: 12px; }
 .system-invite-code strong { color: var(--color-primary-pressed); font-size: 30px; letter-spacing: .08em; }
-.system-course-list { display: grid; gap: 10px; margin: 18px 0 20px; }
+.system-course-list { min-height: 0; display: grid; align-content: start; gap: 10px; margin: 18px 0 20px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.system-course-list::-webkit-scrollbar { display: none; width: 0; }
+.system-surface--course-share .system-course-list { flex: 1; }
 .system-sheet-titlebar { min-height: 36px; display: flex; align-items: center; gap: 8px; }
 .system-sheet-titlebar > button { width: 36px; height: 36px; flex: 0 0 auto; border: 0; border-radius: 50%; padding: 0; color: var(--color-text-primary); background: transparent; font-size: 30px; line-height: 1; }
 .system-sheet-titlebar .system-surface__left-title { margin: 0 !important; }
@@ -70,6 +72,8 @@
 .system-full-state__actions { position: absolute; right: 20px; bottom: 24px; left: 20px; display: grid; gap: 10px; }
 .system-record-info { display: grid; gap: 8px; margin: 8px 0 24px; text-align: left; }
 .system-surface--record-info { min-height: 0; }
+.system-surface--course-unshare { min-height: 0; padding-bottom: 24px; }
+.system-surface--group-action { min-height: 0; padding-bottom: 24px; }
 .system-record-info p { margin: 0; }
 .system-record-info strong { color: var(--color-primary); font-size: 14px; }
 .system-loading-state { padding-top: 58px; }

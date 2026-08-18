@@ -6,10 +6,10 @@ import '../styles/pages/extended-management-pages.css'
 type JoinGroupPageProps = {
   defaultCode?: string
   onBack?: () => void
-  onConfirm?: (code: string) => void
+  onConfirm?: (code: string) => void | Promise<void>
 }
 
-const normalizeInviteCode = (value: string) => value.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase()
+const normalizeInviteCode = (value: string) => value.replace(/[^a-z0-9가-힣]/gi, '').slice(0, 6).toUpperCase()
 
 const extractInviteCode = (value: string) => {
   try {
@@ -23,6 +23,8 @@ const extractInviteCode = (value: string) => {
 
 export function JoinGroupPage({ defaultCode = 'MUNG24', onBack, onConfirm }: JoinGroupPageProps) {
   const [code, setCode] = useState(() => normalizeInviteCode(defaultCode))
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string>()
 
   return (
     <main className="journey-page extended-management-page join-group-page">
@@ -36,7 +38,15 @@ export function JoinGroupPage({ defaultCode = 'MUNG24', onBack, onConfirm }: Joi
         <input aria-label="초대 코드" value={code} inputMode="text" autoCapitalize="characters" onChange={(event) => setCode(extractInviteCode(event.target.value))} />
       </label>
       <p className="join-group-page__hint">초대 링크를 붙여넣어도 자동으로 확인돼요.</p>
-      <Button className="join-group-page__confirm" disabled={code.length !== 6} onClick={() => onConfirm?.(code)}>그룹 확인하기</Button>
+      {error && <p className="join-group-page__error" role="alert">{error}</p>}
+      <Button className="join-group-page__confirm" disabled={code.length !== 6 || submitting} onClick={() => {
+        if (!onConfirm) return
+        setSubmitting(true)
+        setError(undefined)
+        void Promise.resolve(onConfirm(code))
+          .catch((reason: Error) => setError(reason.message))
+          .finally(() => setSubmitting(false))
+      }}>{submitting ? '확인 중…' : '그룹 확인하기'}</Button>
     </main>
   )
 }

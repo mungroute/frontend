@@ -160,6 +160,64 @@ export function DeleteRecordDialog({ onClose, onConfirm }: CloseableProps & { on
   )
 }
 
+export function CancelCourseShareDialog({ busy = false, onClose, onConfirm }: CloseableProps & { busy?: boolean; onConfirm: () => void }) {
+  return (
+    <Overlay label="그룹 공유 취소 확인" className="system-surface--course-unshare" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle /></div>
+      <h2>그룹 공유를 취소할까요?</h2>
+      <p>그룹 지도와 공유 코스 목록에서 사라져요.<br />내 원본 코스는 그대로 유지돼요.</p>
+      <div className="system-dialog-actions">
+        <Button disabled={busy} onClick={onConfirm}>{busy ? '취소 중…' : '공유 취소'}</Button>
+        <Button variant="secondary" disabled={busy} onClick={onClose}>돌아가기</Button>
+      </div>
+    </Overlay>
+  )
+}
+
+export function GroupExitConfirmDialog({ owner, busy = false, onClose, onConfirm }: CloseableProps & { owner: boolean; busy?: boolean; onConfirm: () => void }) {
+  return (
+    <Overlay label={owner ? '그룹 삭제 확인' : '그룹 탈퇴 확인'} className="system-surface--group-action" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle /></div>
+      <h2>{owner ? '그룹을 삭제할까요?' : '그룹에서 탈퇴할까요?'}</h2>
+      <p>{owner
+        ? <>모든 멤버가 더 이상 그룹에 접근할 수 없어요.<br />삭제한 그룹은 복구할 수 없어요.</>
+        : <>내가 공유한 코스는 그룹에서 사라져요.<br />내 원본 코스는 그대로 유지돼요.</>}</p>
+      <div className="system-dialog-actions">
+        <Button disabled={busy} onClick={onConfirm}>{busy ? '처리 중…' : owner ? '그룹 삭제' : '그룹 탈퇴'}</Button>
+        <Button variant="secondary" disabled={busy} onClick={onClose}>돌아가기</Button>
+      </div>
+    </Overlay>
+  )
+}
+
+export function RemoveGroupMemberDialog({ nickname, busy = false, onClose, onConfirm }: CloseableProps & { nickname: string; busy?: boolean; onConfirm: () => void }) {
+  return (
+    <Overlay label="멤버 내보내기 확인" className="system-surface--group-action" onClose={onClose}>
+      <div className="system-icon system-icon--warning"><AlertTriangle /></div>
+      <h2>{nickname}님을 내보낼까요?</h2>
+      <p>이 멤버가 공유한 코스는 그룹에서 사라져요.<br />멤버의 원본 코스는 그대로 유지돼요.</p>
+      <div className="system-dialog-actions">
+        <Button disabled={busy} onClick={onConfirm}>{busy ? '처리 중…' : '내보내기'}</Button>
+        <Button variant="secondary" disabled={busy} onClick={onClose}>돌아가기</Button>
+      </div>
+    </Overlay>
+  )
+}
+
+export function GroupInfoSaveConfirmDialog({ busy = false, onClose, onConfirm }: CloseableProps & { busy?: boolean; onConfirm: () => void }) {
+  return (
+    <Overlay label="그룹 정보 저장 확인" className="system-surface--group-action" onClose={onClose}>
+      <div className="system-icon system-icon--soft"><Check /></div>
+      <h2>변경 내용을 저장할까요?</h2>
+      <p>그룹 이름과 공개 범위, 참여 방식이<br />저장 후 바로 적용돼요.</p>
+      <div className="system-dialog-actions">
+        <Button disabled={busy} onClick={onConfirm}>{busy ? '저장 중…' : '변경 저장'}</Button>
+        <Button variant="secondary" disabled={busy} onClick={onClose}>돌아가기</Button>
+      </div>
+    </Overlay>
+  )
+}
+
 export function RecordInfoDialog({ title, description, onClose }: CloseableProps & { title: string; description: ReactNode }) {
   return (
     <Overlay label={`${title} 상세`} className="system-surface--record-info" onClose={onClose}>

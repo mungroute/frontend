@@ -1,18 +1,24 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { GroupSharedCourse } from '../api/groups'
 import { SharedCoursesPage } from './SharedCoursesPage'
 
+const course: GroupSharedCourse = {
+  sharedCourseId: 4, groupId: 10, sharedByUserId: 2, sharerNickname: '민지', saveCount: 2, sharedAt: '2026-08-18T12:00:00+09:00',
+  course: { courseSource: 'custom', courseId: 9, courseName: '조용한 공원길', loop: false, representative: false, createdAt: '2026-08-18T10:00:00+09:00', segmentIds: [1], route: { type: 'LineString', coordinates: [[126.98, 37.55], [126.981, 37.551]] }, metrics: null },
+}
+
 describe('SharedCoursesPage', () => {
-  it('switches shared course filters', () => {
-    render(<SharedCoursesPage />)
+  it('loads again when a shared course sort is selected', async () => {
+    const api = { courses: vi.fn().mockResolvedValue([course]) }
+    render(<SharedCoursesPage groupId={10} api={api} />)
 
     expect(screen.getByRole('heading', { name: '공유 코스' })).toBeInTheDocument()
-    expect(screen.getAllByRole('article')).toHaveLength(3)
+    expect(await screen.findByRole('button', { name: '조용한 공원길 상세 보기' })).toBeInTheDocument()
 
     const shortFilter = screen.getByRole('button', { name: '짧은 코스' })
     fireEvent.click(shortFilter)
     expect(shortFilter).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getAllByRole('article')).toHaveLength(1)
-    expect(screen.getByText('조용한 공원길')).toBeInTheDocument()
+    await waitFor(() => expect(api.courses).toHaveBeenLastCalledWith(10, 'shortest'))
   })
 })

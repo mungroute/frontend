@@ -1,6 +1,6 @@
 import '../../styles/components/group-controls.css'
 
-export type GroupSummary = {
+export type GroupCardData = {
   id: string
   name: string
   summary: string
@@ -8,7 +8,7 @@ export type GroupSummary = {
   membersImageSrc: string
 }
 
-export function GroupCard({ group, onClick }: { group: GroupSummary; onClick?: () => void }) {
+export function GroupCard({ group, onClick }: { group: GroupCardData; onClick?: () => void }) {
   return (
     <button className="group-card" type="button" onClick={onClick}>
       <strong>{group.name}</strong>
