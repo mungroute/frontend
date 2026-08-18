@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { WalkRecordDetail } from '../api/walks'
+import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { WalkRecordDetailPage } from './WalkRecordDetailPage'
 
 const detail: WalkRecordDetail = {
@@ -43,6 +44,41 @@ describe('WalkRecordDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /함께한 반려견/ }))
     expect(onOpenDistanceAlerts).toHaveBeenCalledOnce()
     expect(onOpenDogs).toHaveBeenCalledOnce()
+  })
+
+  it('centers the map on the stored walk route instead of the current location', () => {
+    const mount = vi.fn((container: HTMLElement, scene: BaseMapScene) => {
+      void container
+      void scene
+      return { ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }
+    })
+    const adapter: BaseMapAdapter = { mount }
+    const currentLocationScene: BaseMapScene = {
+      center: { latitude: 35.1796, longitude: 129.0756 },
+      zoom: 17,
+      markers: [{
+        id: 'current-location',
+        position: { latitude: 35.1796, longitude: 129.0756 },
+        kind: 'current-location',
+        label: '망고',
+      }],
+    }
+
+    render(<WalkRecordDetailPage record={detail} map={{ adapter, scene: currentLocationScene }} />)
+
+    const renderedScene = mount.mock.calls[0][1]
+    expect(renderedScene.center).toEqual({ latitude: 37.565, longitude: 126.985 })
+    expect(renderedScene.zoom).toBeGreaterThan(11)
+    expect(renderedScene.markers).toEqual([
+      expect.objectContaining({ id: 'walk-record-start', kind: 'start' }),
+      expect.objectContaining({ id: 'walk-record-finish', kind: 'finish' }),
+    ])
+    expect(renderedScene.routes).toEqual([
+      expect.objectContaining({ id: 'walk-record-route', coordinates: [
+        { latitude: 37.56, longitude: 126.98 },
+        { latitude: 37.57, longitude: 126.99 },
+      ] }),
+    ])
   })
 
   it('opens the more sheet and confirms record deletion', () => {

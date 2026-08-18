@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CourseCatalogApi, CourseDetail, CourseSummary } from '../api/courses'
 import { MyCoursesPage } from './MyCoursesPage'
@@ -30,7 +30,7 @@ describe('MyCoursesPage', () => {
     expect(screen.queryByText('아침 산책 기록')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /저녁 남산길/ }))
     expect(onOpenCourse).toHaveBeenCalledWith('custom', 42)
-    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('custom', 42))
+    expect(screen.queryByRole('region', { name: '저장 코스 지도' })).not.toBeInTheDocument()
   })
 
   it('opens the direct course drawing flow', () => {

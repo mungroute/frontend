@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
 import { Button, ManagementPageHeader, Switch, TextField } from '../Components/ui'
 import { DOG_TEMPERAMENT_TAGS, MAX_DOG_TEMPERAMENT_TAGS } from '../features/dogs/temperament-tags'
 import { DOG_PERSONALITY_ITEMS } from '../features/dogs/personality-options'
@@ -37,7 +38,7 @@ const defaultPersonality: DogPersonalityValue = {
 
 const defaultDog: DogProfileFormValue = {
   name: '망고', breed: '골든 리트리버', birthDate: '2022-05-12', gender: 'MALE', neutered: true,
-  introduction: '', isDefault: true, profileImageSrc: '/assets/p02/dog-profile.png', temperamentTags: [],
+  introduction: '', isDefault: true, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE, temperamentTags: [],
   ...defaultPersonality,
 }
 
@@ -50,13 +51,48 @@ const currentYear = new Date().getFullYear()
 const birthYears = Array.from({ length: 31 }, (_, index) => String(currentYear - index))
 const birthMonths = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
 const daysFor = (year: string, month: string) => year && month ? new Date(Number(year), Number(month), 0).getDate() : 31
+const PROFILE_IMAGE_SIZE = 1024
+
+const prepareProfileImage = (file: File) => new Promise<string>((resolve, reject) => {
+  const objectUrl = URL.createObjectURL(file)
+  const image = new Image()
+  image.onload = () => {
+    URL.revokeObjectURL(objectUrl)
+    const canvas = document.createElement('canvas')
+    canvas.width = PROFILE_IMAGE_SIZE
+    canvas.height = PROFILE_IMAGE_SIZE
+    const context = canvas.getContext('2d')
+    if (!context) {
+      reject(new Error('사진을 처리할 수 없어요.'))
+      return
+    }
+
+    // 프로필 프레임을 빈틈없이 채우도록 중앙을 기준으로 정사각형 cover crop한다.
+    const scale = Math.max(PROFILE_IMAGE_SIZE / image.naturalWidth, PROFILE_IMAGE_SIZE / image.naturalHeight)
+    const width = image.naturalWidth * scale
+    const height = image.naturalHeight * scale
+    context.drawImage(image, (PROFILE_IMAGE_SIZE - width) / 2, (PROFILE_IMAGE_SIZE - height) / 2, width, height)
+    resolve(canvas.toDataURL('image/jpeg', 0.82))
+  }
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl)
+    reject(new Error('사진 파일을 읽지 못했어요.'))
+  }
+  image.src = objectUrl
+})
 
 export function DogProfileFormPage({ initialDog = defaultDog, onBack, onSave, onDelete, title = '반려견 정보', subtitle, saveLabel = '저장하기', onSkip, onboarding = false }: DogProfileFormPageProps) {
   const [dog, setDog] = useState(initialDog)
   const [birth, setBirth] = useState(() => parseBirthDate(initialDog.birthDate))
   const [saving, setSaving] = useState(false)
+  const [photoChanged, setPhotoChanged] = useState(false)
+  const [photoError, setPhotoError] = useState<string>()
+  const [saveError, setSaveError] = useState<string>()
   const update = <Key extends keyof DogProfileFormValue>(key: Key, value: DogProfileFormValue[Key]) => setDog((current) => ({ ...current, [key]: value }))
   const personalityComplete = DOG_PERSONALITY_ITEMS.every((item) => dog[item.key] !== 'UNKNOWN')
+  const isDefaultProfileImage = !dog.profileImageSrc
+    || dog.profileImageSrc === DEFAULT_DOG_PROFILE_IMAGE
+    || dog.profileImageSrc === '/assets/p02/dog-profile.png'
   const canSave = dog.name.trim().length > 0 && dog.breed.trim().length > 0 && dog.birthDate.length > 0
     && dog.gender !== 'UNKNOWN' && dog.neutered !== null && personalityComplete
 
@@ -78,14 +114,32 @@ export function DogProfileFormPage({ initialDog = defaultDog, onBack, onSave, on
       <ManagementPageHeader title={title} subtitle={subtitle} onBack={onBack} />
       <div className="dog-profile-form-page__scroll">
         {onboarding && <div className="dog-profile-form-page__step"><span>2 / 2</span><strong>우리 아이를 소개해 주세요</strong><small>산책 전 언제든 마이페이지에서 바꿀 수 있어요.</small></div>}
-        <img className="dog-profile-form-page__photo" src={dog.profileImageSrc} alt={`${dog.name || '반려견'} 프로필 사진`} />
-        <label className="dog-profile-form-page__photo-action">사진 변경<input className="sr-only" type="file" accept="image/*" aria-label="반려견 사진 선택" onChange={(event) => {
-          const file = event.target.files?.[0]
-          if (!file) return
-          const reader = new FileReader()
-          reader.onload = () => update('profileImageSrc', String(reader.result))
-          reader.readAsDataURL(file)
-        }} /></label>
+        <div className="dog-profile-form-page__photo-frame">
+          <img className="dog-profile-form-page__photo" src={dog.profileImageSrc || DEFAULT_DOG_PROFILE_IMAGE} alt={`${dog.name || '반려견'} 프로필 사진`} />
+        </div>
+        <div className={`dog-profile-form-page__photo-actions${isDefaultProfileImage ? ' is-default' : ''}`}>
+          {!isDefaultProfileImage && <button type="button" onClick={() => {
+            update('profileImageSrc', DEFAULT_DOG_PROFILE_IMAGE)
+            setPhotoChanged(true)
+            setPhotoError(undefined)
+          }}>기본 프로필로 변경</button>}
+          <label className="dog-profile-form-page__photo-action">사진 변경<input className="sr-only" type="file" accept="image/*" aria-label="반려견 사진 선택" onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (!file) return
+            setPhotoError(undefined)
+            void prepareProfileImage(file)
+              .then((image) => {
+                update('profileImageSrc', image)
+                setPhotoChanged(true)
+              })
+              .catch((reason: Error) => setPhotoError(reason.message))
+          }} /></label>
+        </div>
+        <p className="dog-profile-form-page__photo-help">
+          {photoChanged ? '새 사진이 선택됐어요. 저장하기를 눌러야 반영돼요.' : '사진은 저장하기를 눌러야 프로필에 반영돼요.'}
+        </p>
+        {photoError && <p className="dog-profile-form-page__form-error" role="alert">{photoError}</p>}
 
         <div className="dog-profile-form-page__name"><TextField label="이름" value={dog.name} onChange={(event) => update('name', event.target.value)} /></div>
         <div className="dog-profile-form-page__breed"><TextField label="견종" value={dog.breed} onChange={(event) => update('breed', event.target.value)} /></div>
@@ -147,12 +201,16 @@ export function DogProfileFormPage({ initialDog = defaultDog, onBack, onSave, on
           if (window.confirm('이 반려견 프로필을 삭제할까요? 산책 기록에 저장된 이름은 유지돼요.')) void onDelete()
         }}>반려견 삭제</Button>}
         <Button className="dog-profile-form-page__save" loading={saving} disabled={!canSave} onClick={() => {
+          setSaveError(undefined)
           const result = onSave?.({ ...dog, name: dog.name.trim(), breed: dog.breed.trim(), introduction: dog.introduction.trim() })
           if (result instanceof Promise) {
             setSaving(true)
-            void result.finally(() => setSaving(false))
+            void result
+              .catch((reason: Error) => setSaveError(reason.message || '저장하지 못했어요. 다시 시도해 주세요.'))
+              .finally(() => setSaving(false))
           }
         }}>{saveLabel}</Button>
+        {saveError && <p className="dog-profile-form-page__form-error" role="alert">{saveError}</p>}
         {onSkip && <button className="dog-profile-form-page__skip" type="button" onClick={onSkip}>나중에 등록할게요</button>}
       </div>
     </main>

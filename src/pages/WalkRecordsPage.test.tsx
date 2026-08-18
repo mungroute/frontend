@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { WalkRecordSummary } from '../api/walks'
 import { WalkRecordsPage } from './WalkRecordsPage'
@@ -41,5 +41,38 @@ describe('WalkRecordsPage', () => {
     expect(screen.getByRole('button', { name: previousLabel })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /지난달 아침 산책/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /이번 달 저녁 산책/ })).not.toBeInTheDocument()
+  })
+
+  it('retries the first page after a record API error', async () => {
+    const now = new Date()
+    const currentIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-07T20:00:00+09:00`
+    const api = {
+      list: vi.fn()
+        .mockRejectedValueOnce(new Error('일시적인 오류'))
+        .mockResolvedValueOnce([record(3, currentIso, '재시도 후 산책')]),
+    }
+    render(<WalkRecordsPage api={api} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('일시적인 오류')
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
+    expect(await screen.findByRole('button', { name: /재시도 후 산책/ })).toBeInTheDocument()
+  })
+
+  it('renders a route-focused map thumbnail for each stored geometry', () => {
+    const now = new Date()
+    const currentIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-07T20:00:00+09:00`
+    const first = record(11, currentIso, '첫 번째 경로')
+    const second = {
+      ...record(12, currentIso, '두 번째 경로'),
+      routePreviewGeoJson: {
+        type: 'LineString' as const,
+        coordinates: [[126.98, 37.56], [126.981, 37.569], [126.99, 37.57], [126.992, 37.562]] as [number, number][],
+      },
+    }
+    const { container } = render(<WalkRecordsPage records={[first, second]} />)
+
+    expect(container.querySelectorAll('.walk-record-card__preview-map')).toHaveLength(2)
   })
 })

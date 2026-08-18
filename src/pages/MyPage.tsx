@@ -18,11 +18,12 @@ type MyPageProps = {
   dog?: DogProfileSummary | null
   dogCount?: number
   notificationDescription?: string
+  walkStatisticsDescription?: string
 }
 
 const previewDog: DogProfileSummary = { id: 'mango', name: '망고', detail: '골든 리트리버 · 4살' }
 
-export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenAccount, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo, onLogout, dog, dogCount = 2, notificationDescription = '거리두기 · 만나기 · 그룹 활동' }: MyPageProps) {
+export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenAccount, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo, onLogout, dog, dogCount = 2, notificationDescription = '거리두기 · 만나기 · 그룹 활동', walkStatisticsDescription = '산책 기록을 확인해 보세요' }: MyPageProps) {
   const shownDog = dog === undefined ? { ...previewDog, profileImageSrc } : dog
   return (
     <main className="journey-page profile-group-page my-page">
@@ -41,7 +42,7 @@ export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenAcc
           ? <DogProfileCard dog={shownDog} actionLabel="프로필 관리" onAction={onOpenProfile} large />
           : <DetailRow title="반려견을 등록해 주세요" description="산책 기록에 함께할 친구를 추가해요" onClick={onOpenDogs} />}
       </div>
-      <div className="my-page__stats"><DetailRow title="산책 통계" description="이번 달 12회 · 18.7km" onClick={onOpenStats} /></div>
+      <div className="my-page__stats"><DetailRow title="산책 통계" description={walkStatisticsDescription} onClick={onOpenStats} /></div>
       <div className="my-page__dogs"><DetailRow title="반려견 관리" description={`${dogCount}마리 등록`} onClick={onOpenDogs} /></div>
       <div className="my-page__groups"><DetailRow title="그룹 관리" description="참여 중인 그룹 2개" onClick={onOpenGroups} /></div>
       <div className="my-page__notifications"><DetailRow title="알림 설정" description={notificationDescription} onClick={onOpenNotifications} /></div>

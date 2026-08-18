@@ -23,6 +23,9 @@ const formatDuration = (seconds: number) => {
   const minutes = Math.round((seconds % 3600) / 60)
   return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`
 }
+const formatRecentWalk = (iso: string | null) => iso
+  ? `최근 산책 ${new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' }).format(new Date(iso))}`
+  : '이번 달 산책 기록 없음'
 
 export function WalkStatisticsPage({ statistics, contributions, dogs = [], onBack, onOpenRecords, onOpenRecord = () => undefined }: WalkStatisticsPageProps) {
   const currentMonth = useMemo(() => toMonthKey(new Date()), [])
@@ -67,6 +70,10 @@ export function WalkStatisticsPage({ statistics, contributions, dogs = [], onBac
     setDogId(value)
   }
   const viewData = statistics ?? data
+  const selectedDogName = dogs.find((dog) => dog.id === dogId)?.name
+  const statisticsSubtitle = selectedDogName
+    ? `${selectedDogName}와 함께한 산책`
+    : '모든 반려견과 함께한 산책'
   const selectedMonthNumber = Number(month.slice(5, 7))
   const distanceByDay = new Map(viewData?.weekdayDistances.map((item) => [item.dayOfWeek, item.distanceM / 1000]) ?? [])
   const weeklyDistances = dayNames.map((day, index) => ({
@@ -77,7 +84,7 @@ export function WalkStatisticsPage({ statistics, contributions, dogs = [], onBac
 
   return (
     <main className="journey-page extended-profile-page walk-statistics-page">
-      <ManagementPageHeader title="산책 통계" subtitle="월별로 함께 걸은 기록" onBack={onBack} />
+      <ManagementPageHeader title="산책 통계" subtitle={statisticsSubtitle} onBack={onBack} />
 
       <div className="walk-statistics-page__filters">
         <div className="walk-statistics-page__month" aria-label="통계 월 선택">
@@ -99,6 +106,7 @@ export function WalkStatisticsPage({ statistics, contributions, dogs = [], onBac
           <b>{(viewData.totalDistanceM / 1000).toFixed(1)} km</b>
           <span>{viewData.walkCount}회 · {formatDuration(viewData.totalDurationSec)}</span>
           <small>한 번에 평균 {(viewData.averageDistanceM / 1000).toFixed(1)}km · {formatDuration(viewData.averageDurationSec)}</small>
+          <small>{formatRecentWalk(viewData.lastWalkedAt)}</small>
         </section>
 
         {contributionData && <WalkContributionCalendar contributions={contributionData} onOpenRecord={onOpenRecord} />}

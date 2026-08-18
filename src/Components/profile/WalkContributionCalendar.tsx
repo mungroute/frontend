@@ -288,7 +288,7 @@ export function WalkContributionCalendar({ contributions, onOpenRecord }: WalkCo
           type="button"
           disabled={isMorphing}
           onClick={() => switchMode(mode === 'flat' ? 'skyline' : 'flat')}
-        >{mode === 'flat' ? '자세히 보기' : '2D로 보기'} <span aria-hidden="true">↗</span></button>
+        >{mode === 'flat' ? '3D로 보기' : '2D로 보기'} <span aria-hidden="true">↗</span></button>
       </div>
 
       <div className={`contribution-calendar__view contribution-calendar__view--${mode} ${isMorphing ? 'contribution-calendar__view--morphing' : ''}`}>

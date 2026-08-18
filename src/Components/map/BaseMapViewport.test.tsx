@@ -110,6 +110,36 @@ describe('BaseMapViewport', () => {
     expect(screen.getByText('추천 경로')).toBeInTheDocument()
   })
 
+  it('can replace shared location markers for a route-focused map', () => {
+    const mount = vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }))
+    const adapter: BaseMapAdapter = { mount }
+    const sceneWithLocation: BaseMapScene = {
+      ...scene,
+      markers: [{ id: 'current-location', position: scene.center, kind: 'current-location', label: '망고' }],
+    }
+    const routeCenter = { latitude: 37.57, longitude: 126.99 }
+
+    render(
+      <BaseMapViewport
+        ariaLabel="산책 경로 지도"
+        fallback={{ src: '/map.png' }}
+        map={{ adapter, scene: sceneWithLocation }}
+        sceneOverlay={{
+          center: routeCenter,
+          zoom: 16,
+          markers: [{ id: 'route-start', position: routeCenter, kind: 'start', label: '출발' }],
+        }}
+        replaceBaseMarkers
+      />,
+    )
+
+    expect(mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({
+      center: routeCenter,
+      zoom: 16,
+      markers: [expect.objectContaining({ id: 'route-start' })],
+    }))
+  })
+
   it('connects map single-click events without placing a pointer-blocking button over an adapter', () => {
     const onMapClick = vi.fn()
     const setClickHandler = vi.fn()

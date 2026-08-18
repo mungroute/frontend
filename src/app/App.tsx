@@ -48,7 +48,7 @@ import { formatWalkDistance, formatWalkTime, useWalkTracker } from '../features/
 import '../styles/app.css'
 import { getCourseRouteCoordinates } from '../Components/courses/course-data'
 import { walkApi } from '../api/walks'
-import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail } from '../api/walks'
+import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail, WalkStatistics } from '../api/walks'
 import { getValidAccessToken } from '../api/http'
 import { connectPresenceSocket } from '../api/presenceSocket'
 import type { PresenceSocketClient } from '../api/presenceSocket'
@@ -153,6 +153,7 @@ export function App() {
   const [meetConnection, setMeetConnection] = useState<MeetConnection>()
   const [selectedWalkRecord, setSelectedWalkRecord] = useState<WalkRecordDetail>()
   const [representativeCourse, setRepresentativeCourse] = useState<CourseDetail>()
+  const [profileWalkStatistics, setProfileWalkStatistics] = useState<WalkStatistics>()
   const walkSessionIdRef = useRef<number | undefined>(undefined)
   const walkStartedAtRef = useRef<string | undefined>(undefined)
   const walkStartPromiseRef = useRef<Promise<number> | undefined>(undefined)
@@ -312,6 +313,17 @@ export function App() {
       .then(setSelectedWalkRecord)
       .catch((error: Error) => setWalkApiError(error.message))
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (location.pathname !== '/profile') return
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    let active = true
+    void walkApi.statistics(month)
+      .then((statistics) => { if (active) setProfileWalkStatistics(statistics) })
+      .catch(() => { if (active) setProfileWalkStatistics(undefined) })
+    return () => { active = false }
+  }, [location.pathname])
 
   useEffect(() => {
     if (location.pathname !== '/home') return
@@ -672,6 +684,9 @@ export function App() {
       userNickname={authenticatedUser?.nickname}
       dog={defaultDog ?? null}
       dogCount={dogs.length}
+      walkStatisticsDescription={profileWalkStatistics
+        ? `이번 달 ${profileWalkStatistics.walkCount}회 · ${(profileWalkStatistics.totalDistanceM / 1000).toFixed(1)}km`
+        : undefined}
       notificationDescription={[
         notificationSettings.distanceEnabled && '거리두기',
         notificationSettings.meetEnabled && '만나기',

@@ -92,6 +92,7 @@ export type WalkStatistics = {
   totalDurationSec: number
   averageDistanceM: number
   averageDurationSec: number
+  lastWalkedAt: string | null
   weekdayDistances: { dayOfWeek: number; distanceM: number }[]
   favoriteCourse: { courseName: string; walkCount: number; averageDurationSec: number } | null
 }

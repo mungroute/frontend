@@ -26,6 +26,29 @@ const formatDate = (iso: string) => new Intl.DateTimeFormat('ko-KR', {
   month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Seoul',
 }).format(new Date(iso))
 
+const routeViewport = (coordinates: [number, number][]) => {
+  if (coordinates.length === 0) return undefined
+
+  const longitudes = coordinates.map(([longitude]) => longitude)
+  const latitudes = coordinates.map(([, latitude]) => latitude)
+  const west = Math.min(...longitudes)
+  const east = Math.max(...longitudes)
+  const south = Math.min(...latitudes)
+  const north = Math.max(...latitudes)
+  const longitudeSpan = Math.max(east - west, 0.00015)
+  const latitudeSpan = Math.max(north - south, 0.00015)
+  const longitudeZoom = Math.log2((360 * 0.72 * 390) / (256 * longitudeSpan))
+  const latitudeZoom = Math.log2((360 * 0.72 * 320) / (256 * latitudeSpan))
+
+  return {
+    center: {
+      latitude: (south + north) / 2,
+      longitude: (west + east) / 2,
+    },
+    zoom: Math.max(11, Math.min(18, Math.min(longitudeZoom, latitudeZoom))),
+  }
+}
+
 export function WalkRecordDetailPage({ map, record, errorMessage, onBack, onMore, onDelete, onRename, onRepresentativeChange, onOpenDistanceAlerts, onOpenDogs, onShareCourse }: WalkRecordDetailPageProps) {
   const [representativeOverride, setRepresentativeOverride] = useState<boolean>()
   const [courseNameOverride, setCourseNameOverride] = useState<string>()
@@ -33,14 +56,32 @@ export function WalkRecordDetailPage({ map, record, errorMessage, onBack, onMore
   const [info, setInfo] = useState<'alerts' | 'dogs' | null>(null)
   const openMore = () => { setOverlay('more'); onMore?.() }
 
-  const routeOverlay = useMemo(() => ({ routes: record?.trackGeoJson?.coordinates?.length
-    ? [{
-      id: 'walk-record-route',
-      coordinates: record.trackGeoJson.coordinates.map(([longitude, latitude]) => ({ latitude, longitude })),
-      color: '#f47a3a',
-      width: 6,
-    }]
-    : [] }), [record])
+  const routeOverlay = useMemo(() => {
+    const coordinates = record?.trackGeoJson?.coordinates ?? []
+    const viewport = routeViewport(coordinates)
+    const routeCoordinates = coordinates.map(([longitude, latitude]) => ({ latitude, longitude }))
+    const start = routeCoordinates[0]
+    const finish = routeCoordinates.at(-1)
+
+    return {
+      ...viewport,
+      markers: start && finish ? [
+        { id: 'walk-record-start', position: start, kind: 'start' as const, label: '출발' },
+        { id: 'walk-record-finish', position: finish, kind: 'finish' as const, label: '도착' },
+      ] : [],
+      routes: routeCoordinates.length
+        ? [{
+          id: 'walk-record-route',
+          coordinates: routeCoordinates,
+          color: '#f47a3a',
+          width: 6,
+          outlineColor: '#fffdf8',
+          outlineWidth: 9,
+          lineCap: 'round' as const,
+        }]
+        : [],
+    }
+  }, [record])
 
   if (!record) {
     return (
@@ -76,6 +117,7 @@ export function WalkRecordDetailPage({ map, record, errorMessage, onBack, onMore
         ariaLabel={`${dateLabel} 산책 경로 지도`}
         map={map}
         sceneOverlay={routeOverlay}
+        replaceBaseMarkers
         fallback={{ src: '/assets/s09/map.jpg' }}
       />
 

@@ -115,6 +115,7 @@ describe('App location permission route', () => {
     vi.spyOn(walkApi, 'statistics').mockResolvedValue({
       month: '2026-08', dogId: null, walkCount: 1, totalDistanceM: 1800,
       totalDurationSec: 2700, averageDistanceM: 1800, averageDurationSec: 2700,
+      lastWalkedAt: '2026-08-16T20:30:00+09:00',
       weekdayDistances: [{ dayOfWeek: 6, distanceM: 1800 }],
       favoriteCourse: { courseName: '저녁 남산길', walkCount: 1, averageDurationSec: 2700 },
     })
@@ -495,10 +496,11 @@ describe('App location permission route', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/walk/dogs'))
   })
 
-  it('opens walk statistics and then the full record list', () => {
+  it('opens walk statistics and then the full record list', async () => {
     window.history.replaceState({}, '', '/profile')
     render(<App />)
 
+    expect(await screen.findByText('이번 달 1회 · 1.8km')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /산책 통계/ }))
     expect(window.location.pathname).toBe('/profile/stats')
     expect(screen.getByRole('heading', { name: '산책 통계' })).toBeInTheDocument()

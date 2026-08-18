@@ -11,6 +11,7 @@ const statistics: WalkStatistics = {
   totalDurationSec: 19080,
   averageDistanceM: 1558.3,
   averageDurationSec: 1590,
+  lastWalkedAt: '2026-08-16T20:30:00+09:00',
   weekdayDistances: [
     { dayOfWeek: 1, distanceM: 2300 },
     { dayOfWeek: 6, distanceM: 5000 },
@@ -39,6 +40,7 @@ describe('WalkStatisticsPage', () => {
     expect(screen.getByRole('heading', { name: '산책 통계' })).toBeInTheDocument()
     expect(screen.getByText('18.7 km')).toBeInTheDocument()
     expect(screen.getByText('12회 · 5시간 18분')).toBeInTheDocument()
+    expect(screen.getByText('최근 산책 8월 16일')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: '요일별 누적 거리' })).toBeInTheDocument()
     expect(screen.getByText('저녁 남산길')).toBeInTheDocument()
   })
@@ -50,6 +52,21 @@ describe('WalkStatisticsPage', () => {
     expect(onOpenRecords).toHaveBeenCalledOnce()
   })
 
+  it('names the statistics scope from the selected dog filter', () => {
+    render(<WalkStatisticsPage
+      statistics={statistics}
+      contributions={contributions}
+      dogs={[{ id: 1, name: '망고' }, { id: 2, name: '쿠키' }]}
+      onOpenRecords={vi.fn()}
+    />)
+
+    expect(screen.getByText('모든 반려견과 함께한 산책')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '망고' }))
+    expect(screen.getByText('망고와 함께한 산책')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '쿠키' }))
+    expect(screen.getByText('쿠키와 함께한 산책')).toBeInTheDocument()
+  })
+
   it('shows daily totals in 2D and opens a selected route from the 3D skyline', async () => {
     const onOpenRecord = vi.fn()
     render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} onOpenRecord={onOpenRecord} />)
@@ -57,7 +74,7 @@ describe('WalkStatisticsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /8월 3일, 2.0km, 2회/ }))
     expect(screen.getByText('산책 완료 2회')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     fireEvent.click(await screen.findByRole('button', { name: /8월 3일 산책 기록 열기/ }))
     fireEvent.click(screen.getByRole('button', { name: /아침 산책/ }))
     expect(onOpenRecord).toHaveBeenCalledWith(31)
@@ -67,7 +84,7 @@ describe('WalkStatisticsPage', () => {
     render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
     const flatDateBlock = screen.getByRole('button', { name: /8월 3일, 2.0km, 2회/ })
 
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
 
     const skylineDateBlock = screen.getByRole('button', { name: /8월 3일 산책 기록 열기/ })
     expect(skylineDateBlock).toBe(flatDateBlock)
@@ -83,7 +100,7 @@ describe('WalkStatisticsPage', () => {
       scrollLeft: { configurable: true, value: 170 },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
 
     expect(skyline.style.getPropertyValue('--skyline-pan-x')).toBe('-32px')
     expect(skyline.style.getPropertyValue('--skyline-zoom')).toBe('1')
@@ -91,7 +108,7 @@ describe('WalkStatisticsPage', () => {
 
   it('rotates the 3D skyline with a mouse or touch pointer drag', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
     Object.defineProperties(viewport, {
@@ -109,7 +126,7 @@ describe('WalkStatisticsPage', () => {
 
   it('shows month markers and limits Ctrl+wheel zoom in the 3D skyline', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
 
@@ -120,7 +137,7 @@ describe('WalkStatisticsPage', () => {
 
   it('moves the 3D calendar horizontally with Shift+wheel', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
 
@@ -130,7 +147,7 @@ describe('WalkStatisticsPage', () => {
 
   it('rotates the 3D camera vertically and horizontally with a normal drag', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
     Object.defineProperties(viewport, {
@@ -148,7 +165,7 @@ describe('WalkStatisticsPage', () => {
 
   it('pans the 3D camera with Shift+drag', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
     Object.defineProperties(viewport, {
@@ -166,7 +183,7 @@ describe('WalkStatisticsPage', () => {
 
   it('resets rotation, position, and zoom with the origin button', () => {
     const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /자세히 보기/ }))
+    fireEvent.click(screen.getByRole('button', { name: /3D로 보기/ }))
     const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
     const skyline = container.querySelector('.contribution-calendar__skyline') as HTMLDivElement
     Object.defineProperties(viewport, {

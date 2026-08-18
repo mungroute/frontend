@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BaseMapViewport } from '../Components/map'
 import { FilterChip, HomeBottomNavigation, ManagementPageHeader } from '../Components/ui'
 import { walkApi } from '../api/walks'
 import type { GeoJsonLineString, WalkRecordSummary } from '../api/walks'
@@ -10,6 +11,7 @@ type WalkRecordsPageProps = {
   dogs?: { id: number; name: string }[]
   onBack?: () => void
   onOpenRecord?: (id: string | number) => void
+  api?: Pick<typeof walkApi, 'list'>
 }
 
 const PAGE_SIZE = 20
@@ -33,35 +35,76 @@ const buildMonthOptions = () => {
   })
 }
 
-function RouteMiniPreview({ route }: { route: GeoJsonLineString | null }) {
-  const points = useMemo(() => {
-    if (!route || route.coordinates.length < 2) return ''
-    const xs = route.coordinates.map(([x]) => x)
-    const ys = route.coordinates.map(([, y]) => y)
-    const minX = Math.min(...xs), maxX = Math.max(...xs)
-    const minY = Math.min(...ys), maxY = Math.max(...ys)
-    const width = Math.max(maxX - minX, 0.000001)
-    const height = Math.max(maxY - minY, 0.000001)
-    return route.coordinates.map(([x, y]) => {
-      const px = 12 + ((x - minX) / width) * 76
-      const py = 88 - ((y - minY) / height) * 76
-      return `${px.toFixed(1)},${py.toFixed(1)}`
-    }).join(' ')
-  }, [route])
+const thumbnailViewport = (coordinates: [number, number][]) => {
+  const longitudes = coordinates.map(([longitude]) => longitude)
+  const latitudes = coordinates.map(([, latitude]) => latitude)
+  const west = Math.min(...longitudes)
+  const east = Math.max(...longitudes)
+  const south = Math.min(...latitudes)
+  const north = Math.max(...latitudes)
+  const longitudeSpan = Math.max(east - west, 0.00015)
+  const latitudeSpan = Math.max(north - south, 0.00015)
+  const longitudeZoom = Math.log2((360 * 0.72 * 92) / (256 * longitudeSpan))
+  const latitudeZoom = Math.log2((360 * 0.72 * 100) / (256 * latitudeSpan))
+
+  return {
+    center: { latitude: (south + north) / 2, longitude: (west + east) / 2 },
+    zoom: Math.max(11, Math.min(18, Math.min(longitudeZoom, latitudeZoom))),
+  }
+}
+
+function RouteMiniPreview({ route, courseName }: { route: GeoJsonLineString | null; courseName: string }) {
+  const containerRef = useRef<HTMLSpanElement>(null)
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
+  const sceneOverlay = useMemo(() => {
+    if (!route || route.coordinates.length < 2) return undefined
+    const coordinates = route.coordinates.map(([longitude, latitude]) => ({ latitude, longitude }))
+    return {
+      ...thumbnailViewport(route.coordinates),
+      routes: [{
+        id: `walk-record-thumbnail-${courseName}`,
+        coordinates,
+        color: '#f47a3a',
+        width: 4,
+        outlineColor: '#fffdf8',
+        outlineWidth: 7,
+        lineCap: 'round' as const,
+      }],
+    }
+  }, [courseName, route])
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { rootMargin: '120px 0px' },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <span className="walk-record-card__preview" aria-hidden="true">
-      <svg viewBox="0 0 100 100" focusable="false">
-        <path d="M8 25 C28 5 68 8 91 30 M5 68 C30 48 61 58 96 44 M23 98 C34 75 49 62 70 1" />
-        {points
-          ? <polyline points={points} />
-          : <path className="walk-record-card__empty-route" d="M18 78 C31 60 36 38 55 43 S75 62 84 20" />}
-      </svg>
+    <span ref={containerRef} className="walk-record-card__preview" aria-hidden="true">
+      {visible && sceneOverlay ? (
+        <BaseMapViewport
+          className="walk-record-card__preview-map"
+          ariaLabel={`${courseName} 경로 썸네일 지도`}
+          sceneOverlay={sceneOverlay}
+          replaceBaseMarkers
+          fallback={{ src: '/assets/s09/map.jpg' }}
+        />
+      ) : (
+        <span className="walk-record-card__preview-placeholder">
+          <img src="/assets/s09/map.jpg" alt="" />
+          {!sceneOverlay && <span>경로 없음</span>}
+        </span>
+      )}
     </span>
   )
 }
 
-export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenRecord }: WalkRecordsPageProps) {
+export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenRecord, api = walkApi }: WalkRecordsPageProps) {
   const months = useMemo(() => buildMonthOptions(), [])
   const [month, setMonth] = useState(months[0].value)
   const [dogId, setDogId] = useState<number>()
@@ -70,21 +113,24 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(records === undefined)
   const [error, setError] = useState<string>()
+  const [retryRequest, setRetryRequest] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (records !== undefined) return
     let active = true
-    void walkApi.list(0, PAGE_SIZE, { ...monthRange(month), dogId })
+    void api.list(0, PAGE_SIZE, { ...monthRange(month), dogId })
       .then((result) => {
         if (!active) return
         setLoadedRecords(result)
         setPage(0)
         setHasMore(result.length === PAGE_SIZE)
+        listRef.current?.scrollTo?.({ top: 0 })
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setLoading(false))
     return () => { active = false }
-  }, [records, month, dogId])
+  }, [api, records, month, dogId, retryRequest])
 
   const visibleRecords = records === undefined
     ? loadedRecords
@@ -94,6 +140,7 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
     })
 
   const selectMonth = (value: string) => {
+    listRef.current?.scrollTo?.({ top: 0 })
     if (records === undefined) {
       setLoading(true)
       setError(undefined)
@@ -102,6 +149,7 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
   }
 
   const selectDog = (value?: number) => {
+    listRef.current?.scrollTo?.({ top: 0 })
     if (records === undefined) {
       setLoading(true)
       setError(undefined)
@@ -112,7 +160,7 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
   const loadMore = () => {
     const nextPage = page + 1
     setLoading(true)
-    void walkApi.list(nextPage, PAGE_SIZE, { ...monthRange(month), dogId })
+    void api.list(nextPage, PAGE_SIZE, { ...monthRange(month), dogId })
       .then((result) => {
         setLoadedRecords((current) => [...current, ...result])
         setPage(nextPage)
@@ -123,7 +171,7 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
   }
 
   return (
-    <main className="journey-page management-page walk-records-page">
+    <main className={`journey-page management-page walk-records-page${dogs.length > 1 ? ' walk-records-page--with-dog-filter' : ''}`}>
       <ManagementPageHeader title="산책 기록" subtitle="함께 걸은 시간을 모아봤어요" onBack={onBack} />
 
       <div className="management-page__chips walk-records-page__filters" aria-label="기록 필터">
@@ -140,10 +188,10 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
         )}
       </div>
 
-      <div className="walk-records-page__list" aria-busy={loading}>
+      <div ref={listRef} className="walk-records-page__list" aria-busy={loading}>
         {visibleRecords.map((record) => (
-          <button className="walk-record-card" type="button" onClick={() => onOpenRecord?.(record.sessionId)} key={record.sessionId}>
-            <RouteMiniPreview route={record.routePreviewGeoJson} />
+          <article className="walk-record-card" key={record.sessionId}>
+            <RouteMiniPreview route={record.routePreviewGeoJson} courseName={record.courseName} />
             <span className="walk-record-card__copy">
               <strong>{record.courseName}</strong>
               <span>{formatDuration(record.durationSec)} · {formatDistance(record.distanceM)}</span>
@@ -151,10 +199,23 @@ export function WalkRecordsPage({ records, dogs = EMPTY_DOGS, onBack, onOpenReco
               {record.representative && <em>대표 코스</em>}
             </span>
             <span className="walk-record-card__chevron" aria-hidden="true">›</span>
-          </button>
+            <button
+              className="walk-record-card__open"
+              type="button"
+              aria-label={`${record.courseName} ${formatDuration(record.durationSec)} ${formatDistance(record.distanceM)}`}
+              onClick={() => onOpenRecord?.(record.sessionId)}
+            />
+          </article>
         ))}
         {!loading && !error && visibleRecords.length === 0 && <p className="walk-records-page__empty">선택한 달의 산책 기록이 아직 없어요.</p>}
-        {error && <p className="walk-records-page__empty" role="alert">기록을 불러오지 못했어요. {error}</p>}
+        {error && <div className="walk-records-page__empty" role="alert">
+          <p>기록을 불러오지 못했어요. {error}</p>
+          <button type="button" onClick={() => {
+            setError(undefined)
+            setLoading(true)
+            setRetryRequest((request) => request + 1)
+          }}>다시 시도</button>
+        </div>}
         {loading && <p className="walk-records-page__state">기록을 불러오는 중이에요…</p>}
         {hasMore && !loading && <button className="walk-records-page__more" type="button" onClick={loadMore}>기록 더 보기</button>}
       </div>
