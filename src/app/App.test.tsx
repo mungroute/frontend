@@ -404,6 +404,15 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '모달 · 시스템 상태' })).toBeInTheDocument()
   })
 
+  it('shows the location permission sheet from a permission-independent preview route', () => {
+    window.history.replaceState({}, '', '/preview/location-permission')
+
+    render(<App />)
+
+    expect(screen.getByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '위치 사용 허용' })).toBeInTheDocument()
+  })
+
   it('shows a recoverable not-found page for an unknown route', () => {
     window.history.replaceState({}, '', '/missing-page')
     render(<App />)

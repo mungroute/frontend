@@ -6,6 +6,7 @@
 .system-surface--sheet::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .system-surface .ui-sheet__handle, .system-network-sheet .ui-sheet__handle { width: 42px; margin-bottom: 24px; }
 .system-surface--record-more { min-height: 426px; }
+.system-surface--location-permission { --draggable-sheet-background: var(--color-bg-base); padding-top: 40px; }
 .system-surface--invite { min-height: 512px; }
 .system-surface--course-share { --draggable-sheet-background: #faf7f2; min-height: 624px; display: flex; flex-direction: column; overflow-y: hidden; padding-top: 28px; background: #faf7f2; }
 .system-surface--course-share > .ui-button { margin-top: auto; }

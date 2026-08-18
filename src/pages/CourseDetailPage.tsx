@@ -370,16 +370,16 @@ export function CourseDetailPage({
         </div>
         {diagnostics && (
           <div className="course-detail-page__thermal-controls">
-            <button
+            {!diagnosticsVisible && <button
               className="course-detail-page__thermal-toggle"
               type="button"
-              aria-expanded={diagnosticsVisible}
+              aria-expanded="false"
               aria-controls="course-thermal-details"
               onClick={() => {
-                setDiagnosticsVisible((visible) => !visible)
-                if (!diagnosticsVisible && selectedLegSequence !== undefined) setSegmentFocusActive(true)
+                setDiagnosticsVisible(true)
+                if (selectedLegSequence !== undefined) setSegmentFocusActive(true)
               }}
-            >{diagnosticsVisible ? '닫기' : '구간 정보'}</button>
+            >구간 정보</button>}
             {diagnosticsVisible && <div className="course-detail-page__thermal-card" id="course-thermal-details">
             {selectedLeg && <>
               <div className="course-detail-page__segment-heading">
