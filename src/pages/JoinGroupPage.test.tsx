@@ -22,4 +22,13 @@ describe('JoinGroupPage', () => {
     fireEvent.change(input, { target: { value: 'https://mungroute.example/groups/invite?code=MUNG24' } })
     expect(input).toHaveValue('MUNG24')
   })
+
+  it('accepts Korean characters and uppercases English letters', () => {
+    render(<JoinGroupPage defaultCode="" />)
+
+    const input = screen.getByLabelText('초대 코드')
+    fireEvent.change(input, { target: { value: '멍루트ab' } })
+
+    expect(input).toHaveValue('멍루트AB')
+  })
 })

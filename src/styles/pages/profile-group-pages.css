@@ -19,26 +19,59 @@
 .my-page__stats .management-detail-row { border: 1px solid rgba(255,113,57,.12); background: linear-gradient(110deg, rgba(255,247,241,.92), var(--color-surface) 62%); }
 .my-page :is(.my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service) .management-detail-row { border: 1px solid rgba(72,52,38,.04); }
 
-.dog-management-page__list { position: absolute; top: 107px; right: 19px; left: 19px; display: grid; gap: 18px; }
-.dog-management-page__register { position: absolute; top: 381px; right: 19px; left: 19px; width: auto; height: 52px; }
+.dog-management-page__register { position: absolute; z-index: 2; top: 107px; right: 19px; left: 19px; width: auto; height: 52px; }
+.dog-management-page__list { position: absolute; top: 177px; right: 19px; bottom: 20px; left: 19px; display: grid; align-content: start; gap: 18px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.dog-management-page__list::-webkit-scrollbar { display: none; }
 
 .group-list-page__actions { position: absolute; top: 97px; right: 19px; left: 19px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .group-list-page__actions .ui-button { height: 50px; min-height: 50px; padding-inline: 8px; font-size: 15px; }
-.group-list-page__list { position: absolute; top: 169px; right: 19px; left: 19px; display: grid; gap: 20px; }
+.group-list-page__list { position: absolute; top: 169px; right: 19px; bottom: 96px; left: 19px; display: grid; align-content: start; gap: 20px; overflow-y: auto; padding-bottom: 10px; overscroll-behavior: contain; scrollbar-width: none; }
+.group-list-page__list::-webkit-scrollbar, .shared-courses-page__list::-webkit-scrollbar, .group-room-page__sheet::-webkit-scrollbar { display: none; }
+.group-list-page__list > h2 { margin: 5px 3px -7px; font-size: 14px; line-height: 21px; }
+.group-list-page__share-guide { margin: 0; padding: 11px 14px; border: 1px solid rgba(255,113,57,.2); border-radius: 14px; color: var(--color-primary); background: var(--color-primary-soft); text-align: center; font-size: 12px; font-weight: 800; }
+.group-list-page__error { margin: 0; color: var(--color-alert); text-align: center; font-size: 12px; line-height: 18px; }
 
 .group-room-page__map { position: absolute; top: 73px; right: 19px; left: 19px; height: 312px; border-radius: 20px; }
-.group-room-page__activity { min-width: 44px; height: 36px; padding: 0; border: 0; color: var(--color-primary); background: transparent; font-size: 13px; font-weight: 700; cursor: pointer; }
+.group-room-page__header-actions { display: flex; align-items: center; gap: 2px; }
+.group-room-page__header-actions button { min-width: 40px; height: 34px; padding: 0 7px; border: 0; color: var(--color-primary); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
 .group-room-page__map-note { position: absolute; z-index: 2; top: 16px; left: 18px; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; font-weight: 500; }
-.group-room-page__sheet { position: absolute; top: 357px; right: -1px; bottom: -1px; left: -1px; padding: 26px 20px; border-radius: 28px 28px 0 0; background: var(--color-bg-base); }
+.group-room-page__sheet { position: absolute; top: 357px; right: -1px; bottom: -1px; left: -1px; overflow-y: auto; padding: 26px 20px 24px; border-radius: 28px 28px 0 0; background: var(--color-bg-base); overscroll-behavior: contain; scrollbar-width: none; }
 .group-room-page__sheet h2 { margin: 0; font-size: 21px; line-height: 31px; }
-.group-room-page__sheet > p { margin: 1px 0 18px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.group-room-page__sheet-heading, .group-room-page__manage-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.group-room-page__sheet-heading p, .group-room-page__manage-heading p { margin: 1px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.group-room-page__sheet-heading button, .group-room-page__manage-heading button { flex: 0 0 auto; padding: 6px 9px; border: 0; color: var(--color-primary); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
 .group-room-page__routes { display: grid; gap: 16px; }
-.group-room-page__share { position: absolute; top: 348px; right: 20px; left: 20px; width: auto; height: 52px; }
+.group-room-page__share { width: 100%; height: 52px; margin-top: 18px; }
+.group-room-page__state { position: absolute; top: 112px; right: 20px; left: 20px; }
+.group-room-page__error, .create-group-page__error { margin: 12px 4px 0; color: var(--color-alert); text-align: center; font-size: 12px; line-height: 18px; }
+.group-room-page__manage { display: grid; gap: 14px; padding-bottom: 12px; }
+.group-room-page__manage-heading { margin-bottom: 0; }
+.group-room-page__edit { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--color-surface); }
+.group-room-page__edit input, .group-room-page__edit textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid var(--color-border); border-radius: 12px; outline: none; color: var(--color-text-primary); background: #fff; font: inherit; font-size: 13px; }
+.group-room-page__edit textarea { min-height: 66px; resize: vertical; }
+.group-room-page__edit fieldset { margin: 2px 0; padding: 0; border: 0; }
+.group-room-page__edit fieldset legend { margin-bottom: 6px; font-size: 11px; font-weight: 800; }
+.group-room-page__edit fieldset div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.group-room-page__edit fieldset button { min-height: 36px; border: 1px solid var(--color-border); color: var(--color-text-secondary); background: #fff; }
+.group-room-page__edit fieldset button[aria-pressed='true'] { border-color: #dec5ad; color: #604b3d; background: #fff7e8; box-shadow: 0 4px 10px rgba(124,92,65,.08); }
+.group-room-page__edit button, .group-room-page__invite button { min-height: 38px; border: 0; border-radius: 11px; color: var(--color-on-primary); background: var(--color-primary); font-size: 12px; font-weight: 800; cursor: pointer; }
+.group-room-page__edit button:disabled { opacity: .45; cursor: default; }
+.group-room-page__invite { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgba(255,113,57,.18); border-radius: 16px; background: var(--color-primary-soft); }
+.group-room-page__invite button { padding: 0 12px; }
+.group-room-page__invite strong { color: var(--color-primary); font-size: 17px; letter-spacing: .16em; }
+.group-room-page__members { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.group-room-page__members li { min-height: 58px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 15px; background: var(--color-surface); }
+.group-room-page__members img { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; object-fit: cover; }
+.group-room-page__members span { min-width: 0; display: grid; flex: 1; gap: 1px; }
+.group-room-page__members strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.group-room-page__members small { color: var(--color-text-secondary); font-size: 11px; }
+.group-room-page__members button { padding: 5px 8px; border: 0; color: var(--color-alert); background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+.group-room-page__close-group { min-height: 42px; border: 1px solid rgba(196,73,55,.22); border-radius: 13px; color: var(--color-alert); background: #fff8f6; font-size: 12px; font-weight: 800; cursor: pointer; }
 
 .shared-courses-page__filters { position: absolute; top: 83px; left: 19px; display: flex; gap: 10px; }
 .shared-courses-page__filters .ui-chip { min-height: 34px; padding-inline: 16px; border-color: transparent; font-size: 13px; }
 .shared-courses-page__filters .ui-chip[aria-pressed='true'] { border-color: var(--color-primary); }
-.shared-courses-page__list { position: absolute; top: 137px; right: 19px; left: 19px; display: grid; gap: 20px; }
+.shared-courses-page__list { position: absolute; top: 137px; right: 19px; bottom: 20px; left: 19px; display: grid; align-content: start; gap: 20px; overflow-y: auto; padding-bottom: 10px; overscroll-behavior: contain; scrollbar-width: none; }
 
 .create-group-page form > label { position: absolute; right: 19px; left: 19px; display: grid; gap: 10px; font-size: 14px; line-height: 21px; font-weight: 700; }
 .create-group-page__name { top: 97px; }
@@ -47,7 +80,29 @@
 .create-group-page input { height: 56px; padding: 0 16px; }
 .create-group-page textarea { height: 132px; padding: 17px 16px; resize: none; }
 .create-group-page input::placeholder, .create-group-page textarea::placeholder { color: var(--color-text-secondary); opacity: 1; }
+.create-group-page fieldset { position: absolute; right: 19px; left: 19px; margin: 0; padding: 0; border: 0; }
+.create-group-page fieldset legend { padding: 0; font-size: 14px; line-height: 21px; font-weight: 800; }
+.create-group-page fieldset > p { margin: 3px 0 9px; color: var(--color-text-secondary); font-size: 11px; line-height: 17px; }
+.create-group-page fieldset > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.create-group-page fieldset button { min-height: 57px; display: grid; place-content: center; gap: 1px; padding: 7px; border: 1px solid var(--color-border); border-radius: 15px; color: var(--color-text-primary); background: var(--color-surface); font-size: 12px; font-weight: 750; cursor: pointer; }
+.create-group-page fieldset button strong { font-size: 13px; }
+.create-group-page fieldset button small { color: var(--color-text-secondary); font-size: 10px; font-weight: 500; }
+.create-group-page fieldset button[aria-pressed='true'] { border-color: #dec5ad; color: #604b3d; background: #fff7e8; box-shadow: 0 5px 13px rgba(124,92,65,.09); }
+.create-group-page fieldset button[aria-pressed='true'] small { color: #8b725f; }
+.create-group-page__visibility { top: 379px; }
+.create-group-page__join-policy { top: 510px; }
+.create-group-page__join-policy button { min-height: 46px !important; }
+.create-group-page__error { position: absolute; top: 586px; right: 19px; left: 19px; }
 .create-group-page__submit { position: absolute; top: 719px; right: 19px; left: 19px; width: auto; height: 56px; }
+
+.group-course-detail-page__map { position: absolute; top: 80px; right: 19px; left: 19px; height: 430px; border-radius: 22px; }
+.group-course-detail-page__sheet { position: absolute; z-index: 2; right: -1px; bottom: -1px; left: -1px; min-height: 285px; padding: 24px 20px; border-radius: 28px 28px 0 0; background: var(--color-bg-base); box-shadow: 0 -8px 25px rgba(70,49,35,.08); }
+.group-course-detail-page__sheet .management-metrics { min-height: 88px; box-sizing: border-box; padding: 12px 14px; }
+.group-course-detail-page__sheet .management-metrics div { align-items: center; padding: 4px 0; text-align: center; }
+.group-course-detail-page__sheet > p { margin: 12px 4px; color: var(--color-text-secondary); text-align: center; font-size: 12px; }
+.group-course-detail-page__sheet .ui-button { width: 100%; }
+.group-course-detail-page__message { color: var(--color-primary) !important; font-weight: 700; }
+.group-course-detail-page__unshare { width: 100%; min-height: 40px; margin-top: 7px; border: 0; color: var(--color-alert); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
 
 @media (max-height: 700px) {
   .my-page__header { top: 15px; }
@@ -59,17 +114,19 @@
   .my-page__notifications { top: 417px; }
   .my-page__service { top: 487px; }
   .my-page :is(.my-page__stats, .my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service) .management-detail-row { height: 60px; }
-  .dog-management-page__list { top: 96px; gap: 12px; }
-  .dog-management-page__register { top: 338px; }
+  .dog-management-page__register { top: 96px; }
+  .dog-management-page__list { top: 160px; gap: 12px; }
   .group-list-page__list { gap: 12px; }
   .group-room-page__map { height: 210px; }
   .group-room-page__sheet { top: 270px; padding-top: 20px; }
   .group-room-page__sheet > p { margin-bottom: 12px; }
   .group-room-page__routes { gap: 12px; }
   .group-room-page__routes .shared-route-row { height: 88px; }
-  .group-room-page__share { top: auto; bottom: 20px; }
+  .group-room-page__share { margin-top: 12px; }
   .shared-courses-page__list { gap: 10px; }
   .shared-course-card { height: 140px; }
   .shared-course-card > img { height: 112px; }
   .create-group-page__submit { top: auto; bottom: 24px; }
+  .group-course-detail-page__map { height: 330px; }
+  .group-course-detail-page__sheet { min-height: 265px; }
 }

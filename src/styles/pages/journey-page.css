@@ -47,6 +47,20 @@
   background: var(--color-primary-pressed);
 }
 
+.group-page__state {
+  margin: 0;
+  padding: 24px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 16px;
+  color: var(--color-text-secondary);
+  background: rgba(255,255,255,.54);
+  text-align: center;
+  font-size: 13px;
+  line-height: 21px;
+}
+.group-page__state p { margin: 0; }
+.group-page__state button { margin-top: 10px; padding: 7px 13px; border: 1px solid var(--color-primary); border-radius: 999px; color: var(--color-primary); background: var(--color-surface); font: inherit; font-weight: 700; cursor: pointer; }
+
 @media (min-width: 391px) {
   .journey-page {
     box-shadow: var(--elevation-floating);
