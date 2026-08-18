@@ -1,3 +1,5 @@
+import { apiUrl } from './url'
+
 export type ProblemDetail = {
   status?: number
   code?: string
@@ -46,7 +48,7 @@ async function readProblem(response: Response): Promise<ProblemDetail> {
 
 export async function refreshAuthentication(): Promise<AuthTokenResponse> {
   if (!refreshRequest) {
-    refreshRequest = fetch('/api/auth/refresh', {
+    refreshRequest = fetch(apiUrl('/api/auth/refresh'), {
       method: 'POST',
       credentials: 'include',
     })
@@ -99,7 +101,7 @@ export async function apiRequest<T>(
   }
   if (authenticated && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
 
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     credentials: 'include',
     ...init,
     headers,

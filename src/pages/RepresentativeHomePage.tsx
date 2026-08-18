@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { DraggableSheet, HomeBottomNavigation, HomeWalkStartAction } from '../Components/ui'
@@ -17,8 +16,6 @@ type RepresentativeHomePageProps = {
 const asset = (name: string) => `/assets/s01/${name}`
 
 export function RepresentativeHomePage({ onStartWalk = () => undefined, onCompareCourse = () => undefined, onRecommendCourse = () => undefined, onOpenCourse = () => undefined, course, map }: RepresentativeHomePageProps) {
-  const [distanceMode, setDistanceMode] = useState(true)
-
   return (
     <main className="representative-home-page">
       <BaseMapViewport
@@ -50,14 +47,6 @@ export function RepresentativeHomePage({ onStartWalk = () => undefined, onCompar
           <button type="button" onClick={onCompareCourse}>오늘의 추천 대안 보기</button>
           <button type="button" onClick={onRecommendCourse}>새 코스 추천받기</button>
         </div>
-        <button
-          className="representative-home-page__switch"
-          type="button"
-          role="switch"
-          aria-label="거리두기 모드"
-          aria-checked={distanceMode}
-          onClick={() => setDistanceMode((current) => !current)}
-        ><span className="representative-home-page__mode-copy"><span>거리두기 모드</span><small>산책을 시작하면 작동해요</small></span><img src={asset('toggle-thumb.svg')} alt="" /></button>
       </DraggableSheet>
 
       <HomeBottomNavigation />

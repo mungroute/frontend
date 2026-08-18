@@ -69,6 +69,10 @@ export type WalkRecordSummary = {
   representative: boolean
   loop: boolean | null
   matchStatus: WalkMatchStatus
+  dogNames: string[]
+  distanceAlertCount: number
+  averageSpeedKmh: number
+  routePreviewGeoJson: GeoJsonLineString | null
 }
 
 export type WalkRecordDetail = WalkRecordSummary & {
@@ -77,13 +81,54 @@ export type WalkRecordDetail = WalkRecordSummary & {
   pointCount: number
   usablePointCount: number
   trackGeoJson: GeoJsonLineString | null
+  dogs: { dogId: number; name: string; breed: string }[]
+}
+
+export type WalkStatistics = {
+  month: string
+  dogId: number | null
+  walkCount: number
+  totalDistanceM: number
+  totalDurationSec: number
+  averageDistanceM: number
+  averageDurationSec: number
+  lastWalkedAt: string | null
+  weekdayDistances: { dayOfWeek: number; distanceM: number }[]
+  favoriteCourse: { courseName: string; walkCount: number; averageDurationSec: number } | null
+}
+
+export type WalkContributionRecord = {
+  sessionId: number
+  courseName: string
+  distanceM: number
+  startedAt: string
+  hasRoute: boolean
+}
+
+export type WalkContributionDay = {
+  date: string
+  totalDistanceM: number
+  walkCount: number
+  records: WalkContributionRecord[]
+}
+
+export type WalkContributions = {
+  year: number
+  dogId: number | null
+  days: WalkContributionDay[]
+}
+
+export type WalkRecordFilter = {
+  from?: string
+  to?: string
+  dogId?: number
 }
 
 export const walkApi = {
-  start(mode: WalkPresenceMode = 'off') {
+  start(mode: WalkPresenceMode = 'off', dogIds: number[] = []) {
     return apiRequest<WalkModeResult & { startedAt: string }>('/api/walks/start', {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, dogIds }),
     })
   },
   changeMode(sessionId: number, mode: WalkPresenceMode) {
@@ -131,13 +176,33 @@ export const walkApi = {
       body: JSON.stringify({ representative }),
     })
   },
-  list(page = 0, size = 20) {
-    return apiRequest<WalkRecordSummary[]>(`/api/walks?page=${page}&size=${size}`)
+  list(page = 0, size = 20, filter: WalkRecordFilter = {}) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (filter.from) params.set('from', filter.from)
+    if (filter.to) params.set('to', filter.to)
+    if (filter.dogId) params.set('dogId', String(filter.dogId))
+    return apiRequest<WalkRecordSummary[]>(`/api/walks?${params.toString()}`)
   },
   detail(sessionId: number) {
     return apiRequest<WalkRecordDetail>(`/api/walks/${sessionId}`)
   },
   delete(sessionId: number) {
     return apiRequest<void>(`/api/walks/${sessionId}`, { method: 'DELETE' })
+  },
+  rename(sessionId: number, courseName: string) {
+    return apiRequest<WalkRecordDetail>(`/api/walks/${sessionId}/name`, {
+      method: 'PATCH',
+      body: JSON.stringify({ courseName }),
+    })
+  },
+  statistics(month: string, dogId?: number) {
+    const params = new URLSearchParams({ month })
+    if (dogId) params.set('dogId', String(dogId))
+    return apiRequest<WalkStatistics>(`/api/walks/statistics?${params.toString()}`)
+  },
+  contributions(year: number, dogId?: number) {
+    const params = new URLSearchParams({ year: String(year) })
+    if (dogId) params.set('dogId', String(dogId))
+    return apiRequest<WalkContributions>(`/api/walks/contributions?${params.toString()}`)
   },
 }

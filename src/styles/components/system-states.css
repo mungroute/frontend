@@ -69,6 +69,7 @@
 .system-full-state p { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
 .system-full-state__actions { position: absolute; right: 20px; bottom: 24px; left: 20px; display: grid; gap: 10px; }
 .system-record-info { display: grid; gap: 8px; margin: 8px 0 24px; text-align: left; }
+.system-surface--record-info { min-height: 0; }
 .system-record-info p { margin: 0; }
 .system-record-info strong { color: var(--color-primary); font-size: 14px; }
 .system-loading-state { padding-top: 58px; }

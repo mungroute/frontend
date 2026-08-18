@@ -9,6 +9,11 @@
 .dog-profile-card__copy { display: grid; gap: 1px; min-width: 0; }
 .dog-profile-card__copy strong { font-size: 17px; line-height: 24px; }
 .dog-profile-card__copy small { color: var(--color-text-secondary); font-size: 13px; line-height: 19px; white-space: nowrap; }
+.dog-profile-card__tags { display: flex; width: 100%; max-width: 210px; gap: 5px; margin-top: 5px; padding: 1px 2px 3px 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-inline: contain; touch-action: pan-x; scrollbar-width: none; }
+.dog-profile-card__tags::-webkit-scrollbar { display: none; }
+.dog-profile-card__tags em { min-height: 24px; display: inline-flex; flex: 0 0 auto; align-items: center; padding: 2px 9px; border: 1px solid var(--color-primary); border-radius: 999px; color: var(--color-primary); background: var(--color-primary-soft); box-shadow: 0 2px 5px rgba(244,122,58,.08); font-size: 10px; line-height: 15px; font-style: normal; font-weight: 800; white-space: nowrap; scroll-snap-align: start; }
+.dog-profile-card--large .dog-profile-card__tags { max-width: 160px; overflow: visible; }
+.dog-profile-card__tags .dog-profile-card__tag-count { border-color: var(--color-border); color: var(--color-text-secondary); background: var(--color-bg-subtle); }
 .dog-profile-card > button { position: absolute; top: 16px; right: 18px; min-width: 44px; min-height: 32px; padding: 0; border: 0; color: var(--color-primary); background: transparent; font-size: 12px; font-weight: 500; cursor: pointer; }
 .dog-profile-card:not(.dog-profile-card--large) > button { top: 10px; right: 14px; font-size: 13px; }
 .service-info-row { width: 100%; height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border: 0; border-radius: var(--radius-16); color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { authApi } from './auth'
 import { apiRequest, setAccessToken } from './http'
+import { apiUrl } from './url'
 
 const authBody = {
   accessToken: 'issued-access-token',
@@ -30,7 +31,7 @@ describe('authApi', () => {
     await authApi.login('mango@example.com', 'mungroute1')
     await apiRequest<{ ok: boolean }>('/api/protected')
 
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/login')
+    expect(fetchMock.mock.calls[0][0]).toBe(apiUrl('/api/auth/login'))
     const protectedHeaders = fetchMock.mock.calls[1][1].headers as Headers
     expect(protectedHeaders.get('Authorization')).toBe('Bearer issued-access-token')
   })
@@ -46,7 +47,7 @@ describe('authApi', () => {
 
     await apiRequest<void>('/api/walks/start', { method: 'POST' })
 
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/refresh')
+    expect(fetchMock.mock.calls[0][0]).toBe(apiUrl('/api/auth/refresh'))
     expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({ credentials: 'include' }))
     const protectedHeaders = fetchMock.mock.calls[1][1].headers as Headers
     expect(protectedHeaders.get('Authorization')).toBe('Bearer issued-access-token')
@@ -93,10 +94,10 @@ describe('authApi', () => {
     await apiRequest<void>('/api/walks/start', { method: 'POST' })
 
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
-      '/api/auth/login',
-      '/api/walks/start',
-      '/api/auth/refresh',
-      '/api/walks/start',
+      apiUrl('/api/auth/login'),
+      apiUrl('/api/walks/start'),
+      apiUrl('/api/auth/refresh'),
+      apiUrl('/api/walks/start'),
     ])
     const retriedHeaders = fetchMock.mock.calls[3][1].headers as Headers
     expect(retriedHeaders.get('Authorization')).toBe('Bearer refreshed-access-token')

@@ -20,8 +20,9 @@ describe('MyPage', () => {
 
   it('opens walk statistics from the summary row', () => {
     const onOpenStats = vi.fn()
-    render(<MyPage onOpenStats={onOpenStats} />)
+    render(<MyPage onOpenStats={onOpenStats} walkStatisticsDescription="이번 달 3회 · 4.2km" />)
 
+    expect(screen.getByText('이번 달 3회 · 4.2km')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /산책 통계/ }))
     expect(onOpenStats).toHaveBeenCalledOnce()
   })

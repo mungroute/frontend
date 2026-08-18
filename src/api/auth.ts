@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string
   nickname: string
   phoneNumber: string
+  profileImageUrl?: string | null
 }
 
 export type AuthResponse = {

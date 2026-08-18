@@ -5,6 +5,7 @@
 .my-page__welcome strong { color: var(--color-primary); font-weight: 700; }
 .my-page__logout { min-width: 64px; height: 34px; margin-top: 3px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text-secondary); background: rgba(255,255,255,.7); font-size: 12px; font-weight: 600; cursor: pointer; }
 .my-page__logout:active { color: var(--color-primary); border-color: rgba(255,113,57,.35); background: var(--color-primary-soft); }
+.my-page__header-actions { display: flex; gap: 6px; }
 .my-page__profile, .my-page__stats, .my-page__dogs, .my-page__groups, .my-page__notifications, .my-page__service { position: absolute; right: 19px; left: 19px; }
 .my-page__profile { top: 100px; }
 .my-page__stats { top: 247px; }

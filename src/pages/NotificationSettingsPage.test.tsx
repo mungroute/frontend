@@ -5,9 +5,9 @@ import { NotificationSettingsPage } from './NotificationSettingsPage'
 describe('NotificationSettingsPage', () => {
   it.each([
     ['거리두기 접근 알림', 'true'],
-    ['GPS 상태 알림', 'true'],
+    ['만나기 요청 알림', 'true'],
     ['그룹 활동', 'false'],
-    ['마케팅 알림', 'false'],
+    ['서비스 알림', 'true'],
   ])('lets %s be changed', (label, initialValue) => {
     render(<NotificationSettingsPage />)
 
