@@ -6,10 +6,12 @@ import { WalkRouteProgress } from '../Components/walk/WalkRouteProgress'
 import { PresenceModeControl } from '../Components/walk/DistanceModeControl'
 import { DistanceRangeControl } from '../Components/walk/DistanceRangeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
+import { MeetWalkPanel } from '../Components/walk/MeetWalkPanel'
 import { WalkStats } from '../Components/walk/WalkStats'
 import { WalkEndDialog } from '../Components/system'
 import type { GpsSignal } from '../features/walk-record/useWalkTracker'
 import type { LockedWalkPresenceMode } from '../api/walks'
+import type { MeetCandidate, MeetConnection, MeetRequest } from '../api/meet'
 import { DraggableSheet } from '../Components/ui'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/active-walk-page.css'
@@ -32,6 +34,15 @@ type ActiveWalkPageProps = {
   plannedRouteCoordinates?: MapCoordinate[]
   walkedCoordinates?: MapCoordinate[]
   gpsSignal?: GpsSignal
+  meetCandidates?: MeetCandidate[]
+  meetRequests?: MeetRequest[]
+  meetConnection?: MeetConnection
+  onMeetRequest?: (candidateRef: string) => void
+  onMeetAccept?: (requestId: string) => void
+  onMeetReject?: (requestId: string) => void
+  onMeetCancel?: (requestId: string) => void
+  onMeetEnd?: (requestId: string) => void
+  onMeetBlock?: (requestId: string) => void
 }
 
 const gpsLabels: Record<GpsSignal, string> = {
@@ -41,15 +52,15 @@ const gpsLabels: Record<GpsSignal, string> = {
   error: 'GPS 위치를 확인할 수 없음',
 }
 
-export function ActiveWalkPage({ map, onPause, onStop, onPhoto, distanceMode, onDistanceModeChange, presenceMode, presenceEnabled, onPresenceEnabledChange, time = '00:17:00', distance = '1.2km', distanceRadius = 100, onDistanceRadiusChange, plannedRouteCoordinates = [], walkedCoordinates = [], gpsSignal = 'waiting' }: ActiveWalkPageProps) {
+export function ActiveWalkPage({ map, onPause, onStop, onPhoto, distanceMode, onDistanceModeChange, presenceMode, presenceEnabled, onPresenceEnabledChange, time = '00:17:00', distance = '1.2km', distanceRadius = 100, onDistanceRadiusChange, plannedRouteCoordinates = [], walkedCoordinates = [], gpsSignal = 'waiting', meetCandidates = [], meetRequests = [], meetConnection, onMeetRequest, onMeetAccept, onMeetReject, onMeetCancel, onMeetEnd, onMeetBlock }: ActiveWalkPageProps) {
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false)
   const resolvedMode = presenceMode === undefined ? 'distance' : presenceMode
   const resolvedEnabled = presenceEnabled ?? distanceMode ?? true
   const changePresence = onPresenceEnabledChange ?? onDistanceModeChange
-  const routeOverlay = useMemo(() => ({ routes: [
+  const routeOverlay = useMemo(() => ({ markers: meetConnection ? [{ id: 'meet-friend', position: { latitude: meetConnection.lat, longitude: meetConnection.lon }, kind: 'default' as const, label: meetConnection.profile.dogName, profileImageSrc: meetConnection.profile.profileImageUrl ?? undefined }] : [], routes: [
     ...(plannedRouteCoordinates.length >= 2 ? [{ id: 'planned-course', coordinates: plannedRouteCoordinates, color: '#9f9c97', width: 7 }] : []),
     ...(walkedCoordinates.length >= 2 ? [{ id: 'walked-course', coordinates: walkedCoordinates, color: '#f47a3a', width: 6 }] : []),
-  ] }), [plannedRouteCoordinates, walkedCoordinates])
+  ] }), [meetConnection, plannedRouteCoordinates, walkedCoordinates])
 
   return (
     <main className="journey-page active-walk-page">
@@ -62,12 +73,13 @@ export function ActiveWalkPage({ map, onPause, onStop, onPhoto, distanceMode, on
         fallback={{ src: '/assets/s07/map.jpg', overlay: <><WalkRouteProgress planned={plannedRouteCoordinates} walked={walkedCoordinates} /><img className="active-walk-page__destination" src="/assets/s07/marker-destination.svg" alt="" /></> }}
       />
       <div className={`active-walk-page__gps active-walk-page__gps--${gpsSignal}`} role="status"><span>●</span> {gpsLabels[gpsSignal]}</div>
-      <DraggableSheet className={`active-walk-page__sheet walk-session-glass${resolvedMode === 'distance' && resolvedEnabled ? ' active-walk-page__sheet--with-range' : ''}`}>
+      <DraggableSheet className={`active-walk-page__sheet walk-session-glass${resolvedMode === 'distance' && resolvedEnabled ? ' active-walk-page__sheet--with-range' : ''}${resolvedMode === 'meet' && resolvedEnabled ? ' active-walk-page__sheet--with-meet' : ''}`}>
         <div className="active-walk-page__summary">
           <WalkStats time={time} distance={distance} />
           <PresenceModeControl mode={resolvedMode} enabled={resolvedEnabled} onChange={changePresence} />
         </div>
         {resolvedMode === 'distance' && resolvedEnabled && <DistanceRangeControl value={distanceRadius} onChange={onDistanceRadiusChange} />}
+        {resolvedMode === 'meet' && resolvedEnabled && <MeetWalkPanel candidates={meetCandidates} requests={meetRequests} connection={meetConnection} onRequest={(value) => onMeetRequest?.(value)} onAccept={(value) => onMeetAccept?.(value)} onReject={(value) => onMeetReject?.(value)} onCancel={(value) => onMeetCancel?.(value)} onEnd={(value) => onMeetEnd?.(value)} onBlock={(value) => onMeetBlock?.(value)} />}
         <div className="active-walk-page__status-row">
           <h1>산책 중</h1>
         </div>

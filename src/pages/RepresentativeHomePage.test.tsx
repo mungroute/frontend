@@ -26,20 +26,16 @@ describe('RepresentativeHomePage', () => {
     expect(screen.getByRole('heading', { name: '저녁 남산길' })).toBeInTheDocument()
     expect(screen.getByText('29분 · 1.80km')).toBeInTheDocument()
     expect(screen.getByText('그늘 68%')).toBeInTheDocument()
-    expect(screen.getByText('산책을 시작하면 작동해요')).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: '거리두기 모드' })).not.toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: '주요 메뉴' })).toHaveTextContent('홈코스그룹기록마이')
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('lets the user toggle distance mode and start a walk', () => {
+  it('starts a walk without exposing a home-level mode toggle', () => {
     const onStartWalk = vi.fn()
     render(<RepresentativeHomePage course={course} onStartWalk={onStartWalk} />)
 
-    const distanceMode = screen.getByRole('switch', { name: '거리두기 모드' })
-    expect(distanceMode).toHaveAttribute('aria-checked', 'true')
-    fireEvent.click(distanceMode)
-    expect(distanceMode).toHaveAttribute('aria-checked', 'false')
-
+    expect(screen.queryByRole('switch', { name: '거리두기 모드' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
     expect(onStartWalk).toHaveBeenCalledOnce()
   })

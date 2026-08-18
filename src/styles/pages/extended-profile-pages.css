@@ -1,22 +1,65 @@
 .extended-profile-page .management-header { z-index: 3; }
 
-.dog-profile-form-page__photo { position: absolute; top: 83px; left: 134px; width: 120px; height: 120px; border-radius: 50%; object-fit: contain; }
-.dog-profile-form-page__photo-action { position: absolute; top: 207px; left: 145px; width: 100px; height: 35px; display: grid; place-items: center; padding: 0; color: var(--color-primary); font-size: 13px; font-weight: 500; cursor: pointer; }
-.dog-profile-form-page__name, .dog-profile-form-page__breed, .dog-profile-form-page__birth { position: absolute; right: 19px; left: 19px; }
-.dog-profile-form-page__name { top: 258px; }
-.dog-profile-form-page__breed { top: 360px; }
-.dog-profile-form-page__birth { top: 462px; }
+.dog-profile-form-page__scroll { position: absolute; inset: 72px 0 0; overflow-y: auto; padding: 10px 19px 28px; scrollbar-width: none; }
+.dog-profile-form-page__scroll::-webkit-scrollbar { display: none; }
+.dog-profile-form-page__step { display: grid; gap: 3px; margin: 0 0 18px; padding: 16px 18px; border: 1px solid #eaded6; border-radius: 18px; background: #fffaf6; }
+.dog-profile-form-page__step span { color: var(--color-primary); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+.dog-profile-form-page__step strong { font-size: 18px; line-height: 27px; }
+.dog-profile-form-page__step small { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; }
+.dog-profile-form-page__photo { display: block; width: 112px; height: 112px; margin: 0 auto; border-radius: 50%; object-fit: contain; }
+.dog-profile-form-page__photo-action { width: 100px; height: 35px; display: grid; place-items: center; margin: 2px auto 10px; padding: 0; color: var(--color-primary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.dog-profile-form-page__name, .dog-profile-form-page__breed, .dog-profile-form-page__birth { margin-top: 16px; }
 .dog-profile-form-page .ui-field { gap: 8px; }
 .dog-profile-form-page .ui-field__label { padding-left: 4px; font-size: 14px; line-height: 21px; font-weight: 700; }
 .dog-profile-form-page .ui-field__input { height: 56px; border-radius: var(--radius-14); font-size: 15px; }
-.dog-profile-form-page__date-trigger { display: block; text-align: left; cursor: pointer; }
-.dog-profile-form-page__default { position: absolute; top: 569px; right: 19px; left: 19px; height: 72px; padding: 0 16px 0 18px; border-radius: var(--radius-16); background: var(--color-surface); }
+.dog-profile-form-page fieldset { min-width: 0; padding: 0; border: 0; }
+.dog-profile-form-page__basic-choice { margin: 18px 0 0; }
+.dog-profile-form-page__basic-choice legend, .dog-profile-form-page__birth legend { padding: 0 4px 8px; font-size: 14px; line-height: 21px; font-weight: 800; }
+.dog-profile-form-page__binary-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.dog-profile-form-page__binary-options button { min-height: 48px; border: 1px solid #ddd5cf; border-radius: 14px; color: #625b56; background: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.dog-profile-form-page__binary-options button[aria-pressed='true'] { border-color: #efb08d; color: #e36f31; background: #fff7f0; box-shadow: 0 3px 8px rgba(244,122,58,.07); }
+.dog-profile-form-page__birth-selects { display: grid; grid-template-columns: 1.25fr .8fr .8fr; gap: 8px; }
+.dog-profile-form-page__birth-selects label { min-width: 0; }
+.dog-profile-form-page__birth-selects label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.dog-profile-form-page__birth-selects select { width: 100%; height: 52px; padding: 0 10px; border: 1px solid #ddd5cf; border-radius: 14px; color: var(--color-text-primary); background: #fff; font: inherit; font-size: 13px; }
+.dog-profile-form-page__temperament { min-width: 0; margin: 22px 0 0; padding: 0; border: 0; }
+.dog-profile-form-page__temperament legend { padding: 0 4px; font-size: 14px; line-height: 21px; font-weight: 800; }
+.dog-profile-form-page__temperament legend small { margin-left: 5px; color: var(--color-primary); font-size: 11px; }
+.dog-profile-form-page__temperament > p { margin: 4px 4px 10px; color: var(--color-text-secondary); font-size: 11px; line-height: 17px; }
+.dog-profile-form-page__tag-options { display: flex; flex-wrap: wrap; gap: 8px 6px; }
+.dog-profile-form-page__tag-options button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 13px; border: 1px solid #d9d3ce; border-radius: 999px; color: #665f5a; background: #f8f6f4; box-shadow: 0 2px 5px rgba(68,51,42,.06); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; transition: border-color .18s ease, color .18s ease, background .18s ease, box-shadow .18s ease; }
+.dog-profile-form-page__tag-options button > span { width: 15px; height: 15px; display: inline-grid; flex: 0 0 15px; place-items: center; border-radius: 50%; color: #fff; background: var(--color-primary); font-size: 9px; line-height: 15px; font-weight: 900; }
+.dog-profile-form-page__tag-options button > b { font: inherit; line-height: 15px; white-space: nowrap; }
+.dog-profile-form-page__tag-options button[aria-pressed='false'] > span { border: 1px solid #d4cec9; color: #a9a19a; background: #e7e2de; }
+.dog-profile-form-page__tag-options button[aria-pressed='true'] { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-soft); box-shadow: 0 3px 8px rgba(244,122,58,.10); }
+.dog-profile-form-page__tag-options button:not(:disabled):hover { border-color: #dc8a68; background: #fff8f3; }
+.dog-profile-form-page__tag-options button:focus-visible { outline: 3px solid rgba(255,113,57,.28); outline-offset: 2px; }
+.dog-profile-form-page__tag-options button:disabled { opacity: .38; cursor: not-allowed; }
+.dog-profile-form-page__personality { margin-top: 26px; }
+.dog-profile-form-page__section-heading { display: flex; align-items: baseline; gap: 8px; padding: 0 4px 10px; }
+.dog-profile-form-page__section-heading strong { font-size: 14px; line-height: 21px; }
+.dog-profile-form-page__section-heading span { color: var(--color-text-secondary); font-size: 11px; }
+.dog-profile-form-page__personality-item { margin: 0 0 10px; padding: 14px; border: 1px solid #e5ddd7; border-radius: 16px; background: #fff; }
+.dog-profile-form-page__personality-label { display: grid; gap: 2px; margin-bottom: 10px; }
+.dog-profile-form-page__personality-label strong { font-size: 13px; line-height: 19px; font-weight: 800; }
+.dog-profile-form-page__personality-label small { color: var(--color-text-secondary); font-size: 10px; line-height: 15px; font-weight: 500; }
+.dog-profile-form-page__personality-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 4px; border-radius: 12px; background: #f3f0ed; }
+.dog-profile-form-page__personality-options button { min-width: 0; min-height: 36px; padding: 4px 3px; border: 0; border-radius: 9px; color: #746d68; background: transparent; font-size: 10px; font-weight: 700; line-height: 14px; cursor: pointer; }
+.dog-profile-form-page__personality-options button[aria-pressed='true'] { color: var(--color-primary); background: #fff7f0; box-shadow: 0 2px 7px rgba(244,122,58,.10); }
+.dog-profile-form-page__introduction { display: grid; gap: 7px; margin-top: 22px; }
+.dog-profile-form-page__introduction > span { padding: 0 4px; font-size: 14px; font-weight: 800; }
+.dog-profile-form-page__introduction > span small { margin-left: 4px; color: var(--color-text-secondary); font-size: 11px; }
+.dog-profile-form-page__introduction textarea { width: 100%; min-height: 76px; padding: 14px; resize: none; border: 1px solid #ddd5cf; border-radius: 14px; color: var(--color-text-primary); background: #fff; font: inherit; font-size: 13px; line-height: 20px; }
+.dog-profile-form-page__introduction > small { justify-self: end; padding-right: 4px; color: var(--color-text-secondary); font-size: 10px; }
+.dog-profile-form-page__default { height: 72px; margin-top: 22px; padding: 0 16px 0 18px; border-radius: var(--radius-16); background: var(--color-surface); }
 .dog-profile-form-page__default .ui-switch-row { height: 72px; }
 .dog-profile-form-page__default .ui-switch-title { font-size: 15px; font-weight: 500; }
 .dog-profile-form-page__default .ui-switch { width: 56px; height: 32px; }
 .dog-profile-form-page__default .ui-switch__thumb { width: 28px; height: 28px; }
 .dog-profile-form-page__default .ui-switch-row[aria-checked='true'] .ui-switch__thumb { transform: translateX(24px); }
-.dog-profile-form-page__save { position: absolute; top: 699px; right: 19px; left: 19px; width: auto; height: 56px; }
+.dog-profile-form-page__save { width: 100%; height: 56px; margin-top: 14px; }
+.dog-profile-form-page__delete { width: 100%; margin-top: 14px; color: #b84937; }
+.dog-profile-form-page__skip { width: 100%; min-height: 42px; margin-top: 6px; border: 0; color: var(--color-text-secondary); background: transparent; font-size: 13px; font-weight: 650; cursor: pointer; }
 
 .group-activity-page__list { position: absolute; top: 99px; right: 19px; left: 19px; display: grid; gap: 20px; margin: 0; padding: 0; list-style: none; }
 .group-activity-page .management-header p { position: absolute; top: 46px; left: 4px; margin: 0; }
@@ -47,13 +90,8 @@
 .walk-statistics-page__records { top: 659px; width: auto; height: 52px; min-height: 52px; }
 
 @media (max-height: 700px) {
-  .dog-profile-form-page__photo { top: 68px; width: 92px; height: 92px; left: calc(50% - 46px); }
-  .dog-profile-form-page__photo-action { top: 158px; }
-  .dog-profile-form-page__name { top: 194px; }
-  .dog-profile-form-page__breed { top: 280px; }
-  .dog-profile-form-page__birth { top: 366px; }
-  .dog-profile-form-page__default { top: 454px; }
-  .dog-profile-form-page__save { top: auto; bottom: 24px; }
+  .dog-profile-form-page__scroll { inset-block-start: 64px; }
+  .dog-profile-form-page__photo { width: 88px; height: 88px; }
   .group-activity-page__list { top: 91px; gap: 10px; }
   .group-activity-page__list .group-activity-item { height: 112px; }
   .service-info-page__brand { top: 68px; transform: scale(.8); transform-origin: top center; }

@@ -8,6 +8,7 @@
 .active-walk-page__gps span { color: #55a76a; font-size: 10px; }
 .active-walk-page__sheet { position: absolute; z-index: 3; right: -1px; bottom: -1px; left: -1px; height: 240px; padding: 28px 20px 16px; border-radius: var(--radius-28) var(--radius-28) 0 0; }
 .active-walk-page__sheet--with-range { height: 338px; }
+.active-walk-page__sheet--with-meet { height: 374px; }
 .active-walk-page__handle { width: 42px; height: 4px; margin: 0 auto 12px; border-radius: var(--radius-full); background: var(--color-border-strong); }
 .active-walk-page__summary { display: grid; grid-template-columns: minmax(0, 1fr) 154px; align-items: center; gap: 8px; }
 .active-walk-page__summary > .walk-stats { min-width: 0; }

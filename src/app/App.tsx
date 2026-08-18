@@ -24,9 +24,11 @@ import { SharedCoursesPage } from '../pages/SharedCoursesPage'
 import { CreateGroupPage } from '../pages/CreateGroupPage'
 import { JoinGroupPage } from '../pages/JoinGroupPage'
 import { NotificationSettingsPage } from '../pages/NotificationSettingsPage'
+import { AccountProfilePage } from '../pages/AccountProfilePage'
 import { ShadeTimelinePage } from '../pages/ShadeTimelinePage'
 import { DrawCoursePage } from '../pages/DrawCoursePage'
 import { DogProfileFormPage } from '../pages/DogProfileFormPage'
+import { DogOnboardingPage } from '../pages/DogOnboardingPage'
 import type { DogProfileFormValue } from '../pages/DogProfileFormPage'
 import type { DogProfileSummary } from '../Components/profile/DogProfileCard'
 import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
@@ -54,8 +56,24 @@ import { authApi } from '../api/auth'
 import type { AuthUser } from '../api/auth'
 import { courseCatalogApi } from '../api/courses'
 import type { CourseDetail, CourseSource } from '../api/courses'
+import { meetApi } from '../api/meet'
+import type { MeetCandidate, MeetConnection, MeetPresenceResult, MeetRequest } from '../api/meet'
+import { connectMeetSocket } from '../api/meetSocket'
+import type { MeetSocketClient } from '../api/meetSocket'
+import { profileApi } from '../api/profile'
+import type { DogProfile, NotificationSettings } from '../api/profile'
 
 const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail'])
+
+const resolveHomePath = async () => {
+  const [courses, records] = await Promise.all([
+    courseCatalogApi.list({ page: 0, size: 100, requestedAt: new Date().toISOString() }),
+    walkApi.list(0, 1),
+  ])
+  const hasRepresentativeCourse = courses.some((course) => course.representative)
+  const hasWalkRecord = records.length > 0
+  return hasRepresentativeCourse && hasWalkRecord ? '/home' : '/home/no-course'
+}
 
 const readWalkReturnTo = (search: string) => {
   const requested = new URLSearchParams(search).get('returnTo')
@@ -80,10 +98,39 @@ const isServiceInfoSection = (value: string | null): value is ServiceInfoSection
 
 type AppDog = DogProfileSummary & DogProfileFormValue
 
-const initialDogs: AppDog[] = [
-  { id: 'mango', name: '망고', detail: '골든 리트리버 · 4살', breed: '골든 리트리버', birthDate: '2022-05-12', isDefault: true, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE },
-  { id: 'cookie', name: '쿠키', detail: '푸들 · 2살', breed: '푸들', birthDate: '2024-03-18', isDefault: false, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE },
+const previewDogs: AppDog[] = [
+  { id: 'mango', name: '망고', detail: '골든 리트리버 · 4살', breed: '골든 리트리버', birthDate: '2022-05-12', gender: 'MALE', neutered: true, introduction: '천천히 다가오면 금방 친해져요.', isDefault: true, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE, temperamentTags: ['차분해요', '사람을 좋아해요'], leashGreeting: 'LIKES', strangerResponse: 'NEUTRAL', touchTolerance: 'COMFORTABLE', barkingLevel: 'RARE', bitingLevel: 'NONE' },
+  { id: 'cookie', name: '쿠키', detail: '푸들 · 2살', breed: '푸들', birthDate: '2024-03-18', gender: 'FEMALE', neutered: false, introduction: '', isDefault: false, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE, temperamentTags: ['활발해요'], leashGreeting: 'NEUTRAL', strangerResponse: 'NEUTRAL', touchTolerance: 'CONDITIONAL', barkingLevel: 'NORMAL', bitingLevel: 'NONE' },
 ]
+
+const initialDogs: AppDog[] = import.meta.env.MODE === 'test' ? previewDogs : []
+
+const defaultNotifications: NotificationSettings = {
+  serviceEnabled: true,
+  distanceEnabled: true,
+  meetEnabled: true,
+  groupEnabled: true,
+}
+
+const dogAge = (birthDate: string) => Math.max(0, new Date().getFullYear() - new Date(birthDate).getFullYear())
+const toAppDog = (dog: DogProfile): AppDog => ({
+  id: String(dog.dogId),
+  name: dog.name,
+  breed: dog.breed,
+  birthDate: dog.birthDate,
+  isDefault: dog.isDefault,
+  profileImageSrc: dog.profileImageUrl || DEFAULT_DOG_PROFILE_IMAGE,
+  temperamentTags: dog.temperamentTags,
+  gender: dog.gender,
+  neutered: dog.neutered,
+  introduction: dog.introduction ?? '',
+  leashGreeting: dog.leashGreeting,
+  strangerResponse: dog.strangerResponse,
+  touchTolerance: dog.touchTolerance,
+  barkingLevel: dog.barkingLevel,
+  bitingLevel: dog.bitingLevel,
+  detail: `${dog.breed} · ${dogAge(dog.birthDate)}살`,
+})
 
 export function App() {
   const [location, setLocation] = useState(readLocation)
@@ -93,13 +140,17 @@ export function App() {
   const [presenceEnabled, setPresenceEnabled] = useState(true)
   const [distanceRadius, setDistanceRadius] = useState(100)
   const [dogs, setDogs] = useState<AppDog[]>(initialDogs)
-  const [selectedDogIds, setSelectedDogIds] = useState<string[]>([initialDogs[0].id])
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>(initialDogs[0] ? [initialDogs[0].id] : [])
+  const [notificationSettings, setNotificationSettings] = useState(defaultNotifications)
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser>()
   const [backendWalkStarted, setBackendWalkStarted] = useState(false)
   const [walkStarting, setWalkStarting] = useState(false)
   const [walkEndResult, setWalkEndResult] = useState<WalkEndResult>()
   const [walkApiError, setWalkApiError] = useState<string>()
   const [nearbyPresence, setNearbyPresence] = useState<NearbyPresence>()
+  const [meetCandidates, setMeetCandidates] = useState<MeetCandidate[]>([])
+  const [meetRequests, setMeetRequests] = useState<MeetRequest[]>([])
+  const [meetConnection, setMeetConnection] = useState<MeetConnection>()
   const [walkRecords, setWalkRecords] = useState<WalkRecordSummary[]>()
   const [selectedWalkRecord, setSelectedWalkRecord] = useState<WalkRecordDetail>()
   const [representativeCourse, setRepresentativeCourse] = useState<CourseDetail>()
@@ -108,6 +159,7 @@ export function App() {
   const walkStartPromiseRef = useRef<Promise<number> | undefined>(undefined)
   const walkEndPromiseRef = useRef<Promise<WalkEndResult> | undefined>(undefined)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
+  const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
   const { requestCurrentLocation, setCurrentLocationMarker } = useMapLocation()
   const duration = readDuration(location.search)
   const isWalkTracking = location.pathname === '/walk/active' || location.pathname === '/walk/distance-alert'
@@ -122,6 +174,13 @@ export function App() {
       window.history.replaceState({}, '', `/walk/active${window.location.search}`)
       setLocation(readLocation())
     }
+  }, [])
+  const applyMeetResponse = useCallback((response: MeetPresenceResult) => {
+    setMeetCandidates(response.candidates)
+    setMeetConnection(response.connection ?? undefined)
+  }, [])
+  const applyMeetRequest = useCallback((request: MeetRequest) => {
+    setMeetRequests((current) => [request, ...current.filter((item) => item.requestId !== request.requestId)])
   }, [])
   const walkTracker = useWalkTracker(
     isWalkTracking,
@@ -143,13 +202,13 @@ export function App() {
         .catch((error: Error) => setWalkApiError(error.message))
     },
     (fix) => {
-      if (!presenceEnabled || walkPresenceMode !== 'distance') return
+      if (!presenceEnabled || !walkPresenceMode) return
       const sessionPromise = walkSessionIdRef.current
         ? Promise.resolve(walkSessionIdRef.current)
         : walkStartPromiseRef.current
       if (!sessionPromise) return
       void sessionPromise
-        .then((sessionId) => {
+        .then(async (sessionId): Promise<PresenceUpdateResult | MeetPresenceResult | undefined> => {
           const payload: PresenceUpdatePayload = {
           sessionId,
           measuredAt: fix.recordedAt,
@@ -160,10 +219,18 @@ export function App() {
           stationary: fix.stationary,
           radiusM: distanceRadius,
           }
-          if (presenceSocketRef.current?.send(payload)) return undefined
-          return walkApi.updatePresence(payload)
+          if (walkPresenceMode === 'distance') {
+            if (presenceSocketRef.current?.send(payload)) return undefined
+            return await walkApi.updatePresence(payload)
+          }
+          if (meetSocketRef.current?.send(payload)) return undefined
+          return await meetApi.updatePresence(payload)
         })
-        .then((response) => { if (response) applyPresenceResponse(response) })
+        .then((response) => {
+          if (!response) return
+          if ('nearby' in response) applyPresenceResponse(response)
+          else applyMeetResponse(response)
+        })
         .catch(() => undefined)
     },
   )
@@ -191,11 +258,52 @@ export function App() {
   }, [applyPresenceResponse, backendWalkStarted, isWalkTracking, presenceEnabled, walkPresenceMode])
 
   useEffect(() => {
+    const enabled = backendWalkStarted && isWalkTracking && presenceEnabled && walkPresenceMode === 'meet'
+    if (!enabled) {
+      meetSocketRef.current?.close()
+      meetSocketRef.current = undefined
+      return
+    }
+    const socket = connectMeetSocket({
+      tokenProvider: getValidAccessToken,
+      onPresence: applyMeetResponse,
+      onEvent: (event) => applyMeetRequest(event.request),
+    })
+    meetSocketRef.current = socket
+    const sessionId = walkSessionIdRef.current
+    if (sessionId) void meetApi.listRequests(sessionId).then(setMeetRequests).catch(() => undefined)
+    return () => {
+      if (meetSocketRef.current === socket) meetSocketRef.current = undefined
+      socket.close()
+    }
+  }, [applyMeetRequest, applyMeetResponse, backendWalkStarted, isWalkTracking, presenceEnabled, walkPresenceMode])
+
+  useEffect(() => {
     if (['/login', '/signup', '/password-reset'].includes(window.location.pathname)) return
     void authApi.restore()
       .then((response) => setAuthenticatedUser(response.user))
       .catch(() => setAuthenticatedUser(undefined))
   }, [])
+
+  useEffect(() => {
+    if (!authenticatedUser) return
+    let active = true
+    void Promise.all([profileApi.listDogs(), profileApi.getNotifications()])
+      .then(([loadedDogs, loadedNotifications]) => {
+        if (!active) return
+        const mappedDogs = loadedDogs.map(toAppDog)
+        setDogs(mappedDogs)
+        setSelectedDogIds((current) => {
+          const valid = current.filter((id) => mappedDogs.some((dog) => dog.id === id))
+          if (valid.length > 0) return valid
+          const first = mappedDogs.find((dog) => dog.isDefault) ?? mappedDogs[0]
+          return first ? [first.id] : []
+        })
+        setNotificationSettings(loadedNotifications)
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [authenticatedUser?.userId])
 
   useEffect(() => {
     if (location.pathname !== '/records') return
@@ -243,23 +351,43 @@ export function App() {
     setLocation(readLocation())
   }
 
-  const beginWalk = async (url: string, mode: WalkPresenceMode = 'off') => {
+  const beginWalk = async (url: string, mode: WalkPresenceMode = 'off', dogIds: string[] = selectedDogIds) => {
     walkTracker.reset()
     setWalkEndResult(undefined)
     setWalkApiError(undefined)
     setNearbyPresence(undefined)
+    setMeetCandidates([])
+    setMeetRequests([])
+    setMeetConnection(undefined)
     setBackendWalkStarted(false)
     setWalkStarting(true)
     walkSessionIdRef.current = undefined
     walkStartedAtRef.current = undefined
-    const pending = walkApi.start(mode).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
+    const persistedDogIds = dogIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
+    const pending = walkApi.start(mode, persistedDogIds).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
       walkSessionIdRef.current = sessionId
       walkStartedAtRef.current = startedAt
       const resolvedLockedMode = lockedMode ?? (activeMode === 'off' ? null : activeMode)
       setWalkPresenceMode(resolvedLockedMode)
       setPresenceEnabled(activeMode !== 'off')
       if (activeMode !== 'off') {
-        await walkApi.consentPresence(sessionId)
+        try {
+          if (activeMode === 'meet') {
+            const dog = dogs.find((item) => dogIds.includes(item.id)) ?? dogs[0]
+            if (!dog) throw new Error('만나기 모드에 사용할 반려견을 선택해 주세요.')
+            await meetApi.saveProfile({
+              dogName: dog.name,
+              breed: dog.breed,
+              ageYears: dogAge(dog.birthDate),
+              profileImageUrl: dog.profileImageSrc && dog.profileImageSrc.length <= 500 ? dog.profileImageSrc : null,
+              temperamentTags: dog.temperamentTags,
+            })
+          }
+          await walkApi.consentPresence(sessionId)
+        } catch (error) {
+          await walkApi.end(sessionId).catch(() => undefined)
+          throw error
+        }
       }
       return sessionId
     })
@@ -288,7 +416,11 @@ export function App() {
     }
 
     const nextMode: WalkPresenceMode = enabled ? walkPresenceMode : 'off'
-    if (!enabled) setNearbyPresence(undefined)
+    if (!enabled) {
+      setNearbyPresence(undefined)
+      setMeetCandidates([])
+      setMeetConnection(undefined)
+    }
     void sessionPromise
       .then((sessionId) => walkApi.changeMode(sessionId, nextMode)
         .then(async (response) => {
@@ -297,6 +429,10 @@ export function App() {
           setPresenceEnabled(response.mode !== 'off')
         }))
       .catch((error: Error) => setWalkApiError(error.message))
+  }
+
+  const runMeetAction = (action: () => Promise<MeetRequest>) => {
+    void action().then(applyMeetRequest).catch((error: Error) => setWalkApiError(error.message))
   }
 
   const pauseWalk = (url: string) => {
@@ -329,7 +465,13 @@ export function App() {
   const requestLocationPermission = () => {
     setLocationError(false)
     void requestCurrentLocation()
-      .then(() => navigate('/home/no-course'))
+      .then(async () => {
+        try {
+          navigate(await resolveHomePath())
+        } catch {
+          navigate('/home/no-course')
+        }
+      })
       .catch(() => setLocationError(true))
   }
 
@@ -369,8 +511,7 @@ export function App() {
       onSignUp={async (value) => {
         const response = await authApi.signup({ ...value, termsAgreed: true })
         setAuthenticatedUser(response.user)
-        navigate('/home/no-course')
-        setShowSignupLocationPermission(true)
+        navigate('/onboarding/dog')
       }}
     />
   }
@@ -404,7 +545,67 @@ export function App() {
   }
 
   if (location.pathname === '/profile/notifications') {
-    return <NotificationSettingsPage onBack={() => navigate('/profile')} />
+    return <NotificationSettingsPage value={notificationSettings} onBack={() => navigate('/profile')} onChange={async (next) => {
+      const previous = notificationSettings
+      setNotificationSettings(next)
+      try {
+        setNotificationSettings(await profileApi.updateNotifications(next))
+      } catch (error) {
+        setNotificationSettings(previous)
+        setWalkApiError(error instanceof Error ? error.message : '알림 설정을 저장하지 못했습니다.')
+      }
+    }} />
+  }
+
+  if (location.pathname === '/onboarding/dog') {
+    const finishOnboarding = () => {
+      navigate('/home/no-course')
+      setShowSignupLocationPermission(true)
+    }
+    return <DogOnboardingPage onSkip={finishOnboarding} onSave={async (value) => {
+      const created = await profileApi.createDog({
+        name: value.name,
+        breed: value.breed,
+        birthDate: value.birthDate,
+        profileImageUrl: value.profileImageSrc || null,
+        temperamentTags: value.temperamentTags,
+        gender: value.gender,
+        neutered: value.neutered,
+        introduction: value.introduction || null,
+        leashGreeting: value.leashGreeting,
+        strangerResponse: value.strangerResponse,
+        touchTolerance: value.touchTolerance,
+        barkingLevel: value.barkingLevel,
+        bitingLevel: value.bitingLevel,
+        isDefault: true,
+      })
+      const savedDog = toAppDog(created)
+      setDogs([savedDog])
+      setSelectedDogIds([savedDog.id])
+      finishOnboarding()
+    }} />
+  }
+
+  if (location.pathname === '/profile/account') {
+    return <AccountProfilePage
+      nickname={authenticatedUser?.nickname ?? ''}
+      email={authenticatedUser?.email ?? ''}
+      profileImageSrc={authenticatedUser?.profileImageUrl}
+      onBack={() => navigate('/profile')}
+      onSave={async (value) => {
+        const user = await profileApi.updateMe(value)
+        setAuthenticatedUser(user)
+        navigate('/profile')
+      }}
+      onDeactivate={async () => {
+        await profileApi.deactivate()
+        await authApi.logout()
+        setAuthenticatedUser(undefined)
+        setDogs([])
+        setSelectedDogIds([])
+        navigate('/login')
+      }}
+    />
   }
 
   if (location.pathname === '/profile/service') {
@@ -422,17 +623,43 @@ export function App() {
     const returnTo = params.get('returnTo') === '/walk/dogs' ? '/walk/dogs' : '/profile/dogs'
     const editingId = params.get('id')
     const editingDog = dogs.find((dog) => dog.id === editingId)
-    const initialDog = editingDog
-      ? { name: editingDog.name, breed: editingDog.breed, birthDate: editingDog.birthDate, isDefault: editingDog.isDefault, profileImageSrc: editingDog.profileImageSrc }
-      : { name: '', breed: '', birthDate: '2022-05-12', isDefault: dogs.length === 0, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE }
-    return <DogProfileFormPage initialDog={initialDog} onBack={() => navigate(returnTo)} onSave={(value) => {
-      const id = editingDog?.id ?? `dog-${Date.now()}`
-      const savedDog: AppDog = { id, ...value, detail: value.breed }
+    const initialDog: DogProfileFormValue = editingDog
+      ? { name: editingDog.name, breed: editingDog.breed, birthDate: editingDog.birthDate, gender: editingDog.gender, neutered: editingDog.neutered, introduction: editingDog.introduction, isDefault: editingDog.isDefault, profileImageSrc: editingDog.profileImageSrc, temperamentTags: editingDog.temperamentTags, leashGreeting: editingDog.leashGreeting, strangerResponse: editingDog.strangerResponse, touchTolerance: editingDog.touchTolerance, barkingLevel: editingDog.barkingLevel, bitingLevel: editingDog.bitingLevel }
+      : { name: '', breed: '', birthDate: '', gender: 'UNKNOWN', neutered: null, introduction: '', isDefault: dogs.length === 0, profileImageSrc: DEFAULT_DOG_PROFILE_IMAGE, temperamentTags: [], leashGreeting: 'UNKNOWN', strangerResponse: 'UNKNOWN', touchTolerance: 'UNKNOWN', barkingLevel: 'UNKNOWN', bitingLevel: 'UNKNOWN' }
+    return <DogProfileFormPage initialDog={initialDog} onBack={() => navigate(returnTo)} onDelete={editingDog ? async () => {
+      await profileApi.deleteDog(Number(editingDog.id))
+      const loaded = (await profileApi.listDogs()).map(toAppDog)
+      setDogs(loaded)
+      setSelectedDogIds((current) => current.filter((id) => id !== editingDog.id))
+      navigate('/profile/dogs')
+    } : undefined} onSave={async (value) => {
+      const input = {
+        name: value.name,
+        breed: value.breed,
+        birthDate: value.birthDate,
+        isDefault: value.isDefault,
+        profileImageUrl: value.profileImageSrc || null,
+        temperamentTags: value.temperamentTags,
+        gender: value.gender,
+        neutered: value.neutered,
+        introduction: value.introduction || null,
+        leashGreeting: value.leashGreeting,
+        strangerResponse: value.strangerResponse,
+        touchTolerance: value.touchTolerance,
+        barkingLevel: value.barkingLevel,
+        bitingLevel: value.bitingLevel,
+      }
+      const response = editingDog
+        ? await profileApi.updateDog(Number(editingDog.id), input)
+        : await profileApi.createDog(input)
+      const savedDog = toAppDog(response)
       setDogs((current) => {
-        const updated = editingDog ? current.map((dog) => dog.id === id ? savedDog : dog) : [...current, savedDog]
-        return value.isDefault ? updated.map((dog) => ({ ...dog, isDefault: dog.id === id })) : updated
+        const updated = editingDog
+          ? current.map((dog) => dog.id === savedDog.id ? savedDog : dog)
+          : [...current, savedDog]
+        return savedDog.isDefault ? updated.map((dog) => ({ ...dog, isDefault: dog.id === savedDog.id })) : updated
       })
-      if (!editingDog) setSelectedDogIds([id])
+      if (!editingDog) setSelectedDogIds([savedDog.id])
       navigate(returnTo)
     }} />
   }
@@ -445,7 +672,15 @@ export function App() {
     const defaultDog = dogs.find((dog) => dog.isDefault) ?? dogs[0]
     return <MyPage
       userNickname={authenticatedUser?.nickname}
+      dog={defaultDog ?? null}
+      dogCount={dogs.length}
+      notificationDescription={[
+        notificationSettings.distanceEnabled && '거리두기',
+        notificationSettings.meetEnabled && '만나기',
+        notificationSettings.groupEnabled && '그룹',
+      ].filter(Boolean).join(' · ') || '모든 알림 꺼짐'}
       onOpenProfile={() => navigate(defaultDog ? `/profile/dogs/edit?id=${encodeURIComponent(defaultDog.id)}` : '/profile/dogs/edit')}
+      onOpenAccount={() => navigate('/profile/account')}
       onOpenStats={() => navigate('/profile/stats')}
       onOpenDogs={() => navigate('/profile/dogs')}
       onOpenGroups={() => navigate('/groups')}
@@ -562,11 +797,11 @@ export function App() {
   if (location.pathname === '/walk/active') {
     const params = new URLSearchParams(location.search)
     const selectedCourseId = params.get('candidateId') ?? params.get('courseId')
-    return <ActiveWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} plannedRouteCoordinates={getCourseRouteCoordinates(selectedCourseId)} walkedCoordinates={walkTracker.walkedCoordinates} gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} distanceRadius={distanceRadius} onDistanceRadiusChange={setDistanceRadius} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
+    return <ActiveWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} plannedRouteCoordinates={getCourseRouteCoordinates(selectedCourseId)} walkedCoordinates={walkTracker.walkedCoordinates} gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} distanceRadius={distanceRadius} onDistanceRadiusChange={setDistanceRadius} meetCandidates={meetCandidates} meetRequests={meetRequests} meetConnection={meetConnection} onMeetRequest={(candidateRef) => { const sessionId = walkSessionIdRef.current; if (sessionId) runMeetAction(() => meetApi.createRequest(sessionId, candidateRef)) }} onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))} onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))} onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))} onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }} onMeetBlock={(id) => { void meetApi.block(id).then(() => { setMeetConnection(undefined); setMeetRequests([]) }).catch((error: Error) => setWalkApiError(error.message)) }} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
   }
 
   if (location.pathname === '/walk/dogs') {
-    return <DogSelectionPage dogs={dogs} starting={walkStarting} errorMessage={walkApiError} onBack={() => navigate(readWalkReturnTo(location.search))} onConfirm={(selection) => { setSelectedDogIds(selection.dogIds); setWalkPresenceMode(selection.mode === 'off' ? null : selection.mode); setPresenceEnabled(selection.mode !== 'off'); void beginWalk(`/walk/active${location.search}`, selection.mode) }} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
+    return <DogSelectionPage dogs={dogs} starting={walkStarting} errorMessage={walkApiError} onBack={() => navigate(readWalkReturnTo(location.search))} onConfirm={(selection) => { setSelectedDogIds(selection.dogIds); setWalkPresenceMode(selection.mode === 'off' ? null : selection.mode); setPresenceEnabled(selection.mode !== 'off'); void beginWalk(`/walk/active${location.search}`, selection.mode, selection.dogIds) }} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
   }
 
   if (location.pathname === '/courses/compare') {

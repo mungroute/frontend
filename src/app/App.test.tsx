@@ -37,6 +37,11 @@ const catalogDiagnostics: CourseDiagnostics = {
     svf: 0.4, albedo: 0.12, parkProximityM: 100, dominantFactor: 'OTHER', dominantImprovementC: 0,
     explanation: '여러 환경 요인이 함께 작용한 구간이에요.', confidence: 'MEDIUM', basisDate: '2026-08-11' }],
 }
+const savedWalkRecord = {
+  sessionId: 27, courseName: '저녁 남산길', startedAt: '2026-08-15T09:00:00+09:00',
+  endedAt: '2026-08-15T09:45:00+09:00', distanceM: 1800, durationSec: 2700,
+  representative: true, loop: false, matchStatus: 'MATCHED' as const,
+}
 
 const { authResponse } = vi.hoisted(() => ({
   authResponse: {
@@ -59,6 +64,22 @@ vi.mock('../api/auth', () => ({
   },
 }))
 
+vi.mock('../api/profile', () => ({
+  profileApi: {
+    listDogs: vi.fn().mockResolvedValue([
+      { dogId: 1, name: '망고', breed: '골든 리트리버', birthDate: '2022-05-12', profileImageUrl: null, temperamentTags: [], gender: 'MALE', neutered: true, introduction: '', leashGreeting: 'LIKES', strangerResponse: 'NEUTRAL', touchTolerance: 'COMFORTABLE', barkingLevel: 'RARE', bitingLevel: 'NONE', isDefault: true, createdAt: '2026-08-17T00:00:00Z', updatedAt: '2026-08-17T00:00:00Z' },
+      { dogId: 2, name: '쿠키', breed: '푸들', birthDate: '2024-03-18', profileImageUrl: null, temperamentTags: [], gender: 'FEMALE', neutered: false, introduction: '', leashGreeting: 'NEUTRAL', strangerResponse: 'NEUTRAL', touchTolerance: 'CONDITIONAL', barkingLevel: 'NORMAL', bitingLevel: 'NONE', isDefault: false, createdAt: '2026-08-17T00:00:00Z', updatedAt: '2026-08-17T00:00:00Z' },
+    ]),
+    createDog: vi.fn().mockImplementation(async (input) => ({ dogId: 3, ...input, createdAt: '2026-08-17T00:00:00Z', updatedAt: '2026-08-17T00:00:00Z' })),
+    updateDog: vi.fn().mockImplementation(async (dogId, input) => ({ dogId, ...input, createdAt: '2026-08-17T00:00:00Z', updatedAt: '2026-08-17T00:00:00Z' })),
+    deleteDog: vi.fn().mockResolvedValue(undefined),
+    getNotifications: vi.fn().mockResolvedValue({ serviceEnabled: true, distanceEnabled: true, meetEnabled: true, groupEnabled: true }),
+    updateNotifications: vi.fn().mockImplementation(async (input) => input),
+    updateMe: vi.fn().mockImplementation(async (input) => ({ ...authResponse.user, ...input })),
+    deactivate: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
 describe('App location permission route', () => {
   beforeEach(() => {
     vi.spyOn(walkApi, 'start').mockResolvedValue({
@@ -78,6 +99,7 @@ describe('App location permission route', () => {
       lockedMode: 'distance',
       changedAt: '2026-08-14T14:31:00+09:00',
     }))
+    vi.spyOn(walkApi, 'list').mockResolvedValue([savedWalkRecord])
     vi.spyOn(courseCatalogApi, 'list').mockResolvedValue([catalogCourse])
     vi.spyOn(courseCatalogApi, 'detail').mockResolvedValue(catalogDetail)
     vi.spyOn(courseCatalogApi, 'setRepresentative').mockResolvedValue(catalogDetail)
@@ -116,7 +138,7 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 시작 위치를 알려주세요' })).toBeInTheDocument()
   })
 
-  it('creates a mock account, opens home, and asks for location permission', async () => {
+  it('creates an account, offers dog onboarding, and then asks for location permission', async () => {
     window.history.replaceState({}, '', '/login')
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: '회원가입' }))
@@ -135,7 +157,10 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /이용약관/ }))
     fireEvent.click(screen.getByRole('button', { name: '가입하기' }))
 
-    await waitFor(() => expect(window.location.pathname).toBe('/home/no-course'))
+    await waitFor(() => expect(window.location.pathname).toBe('/onboarding/dog'))
+    expect(screen.getByRole('heading', { name: '반려견 등록' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '나중에 등록할게요' }))
+    expect(window.location.pathname).toBe('/home/no-course')
     expect(screen.getByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '위치 사용 허용' })).toBeInTheDocument()
   })
@@ -159,7 +184,28 @@ describe('App location permission route', () => {
     })
   })
 
-  it('moves to the no-course home after location lookup succeeds', async () => {
+  it('moves a returning member with a representative course and a walk record to home', async () => {
+    const getCurrentPosition = vi.fn()
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { getCurrentPosition },
+    })
+    window.history.replaceState({}, '', '/location-permission')
+
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '위치 권한 확인' }))
+    act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.5, longitude: 127 } }))
+
+    await waitFor(() => expect(window.location.pathname).toBe('/home'))
+    expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+  })
+
+  it.each([
+    { caseName: '대표 코스가 없으면', courses: [catalogCourse].map((course) => ({ ...course, representative: false })), records: [savedWalkRecord] },
+    { caseName: '산책 기록이 없으면', courses: [catalogCourse], records: [] },
+  ])('$caseName no-course 홈으로 이동한다', async ({ courses, records }) => {
+    vi.mocked(courseCatalogApi.list).mockResolvedValue(courses)
+    vi.mocked(walkApi.list).mockResolvedValue(records)
     const getCurrentPosition = vi.fn()
     vi.stubGlobal('navigator', {
       ...window.navigator,
@@ -407,7 +453,7 @@ describe('App location permission route', () => {
     expect(window.location.search).toBe('')
   })
 
-  it('registers a dog during walk setup and returns to the selection screen after saving', () => {
+  it('registers a dog during walk setup and returns to the selection screen after saving', async () => {
     window.history.replaceState({}, '', '/walk/dogs')
     render(<App />)
 
@@ -417,8 +463,18 @@ describe('App location permission route', () => {
 
     fireEvent.change(screen.getByLabelText('이름'), { target: { value: '망고' } })
     fireEvent.change(screen.getByLabelText('견종'), { target: { value: '골든리트리버' } })
+    fireEvent.click(screen.getByRole('button', { name: '남아' }))
+    fireEvent.click(screen.getByRole('button', { name: '했어요' }))
+    fireEvent.change(screen.getByLabelText('출생 연도'), { target: { value: '2022' } })
+    fireEvent.change(screen.getByLabelText('출생 월'), { target: { value: '05' } })
+    fireEvent.change(screen.getByLabelText('출생 일'), { target: { value: '12' } })
+    fireEvent.click(within(screen.getByRole('group', { name: /목줄 인사/ })).getByRole('button', { name: '상황에 따라' }))
+    fireEvent.click(within(screen.getByRole('group', { name: /낯선 사람/ })).getByRole('button', { name: '보통이에요' }))
+    fireEvent.click(within(screen.getByRole('group', { name: /스킨십/ })).getByRole('button', { name: '상황에 따라' }))
+    fireEvent.click(within(screen.getByRole('group', { name: /짖음 정도/ })).getByRole('button', { name: '보통이에요' }))
+    fireEvent.click(within(screen.getByRole('group', { name: /입질 반응/ })).getByRole('button', { name: '없어요' }))
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }))
-    expect(window.location.pathname).toBe('/walk/dogs')
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/dogs'))
   })
 
   it('opens walk statistics and then the full record list', () => {
@@ -586,7 +642,7 @@ describe('App location permission route', () => {
     const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
     expect(window.location.pathname).toBe('/walk/active')
     expect(activeSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(walkApi.start).toHaveBeenCalledWith('distance')
+    expect(walkApi.start).toHaveBeenCalledWith('distance', [])
   })
 
   it('keeps the distance mode choice during a walk and changes it only after confirmation', async () => {

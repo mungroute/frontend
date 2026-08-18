@@ -1,0 +1,7 @@
+.account-profile-page__photo { position: absolute; top: 120px; left: 50%; width: 112px; height: 112px; border: 5px solid #fff; border-radius: 36px; object-fit: cover; box-shadow: 0 14px 32px rgba(74,47,33,.13); transform: translateX(-50%); }
+.account-profile-page__photo-action { position: absolute; top: 244px; left: 50%; color: var(--color-primary); font-size: 13px; font-weight: 800; cursor: pointer; transform: translateX(-50%); }
+.account-profile-page__nickname, .account-profile-page__email { position: absolute; right: 24px; left: 24px; }
+.account-profile-page__nickname { top: 300px; }
+.account-profile-page__email { top: 400px; }
+.account-profile-page__save { position: absolute; right: 24px; bottom: 92px; left: 24px; width: auto; }
+.account-profile-page__deactivate { position: absolute; bottom: 48px; left: 50%; border: 0; color: #9a766c; background: transparent; font-size: 12px; text-decoration: underline; cursor: pointer; transform: translateX(-50%); }

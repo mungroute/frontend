@@ -80,10 +80,10 @@ export type WalkRecordDetail = WalkRecordSummary & {
 }
 
 export const walkApi = {
-  start(mode: WalkPresenceMode = 'off') {
+  start(mode: WalkPresenceMode = 'off', dogIds: number[] = []) {
     return apiRequest<WalkModeResult & { startedAt: string }>('/api/walks/start', {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, dogIds }),
     })
   },
   changeMode(sessionId: number, mode: WalkPresenceMode) {
