@@ -27,3 +27,26 @@ export function requestBrowserLocation(): Promise<MapCoordinate> {
     )
   })
 }
+
+export function watchBrowserLocation(
+  onLocation: (coordinate: MapCoordinate) => void,
+  onError?: PositionErrorCallback,
+) {
+  const overriddenLocation = getDevLocationOverride()
+  if (overriddenLocation) {
+    onLocation(overriddenLocation)
+    return () => undefined
+  }
+
+  if (typeof navigator.geolocation?.watchPosition !== 'function') return () => undefined
+
+  const watchId = navigator.geolocation.watchPosition(
+    ({ coords }) => onLocation(getDevLocationOverride() ?? {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    }),
+    onError,
+    GEOLOCATION_OPTIONS,
+  )
+  return () => navigator.geolocation.clearWatch(watchId)
+}

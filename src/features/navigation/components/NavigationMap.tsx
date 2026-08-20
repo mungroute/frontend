@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MapLibreMap, MapOptions, Marker } from 'maplibre-gl'
+import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { LocateFixed, RotateCcw, Route as RouteIcon } from 'lucide-react'
 import { BaseMapViewport } from '../../../Components/map'
 import type { BaseMapBinding, MapCoordinate, MapMarker } from '../../../Components/map'
@@ -12,6 +13,8 @@ import type { RouteProgressGeometry } from '../utils/route-progress'
 import { chevronsAhead } from '../utils/route-progress'
 import type { PreparedRoute } from '../utils/route-progress'
 import { resolveMapStyleUrl } from '../map-style'
+
+maplibregl.setWorkerUrl(mapLibreWorkerUrl)
 
 export type NavigationMapFactory = (options: MapOptions) => MapLibreMap
 export type NavigationMapViewMode = 'navigation' | 'overview'
