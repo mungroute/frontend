@@ -1,4 +1,5 @@
 import { apiRequest, refreshAuthentication, setAccessToken } from './http'
+import { setDevLocationOverrideUser } from '../utils/devLocationOverride'
 
 export type AuthUser = {
   userId: number
@@ -21,6 +22,7 @@ type PhoneVerificationResponse = { available: boolean; verified: boolean }
 async function acceptAuth(request: Promise<AuthResponse>) {
   const response = await request
   setAccessToken(response.accessToken, response.expiresIn)
+  setDevLocationOverrideUser(response.user.email)
   return response
 }
 
@@ -44,13 +46,14 @@ export const authApi = {
     }, { authenticated: false }))
   },
   async restore() {
-    return refreshAuthentication() as Promise<AuthResponse>
+    return acceptAuth(refreshAuthentication() as Promise<AuthResponse>)
   },
   async logout() {
     try {
       await apiRequest<void>('/api/auth/logout', { method: 'POST' }, { authenticated: false })
     } finally {
       setAccessToken(null)
+      setDevLocationOverrideUser(undefined)
     }
   },
   async checkEmail(email: string) {

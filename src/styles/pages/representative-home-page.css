@@ -22,33 +22,30 @@
   overflow: hidden;
 }
 
-.representative-home-page__logo {
-  position: absolute;
-  top: 22.2px;
-  left: 18px;
-  width: 112px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.representative-home-page__profile {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-}
-
-.representative-home-page__sheet {
+.representative-home-page__sheet-motion {
   position: absolute;
   z-index: 2;
   bottom: var(--representative-sheet-bottom);
   left: -1px;
   width: calc(100% + 2px);
   height: var(--representative-sheet-height);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.representative-home-page__sheet-motion[data-place-detail='open'] {
+  pointer-events: none;
+}
+
+.representative-home-page__sheet {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 28px 28px 0 0;
   background: var(--color-surface);
   box-shadow: var(--elevation-sheet);
+  pointer-events: auto;
 }
 
 .representative-home-page__course-card {
@@ -150,16 +147,15 @@
     --representative-sheet-height: 310px;
   }
 
-  .representative-home-page__sheet {
-    bottom: var(--representative-sheet-bottom);
-    height: var(--representative-sheet-height);
-  }
-
   .representative-home-page__course-card {
     top: 28px;
   }
 
   .representative-home-page__actions { top: 160px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .representative-home-page__sheet-motion { will-change: auto; }
 }
 
 @media (min-width: 391px) {

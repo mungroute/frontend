@@ -1,4 +1,5 @@
 import type { MapCoordinate } from './types'
+import { getDevLocationOverride } from '../../utils/devLocationOverride'
 
 export const GEOLOCATION_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
@@ -7,6 +8,9 @@ export const GEOLOCATION_OPTIONS: PositionOptions = {
 }
 
 export function requestBrowserLocation(): Promise<MapCoordinate> {
+  const overriddenLocation = getDevLocationOverride()
+  if (overriddenLocation) return Promise.resolve(overriddenLocation)
+
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported'))
@@ -14,7 +18,10 @@ export function requestBrowserLocation(): Promise<MapCoordinate> {
     }
 
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+      ({ coords }) => resolve(getDevLocationOverride() ?? {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      }),
       reject,
       GEOLOCATION_OPTIONS,
     )

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CourseCatalogApi, CourseComparison, CourseDiagnostics } from '../api/courses'
+import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { RouteComparisonPage } from './RouteComparisonPage'
 
 const usual = {
@@ -41,12 +42,47 @@ describe('RouteComparisonPage', () => {
     const onStartUsual = vi.fn()
     render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(comparison)} onStartAlternative={onStartAlternative} onStartUsual={onStartUsual} />)
     expect(await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '패널 높이 조절' })).toBeEnabled()
     expect(screen.getByText('거리 100m 추가 · 추정 노면온도 3.0℃ 개선')).toBeInTheDocument()
     expect(screen.getByText('추천 대안이 이 구간을 우회해요.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '대안 코스로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '기존 코스로 시작' }))
     expect(onStartAlternative).toHaveBeenCalledOnce()
     expect(onStartUsual).toHaveBeenCalledOnce()
+  })
+
+  it('fits the selected route into the visible map area', async () => {
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
+    }
+    const scene: BaseMapScene = {
+      center: { latitude: 37.56, longitude: 126.98 },
+      zoom: 16,
+    }
+    render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(comparison)} map={{ adapter, scene }} />)
+    await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })
+
+    fireEvent.click(screen.getByRole('button', { name: /나의 기존 코스/ }))
+    expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
+      viewFit: {
+        coordinates: [
+          { latitude: 37.56, longitude: 126.98 },
+          { latitude: 37.57, longitude: 126.99 },
+        ],
+        padding: [66, 20, 18, 20],
+        maxZoom: 17,
+      },
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: /오늘의 추천 대안/ }))
+    const updatedScene = update.mock.lastCall?.[0] as BaseMapScene
+    expect(updatedScene.viewFit?.coordinates).toEqual([
+      { latitude: 37.56, longitude: 126.98 },
+      { latitude: 37.57, longitude: 127 },
+    ])
+    expect(updatedScene.center.latitude).toBeCloseTo(37.565)
+    expect(updatedScene.center.longitude).toBeCloseTo(126.99)
   })
 
   it('falls back to the existing course when no alternative exists', async () => {

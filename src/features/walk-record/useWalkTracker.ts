@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MapCoordinate } from '../../Components/map'
 import { GEOLOCATION_OPTIONS } from '../../Components/map/geolocation'
+import { getDevLocationOverride } from '../../utils/devLocationOverride'
 
 const EARTH_RADIUS_METERS = 6_371_000
 const MAX_USABLE_ACCURACY_METERS = 40
@@ -51,6 +52,7 @@ export function useWalkTracker(
   isTracking: boolean,
   onPoint?: (point: TrackedWalkPoint) => void | Promise<void>,
   onPresenceFix?: (point: TrackedPresenceFix) => void | Promise<void>,
+  locationOverride?: MapCoordinate,
 ) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [distanceMeters, setDistanceMeters] = useState(0)
@@ -79,8 +81,7 @@ export function useWalkTracker(
     }
 
     const timerId = window.setInterval(() => setElapsedSeconds((current) => current + 1), 1000)
-    const watchId = typeof navigator.geolocation?.watchPosition === 'function'
-      ? navigator.geolocation.watchPosition(({ coords, timestamp }) => {
+    const handlePosition: PositionCallback = ({ coords, timestamp }) => {
         const coordinate = { latitude: coords.latitude, longitude: coords.longitude }
         const recordedAt = new Date().toISOString()
         const accuracy = Number.isFinite(coords.accuracy)
@@ -160,17 +161,43 @@ export function useWalkTracker(
             accuracy,
           })
         }
-      }, () => setGpsSignal('error'), GEOLOCATION_OPTIONS)
-      : undefined
+      }
+    const overriddenLocation = locationOverride ?? getDevLocationOverride()
+    let overrideIntervalId: number | undefined
+    const watchId = overriddenLocation
+      ? undefined
+      : typeof navigator.geolocation?.watchPosition === 'function'
+        ? navigator.geolocation.watchPosition(handlePosition, () => setGpsSignal('error'), GEOLOCATION_OPTIONS)
+        : undefined
+
+    if (overriddenLocation) {
+      const reportOverride = () => handlePosition({
+        timestamp: Date.now(),
+        coords: {
+          latitude: overriddenLocation.latitude,
+          longitude: overriddenLocation.longitude,
+          accuracy: 5,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+          toJSON: () => ({}),
+        },
+        toJSON: () => ({}),
+      })
+      reportOverride()
+      overrideIntervalId = window.setInterval(reportOverride, 4_000)
+    }
 
     return () => {
       window.clearInterval(timerId)
+      if (overrideIntervalId !== undefined) window.clearInterval(overrideIntervalId)
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId)
       lastAcceptedPositionRef.current = undefined
       lastObservedPositionRef.current = undefined
       lastPresenceSentAtRef.current = undefined
     }
-  }, [isTracking])
+  }, [isTracking, locationOverride?.latitude, locationOverride?.longitude])
 
   const reset = () => {
     setElapsedSeconds(0)

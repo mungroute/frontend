@@ -18,10 +18,11 @@ type BaseMapViewportProps = {
   map?: BaseMapBinding
   children?: ReactNode
   showLocationControl?: boolean
-  sceneOverlay?: Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'markers' | 'routes'>>
+  sceneOverlay?: Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'markers' | 'routes' | 'viewFit'>>
   replaceBaseMarkers?: boolean
   onMapClick?: (event: MapClickEvent) => void
   mapClickLabel?: string
+  onProviderReadyChange?: (ready: boolean) => void
 }
 
 export function BaseMapViewport({
@@ -35,6 +36,7 @@ export function BaseMapViewport({
   replaceBaseMarkers = false,
   onMapClick,
   mapClickLabel = '지도에 지점 추가',
+  onProviderReadyChange,
 }: BaseMapViewportProps) {
   const defaults = useContext(BaseMapContext)
   const suppliedScene = map?.scene ?? defaults?.defaultScene
@@ -46,6 +48,7 @@ export function BaseMapViewport({
       ...localBaseScene,
       center: sceneOverlay.center ?? localBaseScene.center,
       zoom: sceneOverlay.zoom ?? localBaseScene.zoom,
+      viewFit: sceneOverlay.viewFit,
       markers: replaceBaseMarkers
         ? (sceneOverlay.markers ?? [])
         : [...(localBaseScene.markers ?? []), ...(sceneOverlay.markers ?? [])],
@@ -95,6 +98,10 @@ export function BaseMapViewport({
   useEffect(() => {
     renderedSceneRef.current = scene
   }, [scene])
+
+  useEffect(() => {
+    onProviderReadyChange?.(providerReady)
+  }, [onProviderReadyChange, providerReady])
 
   useEffect(() => {
     const initialScene = renderedSceneRef.current

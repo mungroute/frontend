@@ -24,8 +24,8 @@ export function CourseCandidateCard({ candidate, selected, targetMinutes, onSele
       <strong>{candidate.name}</strong>
       <span>{candidate.durationMinutes}분 · {candidate.distanceKm.toFixed(1)}km</span>
       <span className="route-candidates-page__metrics">
-        <small>그늘 {candidate.shadeRatio}%</small>
-        <small>추정 노면 {candidate.estimatedSurfaceTempC}℃</small>
+        <small>{candidate.shadeApplicable && candidate.shadeRatio !== null ? `그늘 ${candidate.shadeRatio}%` : '일몰 후 코스'}</small>
+        {candidate.estimatedSurfaceTempC !== null && <small>추정 노면 {candidate.estimatedSurfaceTempC}℃</small>}
       </span>
       {!candidate.withinTargetTime && difference > 0 && (
         <span className="route-candidates-page__time-note">선택한 {targetMinutes}분보다 약 {difference}분 길어요</span>

@@ -162,24 +162,44 @@ export function TimePicker({ value, onChange, min = 10, max = 60, step = 5, vari
   )
 }
 
-export function DraggableSheet({ children, className = '', ...props }: ComponentPropsWithoutRef<'section'>) {
+type DraggableSheetProps = ComponentPropsWithoutRef<'section'> & {
+  allowUpwardDrag?: boolean
+  collapsedHeight?: number
+  upwardDragBoundarySelector?: string
+  upwardDragBoundarySpacing?: number
+}
+
+export function DraggableSheet({
+  children,
+  className = '',
+  allowUpwardDrag = true,
+  collapsedHeight = 104,
+  upwardDragBoundarySelector,
+  upwardDragBoundarySpacing = 0,
+  ...props
+}: DraggableSheetProps) {
   const sheetRef = useRef<HTMLElement>(null)
   const dragRef = useRef({ pointerId: -1, startY: 0, startOffset: 0 })
   const [offset, setOffset] = useState(0)
 
   useEffect(() => {
     const sheet = sheetRef.current
-    const container = sheet?.parentElement
+    const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
     const syncMapControl = () => {
       if (!sheet || !container) return
       const sheetTop = sheet.getBoundingClientRect().top - container.getBoundingClientRect().top
       container.style.setProperty('--map-sheet-top', `${sheetTop}px`)
     }
     const frame = requestAnimationFrame(syncMapControl)
+    const resizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(syncMapControl)
+      : undefined
+    if (sheet) resizeObserver?.observe(sheet)
     const handleResize = () => syncMapControl()
     window.addEventListener('resize', handleResize)
     return () => {
       cancelAnimationFrame(frame)
+      resizeObserver?.disconnect()
       window.removeEventListener('resize', handleResize)
       container?.style.removeProperty('--map-sheet-top')
     }
@@ -187,11 +207,25 @@ export function DraggableSheet({ children, className = '', ...props }: Component
 
   const moveTo = (nextOffset: number) => {
     const sheet = sheetRef.current
-    const container = sheet?.parentElement
+    const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
     if (!sheet || !container) return
     const baseTop = sheet.getBoundingClientRect().top - offset - container.getBoundingClientRect().top
-    const minOffset = 20 - baseTop
-    const maxOffset = container.clientHeight - 104 - baseTop
+    const topLimit = 20 - baseTop
+    const boundary = upwardDragBoundarySelector
+      ? sheet.querySelector<HTMLElement>(upwardDragBoundarySelector)
+      : undefined
+    const baseBoundaryBottom = boundary
+      ? boundary.getBoundingClientRect().bottom - offset - container.getBoundingClientRect().top
+      : undefined
+    const contentLimit = upwardDragBoundarySelector
+      ? (baseBoundaryBottom === undefined
+          ? 0
+          : Math.min(0, container.clientHeight - baseBoundaryBottom - upwardDragBoundarySpacing))
+      : topLimit
+    const minOffset = allowUpwardDrag
+      ? Math.max(topLimit, contentLimit)
+      : 0
+    const maxOffset = Math.max(minOffset, container.clientHeight - collapsedHeight - baseTop)
     const bounded = Math.min(maxOffset, Math.max(minOffset, nextOffset))
     setOffset(bounded)
     container.style.setProperty('--map-sheet-top', `${baseTop + bounded}px`)

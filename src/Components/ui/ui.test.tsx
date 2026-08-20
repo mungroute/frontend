@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { Button, SelectionCard, Switch, TimePicker } from '.'
+import { Button, DraggableSheet, SelectionCard, Switch, TimePicker } from '.'
 
 describe('shared UI', () => {
   it('blocks a loading button and exposes its busy state', () => {
@@ -86,5 +86,70 @@ describe('shared UI', () => {
     expect(onChange).not.toHaveBeenCalled()
     Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
     vi.useRealTimers()
+  })
+
+  it('stops an upward sheet drag when its content boundary reaches the viewport', () => {
+    const { container } = render(
+      <main className="journey-page">
+        <DraggableSheet upwardDragBoundarySelector=".drag-limit" upwardDragBoundarySpacing={32}>
+          시트 내용
+          <span className="drag-limit">마지막 동작</span>
+        </DraggableSheet>
+      </main>,
+    )
+    const viewport = container.querySelector('main') as HTMLElement
+    const sheet = screen.getByText('시트 내용').closest('section') as HTMLElement
+    const boundary = screen.getByText('마지막 동작')
+    const handle = screen.getByRole('button', { name: '패널 높이 조절' })
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 800 },
+      getBoundingClientRect: { configurable: true, value: () => ({ top: 0 }) },
+    })
+    Object.defineProperties(sheet, {
+      getBoundingClientRect: {
+        configurable: true,
+        value: () => {
+          const offset = Number(sheet.style.transform.match(/-?\d+/)?.[0] ?? 0)
+          return { top: 672 + offset }
+        },
+      },
+    })
+    Object.defineProperty(boundary, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => {
+        const offset = Number(sheet.style.transform.match(/-?\d+/)?.[0] ?? 0)
+        return { bottom: 1050 + offset }
+      },
+    })
+
+    for (let index = 0; index < 10; index += 1) fireEvent.keyDown(handle, { key: 'ArrowUp' })
+
+    expect(sheet).toHaveStyle({ transform: 'translateY(-282px)' })
+  })
+
+  it('keeps only the configured handle height visible when collapsed', () => {
+    const { container } = render(
+      <main className="journey-page">
+        <DraggableSheet collapsedHeight={28}>시트 내용</DraggableSheet>
+      </main>,
+    )
+    const viewport = container.querySelector('main') as HTMLElement
+    const sheet = screen.getByText('시트 내용').closest('section') as HTMLElement
+    const handle = screen.getByRole('button', { name: '패널 높이 조절' })
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 800 },
+      getBoundingClientRect: { configurable: true, value: () => ({ top: 0 }) },
+    })
+    Object.defineProperty(sheet, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => {
+        const offset = Number(sheet.style.transform.match(/-?\d+/)?.[0] ?? 0)
+        return { top: 500 + offset }
+      },
+    })
+
+    for (let index = 0; index < 10; index += 1) fireEvent.keyDown(handle, { key: 'ArrowDown' })
+
+    expect(sheet).toHaveStyle({ transform: 'translateY(272px)' })
   })
 })
