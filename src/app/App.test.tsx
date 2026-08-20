@@ -765,6 +765,23 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
+  it('returns from dog selection to candidates and then to the duration step without reopening dog selection', () => {
+    window.history.replaceState({}, '', '/courses/candidates?duration=35')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '추천 코스로 산책 시작' }))
+    expect(window.location.pathname).toBe('/walk/dogs')
+
+    fireEvent.click(screen.getByRole('button', { name: '반려견 선택에서 뒤로 가기' }))
+    expect(window.location.pathname).toBe('/courses/candidates')
+
+    fireEvent.click(screen.getByRole('button', { name: '코스 후보에서 뒤로 가기' }))
+    expect(window.location.pathname).toBe('/walk/time')
+    expect(window.location.search).toBe('?duration=35')
+    expect(screen.getByRole('spinbutton', { name: '목표 산책 시간' })).toHaveAttribute('aria-valuenow', '35')
+    expect(screen.queryByRole('heading', { name: '함께 산책할 반려견 선택' })).not.toBeInTheDocument()
+  })
+
   it('stays on dog selection and shows the API error when walk start fails', async () => {
     vi.mocked(walkApi.start).mockRejectedValueOnce(new Error('이미 진행 중인 산책이 있습니다.'))
     window.history.replaceState({}, '', '/walk/dogs')

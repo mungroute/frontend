@@ -1061,7 +1061,7 @@ export function App() {
     const candidates: CourseCandidate[] | undefined = courseRecommendation?.requestId === recommendationRequestId
       ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates].map(mapRecommendationCandidate)
       : undefined
-    return <RouteCandidatesPage duration={duration} candidates={candidates} onConfirm={(candidate) => selectRequiredRoute(() => {
+    return <RouteCandidatesPage duration={duration} candidates={candidates} onBack={() => navigate(`/walk/time?duration=${duration}`)} onConfirm={(candidate) => selectRequiredRoute(() => {
       if (!candidate.route) throw new Error('추천 코스 경로를 불러오지 못했습니다.')
       return normalizeWalkRoute({
         routeKey: `time-recommendation:${candidate.id}`,
@@ -1094,7 +1094,7 @@ export function App() {
   }
 
   if (location.pathname === '/walk/time') {
-    return <WalkDurationPage onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
+    return <WalkDurationPage initialDuration={duration} onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
   }
 
   if (location.pathname === '/home/no-course') {
