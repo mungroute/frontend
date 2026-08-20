@@ -1,4 +1,4 @@
-.active-walk-page { min-height: min(640px, 100dvh); height: 100dvh; border-radius: 0; background: #eee9df; }
+.active-walk-page { background: #eee9df; }
 .active-walk-page__screen-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .active-walk-page__route-progress { position: absolute; inset: 70px 34px 250px; width: calc(100% - 68px); height: calc(100% - 320px); overflow: visible; filter: drop-shadow(0 1px 2px rgba(55,43,34,.18)); }
 .active-walk-page__route-progress polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -14,10 +14,6 @@
 .active-walk-page__summary-mode { margin-bottom: 10px; }
 .active-walk-page__status-row { min-height: 30px; display: flex; align-items: center; padding: 3px 8px; }
 .active-walk-page__status-row h2 { margin: 0; font-size: 15px; }
-
-@media (min-width: 391px) {
-  .active-walk-page { width: min(100%, 430px); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .active-walk-page * { scroll-behavior: auto !important; }
