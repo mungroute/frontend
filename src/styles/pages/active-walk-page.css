@@ -3,7 +3,7 @@
 .active-walk-page__route-progress { position: absolute; inset: 70px 34px 250px; width: calc(100% - 68px); height: calc(100% - 320px); overflow: visible; filter: drop-shadow(0 1px 2px rgba(55,43,34,.18)); }
 .active-walk-page__route-progress polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .active-walk-page__route-planned { stroke: #f47b50; stroke-width: 7; }
-.active-walk-page__route-walked { stroke: #8c8985; stroke-width: 6; }
+.active-walk-page__route-walked { stroke: #c5c0ba; stroke-width: 6; opacity: .82; }
 .active-walk-page__gps { position: absolute; z-index: 5; top: max(20px, env(safe-area-inset-top)); left: 18px; display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; color: #6b9c72; background: rgba(255,250,244,.94); box-shadow: 0 5px 14px rgba(72,43,27,.14); font-size: 11px; font-weight: 700; white-space: nowrap; }
 .active-walk-page__gps span { color: #55a76a; font-size: 9px; }
 .active-walk-page__gps--weak { color: #9b7434; }

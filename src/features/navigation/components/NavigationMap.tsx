@@ -31,6 +31,7 @@ type NavigationMapProps = {
   mapFactory?: NavigationMapFactory
   styleUrl?: string
   onPlaceSelect?: (featureId: string) => void
+  onMeetSelect?: () => void
   onReadyChange?: (ready: boolean) => void
   onViewModeChange?: (mode: NavigationMapViewMode) => void
 }
@@ -67,11 +68,13 @@ const setSourceData = (map: MapLibreMap, id: string, data: unknown) => {
   source?.setData(data as never)
 }
 
-export function NavigationMap({ route, position, heading, preparedRoute, progress, walkedCoordinates = [], placeMarkers = [], meetMarker, currentLocationMarker, paused = false, padding = DEFAULT_PADDING, fallbackMap, mapFactory, styleUrl = STYLE_URL, onPlaceSelect, onReadyChange, onViewModeChange }: NavigationMapProps) {
+export function NavigationMap({ route, position, heading, preparedRoute, progress, walkedCoordinates = [], placeMarkers = [], meetMarker, currentLocationMarker, paused = false, padding = DEFAULT_PADDING, fallbackMap, mapFactory, styleUrl = STYLE_URL, onPlaceSelect, onMeetSelect, onReadyChange, onViewModeChange }: NavigationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | undefined>(undefined)
   const markerRef = useRef<Marker | undefined>(undefined)
   const paddingRef = useRef(padding)
+  const onPlaceSelectRef = useRef(onPlaceSelect)
+  const onMeetSelectRef = useRef(onMeetSelect)
   const loadedRef = useRef(false)
   const cameraAtRef = useRef(0)
   const [ready, setReady] = useState(false)
@@ -110,9 +113,14 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
         outlineWidth: 11,
         chevrons: true,
       })) ?? [],
-      ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#8c8985', width: 6 }] : []),
+      ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#c5c0ba', width: 6 }] : []),
     ],
   }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, padding.bottom, position, route, walkedCoordinates])
+
+  useEffect(() => {
+    onPlaceSelectRef.current = onPlaceSelect
+    onMeetSelectRef.current = onMeetSelect
+  }, [onMeetSelect, onPlaceSelect])
 
   useEffect(() => {
     paddingRef.current = padding
@@ -166,13 +174,14 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       SOURCE_IDS.forEach((id) => map.addSource(id, { type: 'geojson', data: emptyCollection() }))
       map.addLayer({ id: 'navigation-route-outline', type: 'line', source: 'navigation-route', paint: { 'line-color': '#fff9f2', 'line-width': 12, 'line-opacity': 0.96 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-route-base', type: 'line', source: 'navigation-route', paint: { 'line-color': '#f47a3a', 'line-width': 7, 'line-opacity': 0.48 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
-      map.addLayer({ id: 'navigation-passed-line', type: 'line', source: 'navigation-passed', paint: { 'line-color': '#8c8985', 'line-width': 7 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
+      map.addLayer({ id: 'navigation-passed-line', type: 'line', source: 'navigation-passed', paint: { 'line-color': '#c5c0ba', 'line-width': 7, 'line-opacity': 0.82 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-remaining-line', type: 'line', source: 'navigation-remaining', paint: { 'line-color': '#f47a3a', 'line-width': 7 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-chevron-symbol', type: 'symbol', source: 'navigation-chevron', layout: { 'text-field': '›', 'text-size': 20, 'text-rotate': ['get', 'rotation'], 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#fffaf4', 'text-halo-color': '#f47a3a', 'text-halo-width': 1 } })
       map.addLayer({ id: 'navigation-places', type: 'circle', source: 'navigation-places', paint: { 'circle-radius': 8, 'circle-color': '#fffaf4', 'circle-stroke-width': 4, 'circle-stroke-color': '#f47a3a' } })
       map.on('click', 'navigation-places', (event) => {
         const id = event.features?.[0]?.properties?.id
-        if (typeof id === 'string') onPlaceSelect?.(id)
+        if (id === 'meet-friend') onMeetSelectRef.current?.()
+        else if (typeof id === 'string') onPlaceSelectRef.current?.(id)
       })
       setReady(true)
       if (route?.navigationPolyline?.length) {
@@ -190,7 +199,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       if (mapRef.current === map) mapRef.current = undefined
       loadedRef.current = false
     }
-  }, [mapFactory, onPlaceSelect, retryKey, route?.navigationPolyline, styleUrl, useFallback])
+  }, [mapFactory, retryKey, route?.navigationPolyline, styleUrl, useFallback])
 
   useEffect(() => {
     const map = mapRef.current
@@ -266,7 +275,10 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
           sceneOverlay={fallbackScene}
           replaceBaseMarkers={viewMode === 'overview'}
           showLocationControl={viewMode === 'navigation'}
-          onMapClick={(event) => { if (event.featureId) onPlaceSelect?.(event.featureId) }}
+          onMapClick={(event) => {
+            if (event.featureId === 'meet-friend') onMeetSelectRef.current?.()
+            else if (event.featureId) onPlaceSelectRef.current?.(event.featureId)
+          }}
           onProviderReadyChange={useFallback ? setReady : undefined}
           fallback={{ src: '/assets/s07/map.jpg', hideOverlayWhenReady: true, overlay: <WalkRouteProgress planned={route?.navigationPolyline ?? []} walked={walkedCoordinates} /> }}
         />

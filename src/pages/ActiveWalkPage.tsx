@@ -6,7 +6,8 @@ import type { ThermalRouteSegment } from '../Components/courses/thermal-route'
 import { PresenceModeControl } from '../Components/walk/DistanceModeControl'
 import { DistanceRangeControl } from '../Components/walk/DistanceRangeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
-import { MeetWalkPanel } from '../Components/walk/MeetWalkPanel'
+import { MeetProfileDialog, MeetWalkPanel } from '../Components/walk/MeetWalkPanel'
+import type { MeetProfileSelection } from '../Components/walk/MeetWalkPanel'
 import { WalkStats } from '../Components/walk/WalkStats'
 import { WalkEndDialog } from '../Components/system'
 import { DraggableSheet } from '../Components/ui'
@@ -139,6 +140,7 @@ export function ActiveWalkPage({
   const [isMapReady, setIsMapReady] = useState(false)
   const [mapViewMode, setMapViewMode] = useState<NavigationMapViewMode>('navigation')
   const [sheetHeight, setSheetHeight] = useState(338)
+  const [selectedMeetProfile, setSelectedMeetProfile] = useState<MeetProfileSelection>()
   const { currentLocationMarker } = useMapLocation()
   const placeSearchRef = useRef<MapPlaceSearchHandle>(null)
   const sheetMotionRef = useRef<HTMLDivElement>(null)
@@ -194,7 +196,7 @@ export function ActiveWalkPage({
     observer?.observe(target)
     return () => observer?.disconnect()
   }, [resolvedEnabled, resolvedMode])
-  const meetMarker: MapMarker | undefined = meetConnection
+  const meetMarker: MapMarker | undefined = resolvedMode === 'meet' && resolvedEnabled && meetConnection
     ? {
         id: 'meet-friend',
         position: { latitude: meetConnection.lat, longitude: meetConnection.lon },
@@ -222,6 +224,7 @@ export function ActiveWalkPage({
         padding={navigationPadding}
         fallbackMap={map}
         onPlaceSelect={selectPlace}
+        onMeetSelect={() => meetConnection && setSelectedMeetProfile({ preview: meetConnection.profile, profile: meetConnection.profile })}
         onReadyChange={setIsMapReady}
         onViewModeChange={changeMapViewMode}
       />
@@ -267,7 +270,7 @@ export function ActiveWalkPage({
             <PresenceModeControl mode={resolvedMode} enabled={resolvedEnabled} onChange={changePresence} />
           </div>
           {resolvedMode === 'distance' && resolvedEnabled && <DistanceRangeControl value={distanceRadius} onChange={onDistanceRadiusChange} />}
-          {resolvedMode === 'meet' && resolvedEnabled && <MeetWalkPanel candidates={meetCandidates} requests={meetRequests} connection={meetConnection} onRequest={(value) => onMeetRequest?.(value)} onAccept={(value) => onMeetAccept?.(value)} onReject={(value) => onMeetReject?.(value)} onCancel={(value) => onMeetCancel?.(value)} onEnd={(value) => onMeetEnd?.(value)} onBlock={(value) => onMeetBlock?.(value)} />}
+          {resolvedMode === 'meet' && resolvedEnabled && <MeetWalkPanel candidates={meetCandidates} requests={meetRequests} connection={meetConnection} onRequest={(value) => onMeetRequest?.(value)} onAccept={(value) => onMeetAccept?.(value)} onReject={(value) => onMeetReject?.(value)} onCancel={(value) => onMeetCancel?.(value)} onEnd={(value) => onMeetEnd?.(value)} onBlock={(value) => onMeetBlock?.(value)} onProfileSelect={setSelectedMeetProfile} />}
           <div className="active-walk-page__status-row"><strong>{paused ? '산책 일시정지' : '산책 중'}</strong></div>
           {paused
             ? <WalkSessionControls mode="paused" onResume={onResume} onStop={() => setIsEndDialogOpen(true)} onPhoto={onPhoto} />
@@ -276,6 +279,7 @@ export function ActiveWalkPage({
       </motion.div>
 
       {isEndDialogOpen && <WalkEndDialog onClose={() => setIsEndDialogOpen(false)} onConfirm={() => { setIsEndDialogOpen(false); onStop?.() }} />}
+      {resolvedMode === 'meet' && resolvedEnabled && selectedMeetProfile && <MeetProfileDialog selection={selectedMeetProfile} onClose={() => setSelectedMeetProfile(undefined)} />}
     </main>
   )
 }

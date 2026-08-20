@@ -477,8 +477,13 @@ export function App() {
               dogName: dog.name,
               breed: dog.breed,
               ageYears: dogAge(dog.birthDate),
-              profileImageUrl: dog.profileImageSrc && dog.profileImageSrc.length <= 500 ? dog.profileImageSrc : null,
+              profileImageUrl: dog.profileImageSrc || null,
               temperamentTags: dog.temperamentTags,
+              leashGreeting: dog.leashGreeting,
+              strangerResponse: dog.strangerResponse,
+              touchTolerance: dog.touchTolerance,
+              barkingLevel: dog.barkingLevel,
+              bitingLevel: dog.bitingLevel,
             })
           }
           await walkApi.consentPresence(sessionId)

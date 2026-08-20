@@ -66,12 +66,16 @@ describe('NavigationMap', () => {
   it('creates one MapLibre instance, loads navigation layers, and reuses it for GPS updates', async () => {
     const fake = createFakeMap()
     const factory = vi.fn(() => fake.map as never)
+    const firstMeetSelect = vi.fn()
+    const firstPlaceSelect = vi.fn()
     const view = render(
       <NavigationMap
         route={route}
         position={{ coordinate: route.coordinateParts[0][0], accuracy: 5, observedAt: 1, heading: 45, speed: 1 }}
         mapFactory={factory}
         styleUrl="https://example.test/style.json"
+        onMeetSelect={firstMeetSelect}
+        onPlaceSelect={firstPlaceSelect}
       />,
     )
 
@@ -98,6 +102,8 @@ describe('NavigationMap', () => {
         padding={{ top: 120, right: 24, bottom: 360, left: 24 }}
         mapFactory={factory}
         styleUrl="https://example.test/style.json"
+        onMeetSelect={vi.fn()}
+        onPlaceSelect={vi.fn()}
       />,
     )
 
@@ -118,6 +124,29 @@ describe('NavigationMap', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
     expect(fake.map.easeTo).toHaveBeenCalledOnce()
+  })
+
+  it('opens the accepted meet profile instead of treating its marker as a place', async () => {
+    const fake = createFakeMap()
+    const onMeetSelect = vi.fn()
+    const onPlaceSelect = vi.fn()
+    render(
+      <NavigationMap
+        route={route}
+        meetMarker={{ id: 'meet-friend', position: route.coordinateParts[0][0], label: '쿠키' }}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+        onMeetSelect={onMeetSelect}
+        onPlaceSelect={onPlaceSelect}
+      />,
+    )
+    await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
+
+    const click = fake.handlers.get('click') as unknown as (event: { features: Array<{ properties: { id: string } }> }) => void
+    click({ features: [{ properties: { id: 'meet-friend' } }] })
+
+    expect(onMeetSelect).toHaveBeenCalledOnce()
+    expect(onPlaceSelect).not.toHaveBeenCalled()
   })
 
   it('switches between the full-route 2D overview and current-location navigation', async () => {

@@ -5,6 +5,31 @@ import { placeApiStub } from '../test/placeApiStub'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 
 describe('ActiveWalkPage', () => {
+  it('never exposes a meet profile or marker while distance mode is active', () => {
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
+    }
+    render(
+      <ActiveWalkPage
+        presenceMode="distance"
+        presenceEnabled
+        map={{ adapter, scene: { center: { latitude: 37.564, longitude: 126.997 }, zoom: 17 } }}
+        meetConnection={{
+          requestId: 'request-1', lon: 126.997, lat: 37.564, updatedAt: '2026-08-20T10:00:00Z',
+          profile: {
+            dogName: '쿠키', breed: '푸들', ageYears: 2, profileImageUrl: '/cookie.jpg', temperamentTags: ['차분해요'],
+            leashGreeting: 'LIKES', strangerResponse: 'NEUTRAL', touchTolerance: 'COMFORTABLE', barkingLevel: 'RARE', bitingLevel: 'NONE',
+          },
+        }}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: '쿠키 프로필 보기' })).not.toBeInTheDocument()
+    expect(vi.mocked(adapter.mount).mock.calls[0][1].markers).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'meet-friend' }),
+    ]))
+  })
+
   it('draws the selected course and the walked trail in the fallback map', () => {
     const { container } = render(
       <ActiveWalkPage

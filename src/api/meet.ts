@@ -1,11 +1,20 @@
 import { apiRequest } from './http'
 import type { PresenceUpdatePayload } from './walks'
+import type { BarkingLevel, BitingLevel, LeashGreeting, StrangerResponse, TouchTolerance } from '../features/dogs/personality-options'
 
-export type MeetProfile = {
+export type MeetProfilePreview = {
+  profileImageUrl: string | null
+  leashGreeting: LeashGreeting
+  strangerResponse: StrangerResponse
+  touchTolerance: TouchTolerance
+  barkingLevel: BarkingLevel
+  bitingLevel: BitingLevel
+}
+
+export type MeetProfile = MeetProfilePreview & {
   dogName: string
   breed: string
   ageYears: number | null
-  profileImageUrl: string | null
   temperamentTags: string[]
 }
 
@@ -13,6 +22,7 @@ export type MeetCandidate = {
   candidateRef: string
   distanceBand: 'VERY_CLOSE' | 'BAND_30_50' | 'BAND_50_100' | 'BAND_100_500'
   expiresAt: string
+  preview: MeetProfilePreview
 }
 
 export type MeetConnection = {
@@ -37,6 +47,7 @@ export type MeetRequest = {
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED' | 'ENDED'
   createdAt: string
   expiresAt: string
+  preview: MeetProfilePreview | null
   profile: MeetProfile | null
 }
 
