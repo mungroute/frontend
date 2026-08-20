@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BaseMapViewport } from './BaseMapViewport'
 import { BaseMapProvider } from './BaseMapProvider'
@@ -178,13 +178,21 @@ describe('BaseMapViewport', () => {
     const adapter: BaseMapAdapter = {
       mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
     }
-    const getCurrentPosition = vi.fn((success: PositionCallback) => success({
-      coords: { latitude: 37.5012, longitude: 127.0396 } as GeolocationCoordinates,
-    } as GeolocationPosition))
+    const getCurrentPosition = vi.fn()
+    let reportWatchedPosition: PositionCallback = () => undefined
+    const watchPosition = vi.fn((success: PositionCallback) => {
+      reportWatchedPosition = success
+      success({
+        timestamp: Date.now(),
+        coords: { latitude: 37.5012, longitude: 127.0396 } as GeolocationCoordinates,
+      } as GeolocationPosition)
+      return 31
+    })
+    const clearWatch = vi.fn()
     const query = vi.fn(() => Promise.resolve({ state: 'granted' } as PermissionStatus))
-    vi.stubGlobal('navigator', { ...window.navigator, permissions: { query }, geolocation: { getCurrentPosition } })
+    vi.stubGlobal('navigator', { ...window.navigator, permissions: { query }, geolocation: { getCurrentPosition, watchPosition, clearWatch } })
 
-    render(
+    const { unmount } = render(
       <BaseMapProvider adapter={adapter} defaultScene={scene}>
         <BaseMapViewport ariaLabel="현재 위치 지도" fallback={{ src: '/map.png' }} />
       </BaseMapProvider>,
@@ -195,7 +203,19 @@ describe('BaseMapViewport', () => {
       zoom: 17,
     })))
     expect(query).toHaveBeenCalledWith({ name: 'geolocation' })
-    expect(getCurrentPosition).toHaveBeenCalledOnce()
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    await waitFor(() => expect(watchPosition).toHaveBeenCalledOnce())
+
+    act(() => reportWatchedPosition({
+      timestamp: Date.now(),
+      coords: { latitude: 37.5024, longitude: 127.0412 } as GeolocationCoordinates,
+    } as GeolocationPosition))
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: { latitude: 37.5024, longitude: 127.0412 },
+    })))
+
+    unmount()
+    expect(clearWatch).toHaveBeenCalledWith(31)
   })
 
   it('does not prompt for location automatically when permission is not granted', async () => {
