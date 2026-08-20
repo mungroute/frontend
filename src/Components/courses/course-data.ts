@@ -11,7 +11,7 @@ export type CourseCandidateSource = 'saved' | 'generated'
 import type { MapCoordinate } from '../map'
 import type { CourseRecommendationCandidate } from '../../api/recommendations'
 import type { CourseRecommendationThermalSegment } from '../../api/recommendations'
-import type { CourseSource } from '../../api/courses'
+import type { CourseRouteGeoJson, CourseSource } from '../../api/courses'
 import { courseRouteCoordinates } from './course-map'
 
 export type CourseCandidate = {
@@ -26,6 +26,7 @@ export type CourseCandidate = {
   isRepresentative: boolean
   withinTargetTime: boolean
   routeCoordinates: MapCoordinate[]
+  route?: CourseRouteGeoJson
   thermalSegments?: CourseRecommendationThermalSegment[]
   courseSource?: CourseSource
   courseId?: number
@@ -52,10 +53,16 @@ const withTargetTime = (candidate: CourseCandidateSeed, targetMinutes: number): 
 /** P1 mock adapter. Replace this function body with the future candidate API response mapper. */
 export function getCourseCandidates(targetMinutes: number, options: { includeSaved?: boolean } = {}): CourseCandidate[] {
   const saved = options.includeSaved === false ? [] : savedCourseSeeds
-  return [...saved, ...generatedCourseSeeds].map((candidate) => ({
-    ...withTargetTime(candidate, targetMinutes),
-    routeCoordinates: getCourseRouteCoordinates(candidate.id),
-  }))
+  return [...saved, ...generatedCourseSeeds].map((candidate) => {
+    const routeCoordinates = getCourseRouteCoordinates(candidate.id)
+    return {
+      ...withTargetTime(candidate, targetMinutes),
+      routeCoordinates,
+      route: routeCoordinates.length >= 2
+        ? { type: 'LineString', coordinates: routeCoordinates.map(({ longitude, latitude }) => [longitude, latitude]) }
+        : undefined,
+    }
+  })
 }
 
 export function mapRecommendationCandidate(candidate: CourseRecommendationCandidate): CourseCandidate {
@@ -71,6 +78,7 @@ export function mapRecommendationCandidate(candidate: CourseRecommendationCandid
     isRepresentative: candidate.representative,
     withinTargetTime: candidate.withinTargetTime,
     routeCoordinates: courseRouteCoordinates(candidate.route),
+    route: candidate.route ?? undefined,
     thermalSegments: candidate.thermalSegments ?? [],
     courseSource: candidate.courseSource ?? undefined,
     courseId: candidate.courseId ?? undefined,

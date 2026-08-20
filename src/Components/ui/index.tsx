@@ -165,6 +165,7 @@ export function TimePicker({ value, onChange, min = 10, max = 60, step = 5, vari
 type DraggableSheetProps = ComponentPropsWithoutRef<'section'> & {
   allowUpwardDrag?: boolean
   collapsedHeight?: number
+  upwardDragTop?: number
   upwardDragBoundarySelector?: string
   upwardDragBoundarySpacing?: number
 }
@@ -174,6 +175,7 @@ export function DraggableSheet({
   className = '',
   allowUpwardDrag = true,
   collapsedHeight = 104,
+  upwardDragTop = 20,
   upwardDragBoundarySelector,
   upwardDragBoundarySpacing = 0,
   ...props
@@ -210,7 +212,7 @@ export function DraggableSheet({
     const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
     if (!sheet || !container) return
     const baseTop = sheet.getBoundingClientRect().top - offset - container.getBoundingClientRect().top
-    const topLimit = 20 - baseTop
+    const topLimit = upwardDragTop - baseTop
     const boundary = upwardDragBoundarySelector
       ? sheet.querySelector<HTMLElement>(upwardDragBoundarySelector)
       : undefined

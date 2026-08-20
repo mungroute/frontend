@@ -9,8 +9,6 @@ import { WalkDurationPage } from '../pages/WalkDurationPage'
 import { RouteComparisonPage } from '../pages/RouteComparisonPage'
 import { DogSelectionPage } from '../pages/DogSelectionPage'
 import { ActiveWalkPage } from '../pages/ActiveWalkPage'
-import { DistanceAlertPage } from '../pages/DistanceAlertPage'
-import { PausedWalkPage } from '../pages/PausedWalkPage'
 import { WalkCompletePage } from '../pages/WalkCompletePage'
 import { MyCoursesPage } from '../pages/MyCoursesPage'
 import { CourseDetailPage } from '../pages/CourseDetailPage'
@@ -47,12 +45,11 @@ import { GpsErrorDialog, LocationPermissionSheet, isSystemStateCase } from '../C
 import { useMapLocation } from '../Components/map'
 import { formatWalkDistance, formatWalkTime, useWalkTracker } from '../features/walk-record/useWalkTracker'
 import '../styles/app.css'
-import { getCourseRouteCoordinates, mapRecommendationCandidate } from '../Components/courses/course-data'
+import { mapRecommendationCandidate } from '../Components/courses/course-data'
 import type { CourseCandidate } from '../Components/courses/course-data'
-import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { walkApi } from '../api/walks'
 import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail, WalkStatistics } from '../api/walks'
-import { getValidAccessToken } from '../api/http'
+import { ApiError, getValidAccessToken } from '../api/http'
 import { connectPresenceSocket } from '../api/presenceSocket'
 import type { PresenceSocketClient } from '../api/presenceSocket'
 import { authApi } from '../api/auth'
@@ -61,7 +58,7 @@ import { courseCatalogApi } from '../api/courses'
 import { recommendationApi } from '../api/recommendations'
 import type { CourseRecommendation } from '../api/recommendations'
 import { groupApi } from '../api/groups'
-import type { CourseDetail, CourseDiagnostics, CourseSource } from '../api/courses'
+import type { CourseDetail, CourseSource } from '../api/courses'
 import { meetApi } from '../api/meet'
 import type { MeetCandidate, MeetConnection, MeetPresenceResult, MeetRequest } from '../api/meet'
 import { connectMeetSocket } from '../api/meetSocket'
@@ -69,8 +66,11 @@ import type { MeetSocketClient } from '../api/meetSocket'
 import { profileApi } from '../api/profile'
 import type { DogProfile, NotificationSettings } from '../api/profile'
 import { getDevLocationOverride } from '../utils/devLocationOverride'
+import { normalizeWalkRoute } from '../features/navigation/route-normalizer'
+import { clearActiveWalkRoute, clearPendingWalkRoute, clearWalkRoutes, readActiveWalkRoute, readPendingWalkRoute, writeActiveWalkRoute, writePendingWalkRoute } from '../features/navigation/route-storage'
+import type { WalkNavigationRoute, WalkRouteSelection } from '../features/navigation/types'
 
-const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail'])
+const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail', '/courses/shade'])
 
 const resolveHomePath = async () => {
   const [courses, records] = await Promise.all([
@@ -84,7 +84,15 @@ const resolveHomePath = async () => {
 
 const readWalkReturnTo = (search: string) => {
   const requested = new URLSearchParams(search).get('returnTo')
-  return requested && allowedWalkReturnPaths.has(requested) ? requested : '/home/no-course'
+  if (!requested) return '/home/no-course'
+  try {
+    const url = new URL(requested, window.location.origin)
+    return url.origin === window.location.origin && allowedWalkReturnPaths.has(url.pathname)
+      ? `${url.pathname}${url.search}`
+      : '/home/no-course'
+  } catch {
+    return '/home/no-course'
+  }
 }
 
 const walkSelectionUrl = (returnTo: string, context: Record<string, string | number>) => {
@@ -140,17 +148,18 @@ const toAppDog = (dog: DogProfile): AppDog => ({
 })
 
 export function App() {
+  const [restoredActiveSnapshot] = useState(readActiveWalkRoute)
   const [location, setLocation] = useState(readLocation)
   const [locationError, setLocationError] = useState(false)
   const [showSignupLocationPermission, setShowSignupLocationPermission] = useState(false)
-  const [walkPresenceMode, setWalkPresenceMode] = useState<LockedWalkPresenceMode | null>('distance')
-  const [presenceEnabled, setPresenceEnabled] = useState(true)
+  const [walkPresenceMode, setWalkPresenceMode] = useState<LockedWalkPresenceMode | null>(restoredActiveSnapshot?.presenceMode ?? null)
+  const [presenceEnabled, setPresenceEnabled] = useState(restoredActiveSnapshot?.presenceEnabled ?? false)
   const [distanceRadius, setDistanceRadius] = useState(100)
   const [dogs, setDogs] = useState<AppDog[]>(initialDogs)
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>(initialDogs[0] ? [initialDogs[0].id] : [])
   const [notificationSettings, setNotificationSettings] = useState(defaultNotifications)
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser>()
-  const [backendWalkStarted, setBackendWalkStarted] = useState(false)
+  const [backendWalkStarted, setBackendWalkStarted] = useState(Boolean(restoredActiveSnapshot))
   const [walkStarting, setWalkStarting] = useState(false)
   const [walkEndResult, setWalkEndResult] = useState<WalkEndResult>()
   const [walkApiError, setWalkApiError] = useState<string>()
@@ -160,16 +169,17 @@ export function App() {
   const [meetConnection, setMeetConnection] = useState<MeetConnection>()
   const [selectedWalkRecord, setSelectedWalkRecord] = useState<WalkRecordDetail>()
   const [representativeCourse, setRepresentativeCourse] = useState<CourseDetail>()
-  const [walkCourse, setWalkCourse] = useState<CourseDetail>()
-  const [walkCourseDiagnostics, setWalkCourseDiagnostics] = useState<CourseDiagnostics>()
+  const [pendingWalkSelection, setPendingWalkSelection] = useState<WalkRouteSelection>(readPendingWalkRoute)
+  const [activeWalkRoute, setActiveWalkRoute] = useState<WalkNavigationRoute | null>(restoredActiveSnapshot?.route ?? null)
   const [courseRecommendation, setCourseRecommendation] = useState<CourseRecommendation>()
   const [recommendationLoadError, setRecommendationLoadError] = useState<{ requestId: string; reloadKey: number; message: string }>()
   const [recommendationReloadKey, setRecommendationReloadKey] = useState(0)
   const [profileWalkStatistics, setProfileWalkStatistics] = useState<WalkStatistics>()
-  const walkSessionIdRef = useRef<number | undefined>(undefined)
+  const walkSessionIdRef = useRef<number | undefined>(restoredActiveSnapshot?.sessionId)
   const walkStartedAtRef = useRef<string | undefined>(undefined)
   const walkStartPromiseRef = useRef<Promise<number> | undefined>(undefined)
   const walkEndPromiseRef = useRef<Promise<WalkEndResult> | undefined>(undefined)
+  const walkStartingRef = useRef(false)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
   const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
   const { currentLocation, requestCurrentLocation, setCurrentLocationMarker } = useMapLocation()
@@ -234,8 +244,10 @@ export function App() {
           radiusM: distanceRadius,
           }
           if (walkPresenceMode === 'distance') {
-            if (presenceSocketRef.current?.send(payload)) return undefined
-            return await walkApi.updatePresence(payload)
+            const socket = presenceSocketRef.current
+            if (!socket?.isConnected()) return undefined
+            socket.send(payload)
+            return undefined
           }
           if (meetSocketRef.current?.send(payload)) return undefined
           return await meetApi.updatePresence(payload)
@@ -245,7 +257,20 @@ export function App() {
           if ('nearby' in response) applyPresenceResponse(response)
           else applyMeetResponse(response)
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          if (!(error instanceof ApiError) || error.status !== 409) return
+          setPresenceEnabled(false)
+          setNearbyPresence(undefined)
+          setMeetCandidates([])
+          setMeetConnection(undefined)
+          const sessionId = walkSessionIdRef.current
+          if (sessionId) writeActiveWalkRoute({
+            sessionId,
+            route: activeWalkRoute,
+            presenceMode: walkPresenceMode,
+            presenceEnabled: false,
+          })
+        })
     },
     devLocationOverride,
   )
@@ -360,34 +385,6 @@ export function App() {
   }, [location.pathname])
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/walk/')) return
-    const params = new URLSearchParams(location.search)
-    const source = params.get('courseSource')
-    const courseId = Number(params.get('courseId'))
-    if ((source !== 'walk' && source !== 'custom') || !Number.isSafeInteger(courseId) || courseId < 1) {
-      setWalkCourse(undefined)
-      setWalkCourseDiagnostics(undefined)
-      return
-    }
-
-    let active = true
-    const cachedCourse = representativeCourse?.courseSource === source && representativeCourse.courseId === courseId
-      ? representativeCourse
-      : undefined
-    if (cachedCourse) setWalkCourse(cachedCourse)
-    if (!cachedCourse) {
-      void courseCatalogApi.detail(source, courseId)
-        .then((course) => { if (active) setWalkCourse(course) })
-        .catch(() => { if (active) setWalkCourse(undefined) })
-    }
-    void courseCatalogApi.diagnostics(source, courseId)
-      .then((diagnostics) => { if (active) setWalkCourseDiagnostics(diagnostics) })
-      .catch(() => { if (active) setWalkCourseDiagnostics(undefined) })
-
-    return () => { active = false }
-  }, [location.pathname, location.search, representativeCourse])
-
-  useEffect(() => {
     const activeDog = dogs.find((dog) => selectedDogIds.includes(dog.id)) ?? dogs.find((dog) => dog.isDefault) ?? dogs[0]
     setCurrentLocationMarker(activeDog ? { label: activeDog.name, profileImageSrc: activeDog.profileImageSrc } : undefined)
   }, [dogs, selectedDogIds, setCurrentLocationMarker])
@@ -414,7 +411,36 @@ export function App() {
     setLocation(readLocation())
   }
 
-  const beginWalk = async (url: string, mode: WalkPresenceMode = 'off', dogIds: string[] = selectedDogIds) => {
+  const selectWalkRoute = (selection: WalkRouteSelection, url: string) => {
+    setPendingWalkSelection(selection)
+    writePendingWalkRoute(selection)
+    setActiveWalkRoute(null)
+    clearActiveWalkRoute()
+    setWalkApiError(undefined)
+    navigate(url)
+  }
+
+  const selectRequiredRoute = (routeFactory: () => WalkNavigationRoute, url: string) => {
+    try {
+      const route = routeFactory()
+      if (!route.navigationPolyline) {
+        throw new Error('분리된 여러 구간으로 구성된 코스는 아직 길 안내를 시작할 수 없습니다.')
+      }
+      selectWalkRoute({ route, routeRequired: true }, url)
+    } catch (error) {
+      const selection = { route: null, routeRequired: true } satisfies WalkRouteSelection
+      setPendingWalkSelection(selection)
+      writePendingWalkRoute(selection)
+      setWalkApiError(error instanceof Error ? error.message : '선택한 경로를 준비하지 못했습니다.')
+      navigate(url)
+    }
+  }
+
+  const selectFreeWalk = (url: string) => selectWalkRoute({ route: null, routeRequired: false }, url)
+
+  const startWalkWithRoute = async (route: WalkNavigationRoute | null, mode: WalkPresenceMode = 'off', dogIds: string[] = selectedDogIds) => {
+    if (walkStartingRef.current) return
+    walkStartingRef.current = true
     walkTracker.reset()
     setWalkEndResult(undefined)
     setWalkApiError(undefined)
@@ -424,8 +450,12 @@ export function App() {
     setMeetConnection(undefined)
     setBackendWalkStarted(false)
     setWalkStarting(true)
+    setActiveWalkRoute(null)
+    clearActiveWalkRoute()
     walkSessionIdRef.current = undefined
     walkStartedAtRef.current = undefined
+    let startedPresenceMode: LockedWalkPresenceMode | null = null
+    let startedPresenceEnabled = false
     const persistedDogIds = dogIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
     const pending = walkApi.start(mode, persistedDogIds).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
       if (mode !== 'off' && (activeMode !== mode || lockedMode !== mode)) {
@@ -434,6 +464,8 @@ export function App() {
       walkSessionIdRef.current = sessionId
       walkStartedAtRef.current = startedAt
       const resolvedLockedMode = lockedMode ?? (activeMode === 'off' ? null : activeMode)
+      startedPresenceMode = resolvedLockedMode
+      startedPresenceEnabled = activeMode !== 'off'
       setWalkPresenceMode(resolvedLockedMode)
       setPresenceEnabled(activeMode !== 'off')
       if (activeMode !== 'off') {
@@ -445,8 +477,13 @@ export function App() {
               dogName: dog.name,
               breed: dog.breed,
               ageYears: dogAge(dog.birthDate),
-              profileImageUrl: dog.profileImageSrc && dog.profileImageSrc.length <= 500 ? dog.profileImageSrc : null,
+              profileImageUrl: dog.profileImageSrc || null,
               temperamentTags: dog.temperamentTags,
+              leashGreeting: dog.leashGreeting,
+              strangerResponse: dog.strangerResponse,
+              touchTolerance: dog.touchTolerance,
+              barkingLevel: dog.barkingLevel,
+              bitingLevel: dog.bitingLevel,
             })
           }
           await walkApi.consentPresence(sessionId)
@@ -460,12 +497,24 @@ export function App() {
     walkStartPromiseRef.current = pending
     try {
       await pending
+      const sessionId = walkSessionIdRef.current
+      if (!sessionId) throw new Error('산책 세션을 확인하지 못했습니다.')
+      setActiveWalkRoute(route)
+      writeActiveWalkRoute({
+        sessionId,
+        route,
+        presenceMode: startedPresenceMode,
+        presenceEnabled: startedPresenceEnabled,
+      })
+      clearPendingWalkRoute()
+      setPendingWalkSelection({ route: null, routeRequired: false })
       setBackendWalkStarted(true)
-      navigate(url)
+      navigate('/walk/active')
     } catch (error) {
       walkStartPromiseRef.current = undefined
       setWalkApiError(error instanceof Error ? error.message : '산책을 시작하지 못했습니다.')
     } finally {
+      walkStartingRef.current = false
       setWalkStarting(false)
     }
   }
@@ -491,8 +540,16 @@ export function App() {
       .then((sessionId) => walkApi.changeMode(sessionId, nextMode)
         .then(async (response) => {
           if (enabled) await walkApi.consentPresence(sessionId)
-          setWalkPresenceMode(response.lockedMode ?? walkPresenceMode)
-          setPresenceEnabled(response.mode !== 'off')
+          const resolvedMode = response.lockedMode ?? walkPresenceMode
+          const resolvedEnabled = response.mode !== 'off'
+          setWalkPresenceMode(resolvedMode)
+          setPresenceEnabled(resolvedEnabled)
+          writeActiveWalkRoute({
+            sessionId,
+            route: activeWalkRoute,
+            presenceMode: resolvedMode,
+            presenceEnabled: resolvedEnabled,
+          })
         }))
       .catch((error: Error) => setWalkApiError(error.message))
   }
@@ -517,6 +574,9 @@ export function App() {
 
   const endWalk = () => {
     navigate('/walk/complete')
+    clearWalkRoutes()
+    setActiveWalkRoute(null)
+    setPendingWalkSelection({ route: null, routeRequired: false })
     const sessionPromise = walkSessionIdRef.current
       ? Promise.resolve(walkSessionIdRef.current)
       : walkStartPromiseRef.current
@@ -550,6 +610,48 @@ export function App() {
         setLocationError(true)
       })
   }
+
+  const requestMeet = (candidateRef: string) => {
+    const sessionId = walkSessionIdRef.current
+    if (sessionId) runMeetAction(() => meetApi.createRequest(sessionId, candidateRef))
+  }
+
+  const renderWalkSession = (sessionState: 'active' | 'distance-alert' | 'paused') => (
+    <ActiveWalkPage
+      sessionState={sessionState}
+      route={activeWalkRoute}
+      currentPosition={walkTracker.currentPosition}
+      alert={nearbyPresence}
+      time={walkTracker.formattedTime}
+      distance={walkTracker.formattedDistance}
+      walkedCoordinates={walkTracker.walkedCoordinates}
+      gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal}
+      presenceMode={walkPresenceMode}
+      presenceEnabled={presenceEnabled}
+      onPresenceEnabledChange={(enabled) => {
+        changePresenceEnabled(enabled)
+        if (sessionState === 'distance-alert' && !enabled) navigate('/walk/active')
+      }}
+      distanceRadius={distanceRadius}
+      onDistanceRadiusChange={setDistanceRadius}
+      meetCandidates={meetCandidates}
+      meetRequests={meetRequests}
+      meetConnection={meetConnection}
+      onMeetRequest={requestMeet}
+      onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))}
+      onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))}
+      onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))}
+      onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }}
+      onMeetBlock={(id) => {
+        void meetApi.block(id)
+          .then(() => { setMeetConnection(undefined); setMeetRequests([]) })
+          .catch((error: Error) => setWalkApiError(error.message))
+      }}
+      onPause={() => pauseWalk('/walk/paused')}
+      onResume={() => resumeWalk('/walk/active')}
+      onStop={endWalk}
+    />
+  )
 
   if (location.pathname === '/preview/system-states') {
     const requestedCase = new URLSearchParams(location.search).get('case')
@@ -847,7 +949,17 @@ export function App() {
       source={source}
       courseId={courseId}
       onBack={() => navigate('/courses')}
-      onStart={(course) => navigate(walkSelectionUrl('/courses/detail', { entry: 'course-detail', courseSource: course.courseSource, courseId: course.courseId, duration: course.metrics?.durationMin ?? 30 }))}
+      onStart={(course) => selectRequiredRoute(() => normalizeWalkRoute({
+        routeKey: `course-detail:${course.courseSource}:${course.courseId}`,
+        backendId: `${course.courseSource}:${course.courseId}`,
+        origin: 'COURSE_DETAIL',
+        name: course.courseName,
+        geometry: course.route,
+        distanceM: course.metrics?.lengthM,
+        durationSec: course.metrics ? course.metrics.durationMin * 60 : undefined,
+        estimatedSurfaceTempC: course.metrics?.estimatedSurfaceTempC,
+        shadeRatio: course.metrics?.shadeRatio,
+      }), walkSelectionUrl(`/courses/detail?source=${course.courseSource}&id=${course.courseId}`, { entry: 'course-detail', duration: course.metrics?.durationMin ?? 30 }))}
       onCompare={(course) => navigate(`/courses/compare?returnTo=%2Fcourses%2Fdetail&source=${course.courseSource}&id=${course.courseId}`)}
       onDeleted={() => navigate('/courses')}
       onShare={() => navigate(`/groups?shareSource=${source}&shareCourseId=${courseId}`)}
@@ -855,7 +967,7 @@ export function App() {
   }
 
   if (location.pathname === '/courses/shade') {
-    return <ShadeTimelinePage onBack={() => navigate('/courses')} onWalkAtRecommended={() => navigate('/walk/dogs')} />
+    return <ShadeTimelinePage onBack={() => navigate('/courses')} onWalkAtRecommended={() => selectFreeWalk(walkSelectionUrl('/courses/shade', { entry: 'direct' }))} />
   }
 
   if (location.pathname === '/courses/draw') {
@@ -867,7 +979,7 @@ export function App() {
   }
 
   if (location.pathname === '/walk/distance-alert') {
-    return <DistanceAlertPage alert={nearbyPresence} time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} distanceMode={presenceEnabled} onDistanceModeChange={(enabled) => { changePresenceEnabled(enabled); if (!enabled) navigate(`/walk/active${location.search}`) }} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
+    return renderWalkSession('distance-alert')
   }
 
   if (location.pathname === '/walk/complete') {
@@ -890,6 +1002,8 @@ export function App() {
         walkSessionIdRef.current = undefined
         walkStartPromiseRef.current = undefined
         walkEndPromiseRef.current = undefined
+        clearWalkRoutes()
+        setActiveWalkRoute(null)
         navigate('/home')
       }}
       onSave={(course) => {
@@ -903,62 +1017,31 @@ export function App() {
         const ended = walkEndPromiseRef.current ?? sessionPromise.then((sessionId) => walkApi.end(sessionId))
         void ended
           .then((result) => walkApi.save(result.sessionId, course.name, course.representative))
-          .then(() => { setBackendWalkStarted(false); navigate('/home') })
+          .then(() => { setBackendWalkStarted(false); clearWalkRoutes(); setActiveWalkRoute(null); navigate('/home') })
           .catch((error: Error) => setWalkApiError(error.message))
       }}
     />
   }
 
   if (location.pathname === '/walk/paused') {
-    return <PausedWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} onResume={() => resumeWalk(`/walk/active${location.search}`)} onStop={endWalk} />
+    return renderWalkSession('paused')
   }
 
   if (location.pathname === '/walk/active') {
-    const params = new URLSearchParams(location.search)
-    const selectedCourseId = params.get('candidateId') ?? params.get('courseId')
-    const isTimeRecommendation = params.get('entry') === 'time-candidates'
-    const requestedCourseSource = params.get('courseSource')
-    const requestedCourseId = Number(params.get('courseId'))
-    const selectedRecommendation = courseRecommendation
-      ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates]
-        .find((candidate) => candidate.candidateId === selectedCourseId)
-      : undefined
-    const selectedCandidate = selectedRecommendation
-      ? mapRecommendationCandidate(selectedRecommendation)
-      : undefined
-    const selectedCatalogCourse = walkCourse
-      && walkCourse.courseSource === requestedCourseSource
-      && walkCourse.courseId === requestedCourseId
-      ? walkCourse
-      : representativeCourse
-        && representativeCourse.courseSource === requestedCourseSource
-        && representativeCourse.courseId === requestedCourseId
-        ? representativeCourse
-        : undefined
-    const selectedCatalogDiagnostics = walkCourseDiagnostics
-      && walkCourseDiagnostics.courseSource === requestedCourseSource
-      && walkCourseDiagnostics.courseId === requestedCourseId
-      ? walkCourseDiagnostics
-      : undefined
-    const plannedRouteCoordinates = selectedCandidate
-      ? selectedCandidate.routeCoordinates
-      : selectedCatalogCourse
-        ? courseRouteCoordinates(selectedCatalogCourse.route)
-      : isTimeRecommendation
-        ? []
-        : getCourseRouteCoordinates(selectedCourseId)
-    const plannedRouteThermalSegments = selectedCandidate?.thermalSegments
-      ?? selectedCatalogDiagnostics?.segments.map((segment) => ({
-        lengthM: segment.lengthM,
-        temperatureGrade: segment.temperatureGrade,
-      }))
-    const plannedRouteTemperatureC = selectedCandidate?.estimatedSurfaceTempC
-      ?? selectedCatalogCourse?.metrics?.estimatedSurfaceTempC
-    return <ActiveWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} plannedRouteCoordinates={plannedRouteCoordinates} plannedRouteThermalSegments={plannedRouteThermalSegments} plannedRouteTemperatureC={plannedRouteTemperatureC} walkedCoordinates={walkTracker.walkedCoordinates} gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} distanceRadius={distanceRadius} onDistanceRadiusChange={setDistanceRadius} meetCandidates={meetCandidates} meetRequests={meetRequests} meetConnection={meetConnection} onMeetRequest={(candidateRef) => { const sessionId = walkSessionIdRef.current; if (sessionId) runMeetAction(() => meetApi.createRequest(sessionId, candidateRef)) }} onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))} onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))} onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))} onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }} onMeetBlock={(id) => { void meetApi.block(id).then(() => { setMeetConnection(undefined); setMeetRequests([]) }).catch((error: Error) => setWalkApiError(error.message)) }} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
+    return renderWalkSession('active')
   }
 
   if (location.pathname === '/walk/dogs') {
-    return <DogSelectionPage dogs={dogs} starting={walkStarting} errorMessage={walkApiError} onBack={() => navigate(readWalkReturnTo(location.search))} onConfirm={(selection) => { setSelectedDogIds(selection.dogIds); setWalkPresenceMode(selection.mode === 'off' ? null : selection.mode); setPresenceEnabled(selection.mode !== 'off'); void beginWalk(`/walk/active${location.search}`, selection.mode, selection.dogIds) }} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
+    return <DogSelectionPage dogs={dogs} starting={walkStarting} errorMessage={walkApiError} onBack={() => navigate(readWalkReturnTo(location.search))} onConfirm={(selection) => {
+      if (pendingWalkSelection.routeRequired && !pendingWalkSelection.route) {
+        setWalkApiError('선택한 코스 경로를 불러온 뒤 다시 시도해 주세요.')
+        return
+      }
+      setSelectedDogIds(selection.dogIds)
+      setWalkPresenceMode(selection.mode === 'off' ? null : selection.mode)
+      setPresenceEnabled(selection.mode !== 'off')
+      void startWalkWithRoute(pendingWalkSelection.route, selection.mode, selection.dogIds)
+    }} onRegisterDog={() => navigate('/profile/dogs/edit?returnTo=%2Fwalk%2Fdogs')} />
   }
 
   if (location.pathname === '/courses/compare') {
@@ -978,8 +1061,30 @@ export function App() {
       source={source}
       courseId={courseId}
       onBack={() => navigate(returnTo)}
-      onStartAlternative={(comparison) => navigate(walkSelectionUrl('/courses/compare', { entry: 'course-comparison', courseSource: 'generated', candidateId: `${comparison.courseSource}-${comparison.courseId}-alternative`, duration: comparison.alternative?.durationMin ?? comparison.usual.durationMin }))}
-      onStartUsual={(comparison) => navigate(walkSelectionUrl('/courses/compare', { entry: 'course-comparison', courseSource: comparison.courseSource, courseId: comparison.courseId, duration: comparison.usual.durationMin }))}
+      onStartAlternative={(comparison) => selectRequiredRoute(() => {
+        if (!comparison.alternativeRoute || !comparison.alternative) throw new Error('추천 대안 경로를 불러오지 못했습니다.')
+        return normalizeWalkRoute({
+          routeKey: `comparison-alternative:${comparison.courseSource}:${comparison.courseId}`,
+          origin: 'COMPARISON_ALTERNATIVE',
+          name: `${comparison.courseName} 추천 대안`,
+          geometry: comparison.alternativeRoute,
+          distanceM: comparison.alternative.lengthM,
+          durationSec: comparison.alternative.durationMin * 60,
+          estimatedSurfaceTempC: comparison.alternative.estimatedSurfaceTempC,
+          shadeRatio: comparison.alternative.shadeRatio,
+        })
+      }, walkSelectionUrl(`/courses/compare?source=${source}&id=${courseId}&returnTo=${encodeURIComponent(requestedReturnTo ?? '/courses')}`, { entry: 'course-comparison', duration: comparison.alternative?.durationMin ?? comparison.usual.durationMin }))}
+      onStartUsual={(comparison) => selectRequiredRoute(() => normalizeWalkRoute({
+        routeKey: `comparison-usual:${comparison.courseSource}:${comparison.courseId}`,
+        backendId: `${comparison.courseSource}:${comparison.courseId}`,
+        origin: 'COMPARISON_USUAL',
+        name: comparison.courseName,
+        geometry: comparison.usualRoute,
+        distanceM: comparison.usual.lengthM,
+        durationSec: comparison.usual.durationMin * 60,
+        estimatedSurfaceTempC: comparison.usual.estimatedSurfaceTempC,
+        shadeRatio: comparison.usual.shadeRatio,
+      }), walkSelectionUrl(`/courses/compare?source=${source}&id=${courseId}&returnTo=${encodeURIComponent(requestedReturnTo ?? '/courses')}`, { entry: 'course-comparison', duration: comparison.usual.durationMin }))}
     />
   }
 
@@ -993,7 +1098,21 @@ export function App() {
     const candidates: CourseCandidate[] | undefined = courseRecommendation?.requestId === recommendationRequestId
       ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates].map(mapRecommendationCandidate)
       : undefined
-    return <RouteCandidatesPage duration={duration} candidates={candidates} onConfirm={(candidate) => navigate(walkSelectionUrl('/courses/candidates', { entry: 'time-candidates', courseSource: candidate.courseSource ?? candidate.source, candidateId: candidate.id, recommendationId: courseRecommendation?.requestId ?? '', duration: candidate.durationMinutes }))} />
+    return <RouteCandidatesPage duration={duration} candidates={candidates} onBack={() => navigate(`/walk/time?duration=${duration}`)} onConfirm={(candidate) => selectRequiredRoute(() => {
+      if (!candidate.route) throw new Error('추천 코스 경로를 불러오지 못했습니다.')
+      return normalizeWalkRoute({
+        routeKey: `time-recommendation:${candidate.id}`,
+        backendId: candidate.courseSource && candidate.courseId ? `${candidate.courseSource}:${candidate.courseId}` : undefined,
+        origin: 'TIME_RECOMMENDATION',
+        name: candidate.name,
+        geometry: candidate.route,
+        distanceM: candidate.distanceKm * 1_000,
+        durationSec: candidate.durationMinutes * 60,
+        thermalSegments: candidate.thermalSegments,
+        estimatedSurfaceTempC: candidate.estimatedSurfaceTempC,
+        shadeRatio: candidate.shadeRatio === null ? null : candidate.shadeRatio / 100,
+      })
+    }, walkSelectionUrl(`/courses/candidates?duration=${duration}&recommendationId=${encodeURIComponent(courseRecommendation?.requestId ?? '')}`, { entry: 'time-candidates', duration: candidate.durationMinutes }))} />
   }
 
   if (location.pathname === '/courses/loading') {
@@ -1012,12 +1131,12 @@ export function App() {
   }
 
   if (location.pathname === '/walk/time') {
-    return <WalkDurationPage onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
+    return <WalkDurationPage initialDuration={duration} onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
   }
 
   if (location.pathname === '/home/no-course') {
     return <>
-      <NoCourseHomePage onStartWalk={() => navigate(walkSelectionUrl('/home/no-course', { entry: 'direct' }))} onDrawCourse={() => navigate('/courses/draw')} onRecommendCourse={() => navigate('/walk/time')} />
+      <NoCourseHomePage onStartWalk={() => selectFreeWalk(walkSelectionUrl('/home/no-course', { entry: 'direct' }))} onDrawCourse={() => navigate('/courses/draw')} onRecommendCourse={() => navigate('/walk/time')} />
       {showSignupLocationPermission && <LocationPermissionSheet onClose={() => setShowSignupLocationPermission(false)} onAllow={requestSignupLocation} />}
       {locationError && <GpsErrorDialog onClose={() => setLocationError(false)} onRetry={requestSignupLocation} />}
     </>
@@ -1027,8 +1146,18 @@ export function App() {
     return <RepresentativeHomePage
       course={representativeCourse}
       onStartWalk={() => representativeCourse
-        ? navigate(walkSelectionUrl('/home', { entry: 'representative-home', courseSource: representativeCourse.courseSource, courseId: representativeCourse.courseId, duration: representativeCourse.metrics?.durationMin ?? 30 }))
-        : navigate(walkSelectionUrl('/home', { entry: 'direct' }))}
+        ? selectRequiredRoute(() => normalizeWalkRoute({
+            routeKey: `representative:${representativeCourse.courseSource}:${representativeCourse.courseId}`,
+            backendId: `${representativeCourse.courseSource}:${representativeCourse.courseId}`,
+            origin: 'REPRESENTATIVE_COURSE',
+            name: representativeCourse.courseName,
+            geometry: representativeCourse.route,
+            distanceM: representativeCourse.metrics?.lengthM,
+            durationSec: representativeCourse.metrics ? representativeCourse.metrics.durationMin * 60 : undefined,
+            estimatedSurfaceTempC: representativeCourse.metrics?.estimatedSurfaceTempC,
+            shadeRatio: representativeCourse.metrics?.shadeRatio,
+          }), walkSelectionUrl('/home', { entry: 'representative-home', duration: representativeCourse.metrics?.durationMin ?? 30 }))
+        : selectFreeWalk(walkSelectionUrl('/home', { entry: 'direct' }))}
       onCompareCourse={() => representativeCourse
         ? navigate(`/courses/compare?returnTo=%2Fhome&source=${representativeCourse.courseSource}&id=${representativeCourse.courseId}`)
         : navigate('/courses')}
