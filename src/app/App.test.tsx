@@ -6,6 +6,8 @@ import { courseCatalogApi } from '../api/courses'
 import type { CourseComparison, CourseDetail, CourseDiagnostics, CourseSummary } from '../api/courses'
 import { groupApi } from '../api/groups'
 import type { GroupDetail, GroupSharedCourse } from '../api/groups'
+import { recommendationApi } from '../api/recommendations'
+import type { CourseRecommendation } from '../api/recommendations'
 
 const courseMetrics = {
   lengthM: 1800, durationMin: 45, shadeRatio: 0.68, estimatedSurfaceTempC: 34,
@@ -64,6 +66,19 @@ const groupDetail: GroupDetail = {
   sharedCourseCount: 1, latestActivityAt: '2026-08-18T12:00:00+09:00', createdAt: '2026-08-18T09:00:00+09:00',
   members: [{ userId: 1, nickname: '망고 보호자', profileImageUrl: null, role: 'OWNER', joinedAt: '2026-08-18T09:00:00+09:00' }],
   recentCourses: [sharedGroupCourse],
+}
+const courseRecommendation: CourseRecommendation = {
+  requestId: 'recommendation-35', status: 'COMPLETED', targetDurationMin: 35,
+  departureAt: '2026-08-19T18:30:00+09:00', createdAt: '2026-08-19T13:00:00Z',
+  savedCandidates: [],
+  generatedCandidates: [{
+    candidateId: 'generated-1', candidateType: 'GENERATED', courseSource: null, courseId: null,
+    name: '중구 추천 순환길 A', durationMinutes: 35, distanceM: 1400, shadeRatio: 0.62,
+    estimatedSurfaceTempC: 33, representative: false, withinTargetTime: true,
+    shadeApplicable: true, referenceHour: 18,
+    route: { type: 'LineString', coordinates: [[126.997, 37.564], [126.999, 37.565], [126.997, 37.564]] },
+    segmentIds: [1, 2], recommendationReasons: ['선택한 시간과 잘 맞아요'],
+  }],
 }
 
 const { authResponse } = vi.hoisted(() => ({
@@ -137,6 +152,8 @@ describe('App location permission route', () => {
     vi.spyOn(courseCatalogApi, 'delete').mockResolvedValue(undefined)
     vi.spyOn(courseCatalogApi, 'comparison').mockResolvedValue(catalogComparison)
     vi.spyOn(courseCatalogApi, 'diagnostics').mockResolvedValue(catalogDiagnostics)
+    vi.spyOn(recommendationApi, 'create').mockResolvedValue(courseRecommendation)
+    vi.spyOn(recommendationApi, 'get').mockResolvedValue(courseRecommendation)
     vi.spyOn(groupApi, 'list').mockResolvedValue([groupDetail])
     vi.spyOn(groupApi, 'discover').mockResolvedValue([])
     vi.spyOn(groupApi, 'create').mockResolvedValue(groupDetail)
@@ -323,6 +340,23 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/courses/detail')
     expect(window.location.search).toBe('?source=custom&id=42')
     expect(screen.getByRole('heading', { name: '코스 상세' })).toBeInTheDocument()
+  })
+
+  it('carries the representative home course route into the active walk', async () => {
+    window.history.replaceState({}, '', '/home')
+    render(<App />)
+
+    await screen.findByRole('heading', { name: '저녁 남산길' })
+    fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+
+    expect(window.location.search).toContain('courseSource=custom')
+    expect(window.location.search).toContain('courseId=42')
+    fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
+
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
+    expect(courseCatalogApi.diagnostics).toHaveBeenCalledWith('custom', 42)
   })
 
   it('keeps home course actions as separate flows', async () => {
@@ -641,20 +675,25 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '35분 코스 보기' }))
 
     expect(window.location.pathname).toBe('/courses/loading')
-    expect(window.location.search).toBe('?duration=35')
+    expect(window.location.search).toContain('?duration=35&departureAt=')
     expect(screen.getByRole('heading', { name: '35분에 맞는 길을 찾고 있어요' })).toBeInTheDocument()
   })
 
-  it('moves from route generation to candidates with the duration preserved', () => {
-    vi.useFakeTimers()
+  it('moves from route generation to candidates with the duration preserved', async () => {
+    const getCurrentPosition = vi.fn()
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { getCurrentPosition },
+    })
     window.history.replaceState({}, '', '/courses/loading?duration=35')
 
     render(<App />)
-    act(() => vi.advanceTimersByTime(1_600))
+    act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.564, longitude: 126.997 } }))
 
-    expect(window.location.pathname).toBe('/courses/candidates')
-    expect(window.location.search).toBe('?duration=35')
+    await waitFor(() => expect(window.location.pathname).toBe('/courses/candidates'))
+    expect(window.location.search).toBe('?duration=35&recommendationId=recommendation-35')
     expect(screen.getByRole('heading', { name: '35분 안에 걸을 수 있는 코스예요' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /중구 추천 순환길 A/ })).toBeInTheDocument()
   })
 
   it('reads the selected duration on the candidate route', () => {
@@ -695,11 +734,11 @@ describe('App location permission route', () => {
     expect(screen.queryByRole('heading', { name: '산책 중' })).not.toBeInTheDocument()
   })
 
-  it('continues an existing active session and restores its mode', async () => {
+  it('continues an existing active session with the newly selected distance mode', async () => {
     vi.mocked(walkApi.start).mockResolvedValueOnce({
       sessionId: 27,
       startedAt: '2026-08-14T14:15:00+09:00',
-      mode: 'off',
+      mode: 'distance',
       lockedMode: 'distance',
     })
     window.history.replaceState({}, '', '/walk/dogs')
@@ -710,8 +749,25 @@ describe('App location permission route', () => {
 
     const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
     expect(window.location.pathname).toBe('/walk/active')
-    expect(activeSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     expect(walkApi.start).toHaveBeenCalledWith('distance', [])
+  })
+
+  it('does not enter the active screen when the API returns a different mode', async () => {
+    vi.mocked(walkApi.start).mockResolvedValueOnce({
+      sessionId: 27,
+      startedAt: '2026-08-14T14:15:00+09:00',
+      mode: 'off',
+      lockedMode: null,
+    })
+    window.history.replaceState({}, '', '/walk/dogs')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('선택한 산책 모드가 적용되지 않았어요')
+    expect(window.location.pathname).toBe('/walk/dogs')
   })
 
   it('keeps the distance mode choice during a walk and changes it only after confirmation', async () => {

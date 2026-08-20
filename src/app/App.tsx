@@ -47,7 +47,9 @@ import { GpsErrorDialog, LocationPermissionSheet, isSystemStateCase } from '../C
 import { useMapLocation } from '../Components/map'
 import { formatWalkDistance, formatWalkTime, useWalkTracker } from '../features/walk-record/useWalkTracker'
 import '../styles/app.css'
-import { getCourseRouteCoordinates } from '../Components/courses/course-data'
+import { getCourseRouteCoordinates, mapRecommendationCandidate } from '../Components/courses/course-data'
+import type { CourseCandidate } from '../Components/courses/course-data'
+import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { walkApi } from '../api/walks'
 import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail, WalkStatistics } from '../api/walks'
 import { getValidAccessToken } from '../api/http'
@@ -56,14 +58,17 @@ import type { PresenceSocketClient } from '../api/presenceSocket'
 import { authApi } from '../api/auth'
 import type { AuthUser } from '../api/auth'
 import { courseCatalogApi } from '../api/courses'
+import { recommendationApi } from '../api/recommendations'
+import type { CourseRecommendation } from '../api/recommendations'
 import { groupApi } from '../api/groups'
-import type { CourseDetail, CourseSource } from '../api/courses'
+import type { CourseDetail, CourseDiagnostics, CourseSource } from '../api/courses'
 import { meetApi } from '../api/meet'
 import type { MeetCandidate, MeetConnection, MeetPresenceResult, MeetRequest } from '../api/meet'
 import { connectMeetSocket } from '../api/meetSocket'
 import type { MeetSocketClient } from '../api/meetSocket'
 import { profileApi } from '../api/profile'
 import type { DogProfile, NotificationSettings } from '../api/profile'
+import { getDevLocationOverride } from '../utils/devLocationOverride'
 
 const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail'])
 
@@ -155,6 +160,11 @@ export function App() {
   const [meetConnection, setMeetConnection] = useState<MeetConnection>()
   const [selectedWalkRecord, setSelectedWalkRecord] = useState<WalkRecordDetail>()
   const [representativeCourse, setRepresentativeCourse] = useState<CourseDetail>()
+  const [walkCourse, setWalkCourse] = useState<CourseDetail>()
+  const [walkCourseDiagnostics, setWalkCourseDiagnostics] = useState<CourseDiagnostics>()
+  const [courseRecommendation, setCourseRecommendation] = useState<CourseRecommendation>()
+  const [recommendationLoadError, setRecommendationLoadError] = useState<{ requestId: string; reloadKey: number; message: string }>()
+  const [recommendationReloadKey, setRecommendationReloadKey] = useState(0)
   const [profileWalkStatistics, setProfileWalkStatistics] = useState<WalkStatistics>()
   const walkSessionIdRef = useRef<number | undefined>(undefined)
   const walkStartedAtRef = useRef<string | undefined>(undefined)
@@ -162,8 +172,10 @@ export function App() {
   const walkEndPromiseRef = useRef<Promise<WalkEndResult> | undefined>(undefined)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
   const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
-  const { requestCurrentLocation, setCurrentLocationMarker } = useMapLocation()
+  const { currentLocation, requestCurrentLocation, setCurrentLocationMarker } = useMapLocation()
+  const devLocationOverride = getDevLocationOverride(authenticatedUser?.email)
   const duration = readDuration(location.search)
+  const recommendationRequestId = new URLSearchParams(location.search).get('recommendationId')
   const isWalkTracking = location.pathname === '/walk/active' || location.pathname === '/walk/distance-alert'
   const applyPresenceResponse = useCallback((response: PresenceUpdateResult) => {
     const nearest = response.nearby[0]
@@ -235,6 +247,7 @@ export function App() {
         })
         .catch(() => undefined)
     },
+    devLocationOverride,
   )
 
   useEffect(() => {
@@ -308,6 +321,11 @@ export function App() {
   }, [authenticatedUser])
 
   useEffect(() => {
+    if (!getDevLocationOverride(authenticatedUser?.email)) return
+    void requestCurrentLocation().catch(() => undefined)
+  }, [authenticatedUser?.email, requestCurrentLocation])
+
+  useEffect(() => {
     if (location.pathname !== '/records/detail') return
     const sessionId = Number(new URLSearchParams(location.search).get('id'))
     if (!Number.isSafeInteger(sessionId) || sessionId < 1) return
@@ -342,6 +360,34 @@ export function App() {
   }, [location.pathname])
 
   useEffect(() => {
+    if (!location.pathname.startsWith('/walk/')) return
+    const params = new URLSearchParams(location.search)
+    const source = params.get('courseSource')
+    const courseId = Number(params.get('courseId'))
+    if ((source !== 'walk' && source !== 'custom') || !Number.isSafeInteger(courseId) || courseId < 1) {
+      setWalkCourse(undefined)
+      setWalkCourseDiagnostics(undefined)
+      return
+    }
+
+    let active = true
+    const cachedCourse = representativeCourse?.courseSource === source && representativeCourse.courseId === courseId
+      ? representativeCourse
+      : undefined
+    if (cachedCourse) setWalkCourse(cachedCourse)
+    if (!cachedCourse) {
+      void courseCatalogApi.detail(source, courseId)
+        .then((course) => { if (active) setWalkCourse(course) })
+        .catch(() => { if (active) setWalkCourse(undefined) })
+    }
+    void courseCatalogApi.diagnostics(source, courseId)
+      .then((diagnostics) => { if (active) setWalkCourseDiagnostics(diagnostics) })
+      .catch(() => { if (active) setWalkCourseDiagnostics(undefined) })
+
+    return () => { active = false }
+  }, [location.pathname, location.search, representativeCourse])
+
+  useEffect(() => {
     const activeDog = dogs.find((dog) => selectedDogIds.includes(dog.id)) ?? dogs.find((dog) => dog.isDefault) ?? dogs[0]
     setCurrentLocationMarker(activeDog ? { label: activeDog.name, profileImageSrc: activeDog.profileImageSrc } : undefined)
   }, [dogs, selectedDogIds, setCurrentLocationMarker])
@@ -351,6 +397,17 @@ export function App() {
     window.addEventListener('popstate', syncLocation)
     return () => window.removeEventListener('popstate', syncLocation)
   }, [])
+
+  useEffect(() => {
+    if (!recommendationRequestId || courseRecommendation?.requestId === recommendationRequestId) return
+    let active = true
+    void recommendationApi.get(recommendationRequestId)
+      .then((response) => { if (active) setCourseRecommendation(response) })
+      .catch((error: Error) => {
+        if (active) setRecommendationLoadError({ requestId: recommendationRequestId, reloadKey: recommendationReloadKey, message: error.message })
+      })
+    return () => { active = false }
+  }, [courseRecommendation?.requestId, recommendationReloadKey, recommendationRequestId])
 
   const navigate = (url: string) => {
     window.history.pushState({}, '', url)
@@ -371,6 +428,9 @@ export function App() {
     walkStartedAtRef.current = undefined
     const persistedDogIds = dogIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
     const pending = walkApi.start(mode, persistedDogIds).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
+      if (mode !== 'off' && (activeMode !== mode || lockedMode !== mode)) {
+        throw new Error('선택한 산책 모드가 적용되지 않았어요. 다시 시작해 주세요.')
+      }
       walkSessionIdRef.current = sessionId
       walkStartedAtRef.current = startedAt
       const resolvedLockedMode = lockedMode ?? (activeMode === 'off' ? null : activeMode)
@@ -856,7 +916,45 @@ export function App() {
   if (location.pathname === '/walk/active') {
     const params = new URLSearchParams(location.search)
     const selectedCourseId = params.get('candidateId') ?? params.get('courseId')
-    return <ActiveWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} plannedRouteCoordinates={getCourseRouteCoordinates(selectedCourseId)} walkedCoordinates={walkTracker.walkedCoordinates} gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} distanceRadius={distanceRadius} onDistanceRadiusChange={setDistanceRadius} meetCandidates={meetCandidates} meetRequests={meetRequests} meetConnection={meetConnection} onMeetRequest={(candidateRef) => { const sessionId = walkSessionIdRef.current; if (sessionId) runMeetAction(() => meetApi.createRequest(sessionId, candidateRef)) }} onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))} onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))} onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))} onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }} onMeetBlock={(id) => { void meetApi.block(id).then(() => { setMeetConnection(undefined); setMeetRequests([]) }).catch((error: Error) => setWalkApiError(error.message)) }} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
+    const isTimeRecommendation = params.get('entry') === 'time-candidates'
+    const requestedCourseSource = params.get('courseSource')
+    const requestedCourseId = Number(params.get('courseId'))
+    const selectedRecommendation = courseRecommendation
+      ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates]
+        .find((candidate) => candidate.candidateId === selectedCourseId)
+      : undefined
+    const selectedCandidate = selectedRecommendation
+      ? mapRecommendationCandidate(selectedRecommendation)
+      : undefined
+    const selectedCatalogCourse = walkCourse
+      && walkCourse.courseSource === requestedCourseSource
+      && walkCourse.courseId === requestedCourseId
+      ? walkCourse
+      : representativeCourse
+        && representativeCourse.courseSource === requestedCourseSource
+        && representativeCourse.courseId === requestedCourseId
+        ? representativeCourse
+        : undefined
+    const selectedCatalogDiagnostics = walkCourseDiagnostics
+      && walkCourseDiagnostics.courseSource === requestedCourseSource
+      && walkCourseDiagnostics.courseId === requestedCourseId
+      ? walkCourseDiagnostics
+      : undefined
+    const plannedRouteCoordinates = selectedCandidate
+      ? selectedCandidate.routeCoordinates
+      : selectedCatalogCourse
+        ? courseRouteCoordinates(selectedCatalogCourse.route)
+      : isTimeRecommendation
+        ? []
+        : getCourseRouteCoordinates(selectedCourseId)
+    const plannedRouteThermalSegments = selectedCandidate?.thermalSegments
+      ?? selectedCatalogDiagnostics?.segments.map((segment) => ({
+        lengthM: segment.lengthM,
+        temperatureGrade: segment.temperatureGrade,
+      }))
+    const plannedRouteTemperatureC = selectedCandidate?.estimatedSurfaceTempC
+      ?? selectedCatalogCourse?.metrics?.estimatedSurfaceTempC
+    return <ActiveWalkPage time={walkTracker.formattedTime} distance={walkTracker.formattedDistance} plannedRouteCoordinates={plannedRouteCoordinates} plannedRouteThermalSegments={plannedRouteThermalSegments} plannedRouteTemperatureC={plannedRouteTemperatureC} walkedCoordinates={walkTracker.walkedCoordinates} gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal} presenceMode={walkPresenceMode} presenceEnabled={presenceEnabled} onPresenceEnabledChange={changePresenceEnabled} distanceRadius={distanceRadius} onDistanceRadiusChange={setDistanceRadius} meetCandidates={meetCandidates} meetRequests={meetRequests} meetConnection={meetConnection} onMeetRequest={(candidateRef) => { const sessionId = walkSessionIdRef.current; if (sessionId) runMeetAction(() => meetApi.createRequest(sessionId, candidateRef)) }} onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))} onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))} onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))} onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }} onMeetBlock={(id) => { void meetApi.block(id).then(() => { setMeetConnection(undefined); setMeetRequests([]) }).catch((error: Error) => setWalkApiError(error.message)) }} onPause={() => pauseWalk(`/walk/paused${location.search}`)} onStop={endWalk} />
   }
 
   if (location.pathname === '/walk/dogs') {
@@ -886,15 +984,35 @@ export function App() {
   }
 
   if (location.pathname === '/courses/candidates') {
-    return <RouteCandidatesPage duration={duration} onConfirm={(candidate) => navigate(walkSelectionUrl('/courses/candidates', { entry: 'time-candidates', courseSource: candidate.source, candidateId: candidate.id, duration: candidate.durationMinutes }))} />
+    if (recommendationRequestId && recommendationLoadError?.requestId === recommendationRequestId && recommendationLoadError.reloadKey === recommendationReloadKey) {
+      return <ServerErrorPage onRetry={() => setRecommendationReloadKey((value) => value + 1)} />
+    }
+    if (recommendationRequestId && courseRecommendation?.requestId !== recommendationRequestId) {
+      return <RouteGeneratingPage duration={duration} />
+    }
+    const candidates: CourseCandidate[] | undefined = courseRecommendation?.requestId === recommendationRequestId
+      ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates].map(mapRecommendationCandidate)
+      : undefined
+    return <RouteCandidatesPage duration={duration} candidates={candidates} onConfirm={(candidate) => navigate(walkSelectionUrl('/courses/candidates', { entry: 'time-candidates', courseSource: candidate.courseSource ?? candidate.source, candidateId: candidate.id, recommendationId: courseRecommendation?.requestId ?? '', duration: candidate.durationMinutes }))} />
   }
 
   if (location.pathname === '/courses/loading') {
-    return <RouteGeneratingPage duration={duration} onComplete={() => navigate(`/courses/candidates?duration=${duration}`)} />
+    const departureAt = new URLSearchParams(location.search).get('departureAt') ?? new Date().toISOString()
+    return <RouteGeneratingPage duration={duration} onGenerate={async () => {
+      const start = currentLocation ?? await requestCurrentLocation()
+      const response = await recommendationApi.create({
+        start: { lat: start.latitude, lon: start.longitude },
+        targetDurationMin: duration,
+        departureAt,
+        candidateCount: 2,
+      })
+      setCourseRecommendation(response)
+      navigate(`/courses/candidates?duration=${duration}&recommendationId=${encodeURIComponent(response.requestId)}`)
+    }} />
   }
 
   if (location.pathname === '/walk/time') {
-    return <WalkDurationPage onContinue={(selectedDuration) => navigate(`/courses/loading?duration=${selectedDuration}`)} />
+    return <WalkDurationPage onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
   }
 
   if (location.pathname === '/home/no-course') {

@@ -1,9 +1,11 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { distanceBetween, formatWalkDistance, formatWalkTime, useWalkTracker } from './useWalkTracker'
+import { setDevLocationOverrideUser } from '../../utils/devLocationOverride'
 
 describe('walk tracker calculations', () => {
   afterEach(() => {
+    setDevLocationOverrideUser(undefined)
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -135,6 +137,65 @@ describe('walk tracker calculations', () => {
     expect(onPresenceFix).toHaveBeenCalledTimes(3)
     expect(onPresenceFix.mock.calls[1][0].stationary).toBe(false)
     expect(onPresenceFix.mock.calls[2][0].stationary).toBe(true)
+    unmount()
+  })
+
+  it('publishes the fixed test-account location without using device GPS', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-20T00:00:00.000Z'))
+    const watchPosition = vi.fn()
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { watchPosition, clearWatch: vi.fn() },
+    })
+    setDevLocationOverrideUser('test2@naver.com')
+    const onPoint = vi.fn()
+    const onPresenceFix = vi.fn()
+
+    const { result, unmount } = renderHook(() => useWalkTracker(true, onPoint, onPresenceFix))
+
+    expect(watchPosition).not.toHaveBeenCalled()
+    expect(result.current.gpsSignal).toBe('good')
+    expect(result.current.walkedCoordinates).toEqual([
+      { latitude: 37.56355, longitude: 126.99755 },
+    ])
+    expect(onPresenceFix).toHaveBeenCalledWith(expect.objectContaining({
+      latitude: 37.56355,
+      longitude: 126.99755,
+      accuracy: 5,
+    }))
+
+    act(() => vi.advanceTimersByTime(12_000))
+    expect(onPresenceFix).toHaveBeenCalledTimes(2)
+    expect(onPresenceFix.mock.calls[1][0].stationary).toBe(true)
+    unmount()
+  })
+
+  it('stops an early device GPS watch when authentication resolves a fixed location', () => {
+    vi.useFakeTimers()
+    const clearWatch = vi.fn()
+    const watchPosition = vi.fn(() => 17)
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { watchPosition, clearWatch },
+    })
+    const onPresenceFix = vi.fn()
+    const { rerender, unmount } = renderHook(
+      ({ override }: { override?: { latitude: number; longitude: number } }) => (
+        useWalkTracker(true, undefined, onPresenceFix, override)
+      ),
+      { initialProps: { override: undefined } as { override?: { latitude: number; longitude: number } } },
+    )
+
+    expect(watchPosition).toHaveBeenCalledOnce()
+
+    rerender({ override: { latitude: 37.564, longitude: 126.997 } })
+
+    expect(clearWatch).toHaveBeenCalledWith(17)
+    expect(onPresenceFix).toHaveBeenCalledWith(expect.objectContaining({
+      latitude: 37.564,
+      longitude: 126.997,
+    }))
     unmount()
   })
 })

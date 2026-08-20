@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ActiveWalkPage } from './ActiveWalkPage'
+import { placeApiStub } from '../test/placeApiStub'
+import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 
 describe('ActiveWalkPage', () => {
-  it('draws the selected course in gray and the walked trail in orange', () => {
+  it('draws the selected course and the walked trail in the fallback map', () => {
     const { container } = render(
       <ActiveWalkPage
         plannedRouteCoordinates={[
@@ -73,5 +75,79 @@ describe('ActiveWalkPage', () => {
     expect(photoPicker).toHaveBeenCalledOnce()
     expect(onDistanceModeChange).toHaveBeenCalledWith(false)
     expect(distanceMode).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('fits the full planned course and overlays thermal colors with direction chevrons', () => {
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
+    }
+    const scene: BaseMapScene = {
+      center: { latitude: 37.564, longitude: 126.997 },
+      zoom: 17,
+    }
+    const coordinates = [
+      { latitude: 37.561, longitude: 126.994 },
+      { latitude: 37.566, longitude: 127.001 },
+    ]
+
+    render(
+      <ActiveWalkPage
+        map={{ adapter, scene }}
+        plannedRouteCoordinates={coordinates}
+        plannedRouteThermalSegments={[
+          { lengthM: 500, temperatureGrade: 'LOW' },
+          { lengthM: 500, temperatureGrade: 'VERY_HIGH' },
+        ]}
+      />,
+    )
+
+    const mountedScene = vi.mocked(adapter.mount).mock.calls[0][1]
+    expect(mountedScene.viewFit).toEqual({
+      coordinates,
+      padding: [66, 20, 18, 20],
+      maxZoom: 17,
+    })
+    const thermalColors = new Set(mountedScene.routes
+      ?.filter((route) => route.id.startsWith('planned-course-thermal-'))
+      .map((route) => route.color))
+    expect(thermalColors.size).toBeGreaterThan(1)
+    expect(thermalColors.has('#9f9c97')).toBe(false)
+    expect(mountedScene.routes?.some((route) => route.chevrons)).toBe(true)
+  })
+
+  it('removes the screen-positioned fallback route once the map provider is ready', async () => {
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
+    }
+    const { container } = render(
+      <ActiveWalkPage
+        map={{
+          adapter,
+          scene: { center: { latitude: 37.564, longitude: 126.997 }, zoom: 17 },
+        }}
+        plannedRouteCoordinates={[
+          { latitude: 37.563, longitude: 126.996 },
+          { latitude: 37.565, longitude: 126.999 },
+        ]}
+      />,
+    )
+
+    await waitFor(() => expect(container.querySelector('.base-map-viewport__fallback-overlay')).not.toBeInTheDocument())
+  })
+
+  it('moves the walk panel away while the selected place card expands', async () => {
+    const { container } = render(<ActiveWalkPage placeApi={placeApiStub} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '장소 검색 열기' }))
+    fireEvent.click(screen.getByRole('button', { name: '음식점' }))
+    fireEvent.click(await screen.findByRole('button', { name: '도그라운지 성수, 620m' }))
+    fireEvent.click(await screen.findByRole('button', { name: '자세히 보기' }))
+
+    expect(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).toBeInTheDocument()
+    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'open')
+
+    fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
+    expect(screen.getByRole('article', { name: '도그라운지 성수 장소 요약' })).toBeInTheDocument()
+    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'closed')
   })
 })

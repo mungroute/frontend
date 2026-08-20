@@ -79,6 +79,10 @@ export function RouteComparisonPage({
 
   const sceneOverlay = useMemo(() => {
     if (!comparison) return undefined
+    const usualCoordinates = courseRouteCoordinates(comparison.usualRoute)
+    const alternativeCoordinates = comparison.hasAlternative && comparison.alternativeRoute
+      ? courseRouteCoordinates(comparison.alternativeRoute)
+      : []
     const routes = diagnostics?.segments.length
       ? diagnostics.segments.map((segment) => ({
         id: `usual-segment-${segment.sequence}`,
@@ -88,19 +92,39 @@ export function RouteComparisonPage({
       }))
       : [{
         id: 'usual-course',
-        coordinates: courseRouteCoordinates(comparison.usualRoute),
+        coordinates: usualCoordinates,
         color: '#80796f',
-        width: 4,
+        width: selectedRoute === 'usual' ? 6 : 4,
       }]
-    if (comparison.hasAlternative && comparison.alternativeRoute) {
+    if (alternativeCoordinates.length) {
       routes.push({
         id: 'alternative-course',
-        coordinates: courseRouteCoordinates(comparison.alternativeRoute),
+        coordinates: alternativeCoordinates,
         color: '#ff753a',
-        width: 6,
+        width: selectedRoute === 'alternative' ? 6 : 4,
       })
     }
-    return { routes: routes.filter((route) => route.coordinates.length > 1) }
+    const selectedCoordinates = selectedRoute === 'alternative' && alternativeCoordinates.length
+      ? alternativeCoordinates
+      : usualCoordinates
+    const latitudes = selectedCoordinates.map((coordinate) => coordinate.latitude)
+    const longitudes = selectedCoordinates.map((coordinate) => coordinate.longitude)
+    return {
+      center: selectedCoordinates.length
+        ? {
+            latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+            longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+          }
+        : undefined,
+      viewFit: selectedCoordinates.length
+        ? {
+            coordinates: selectedCoordinates,
+            padding: [66, 20, 18, 20] as [number, number, number, number],
+            maxZoom: 17,
+          }
+        : undefined,
+      routes: routes.filter((route) => route.coordinates.length > 1),
+    }
   }, [comparison, diagnostics, selectedRoute])
 
   const hottestWasSwapped = Boolean(
@@ -124,7 +148,11 @@ export function RouteComparisonPage({
         <span aria-hidden="true">‹</span> 코스 비교
       </button>
 
-      <DraggableSheet className="route-comparison-page__sheet">
+      <DraggableSheet
+        className="route-comparison-page__sheet"
+        upwardDragBoundarySelector=".route-comparison-page__actions"
+        upwardDragBoundarySpacing={32}
+      >
         {loading && <p role="status">추천 대안을 계산하는 중이에요.</p>}
         {error && <p role="alert">{error}</p>}
         {comparison && (

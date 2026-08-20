@@ -3,6 +3,8 @@ export type MapCoordinate = {
   longitude: number
 }
 
+export type MapMarkerCategory = 'restaurant' | 'hospital' | 'pharmacy' | 'cafe' | 'convenience' | 'grooming' | 'dog-park'
+
 export type MapMarker = {
   id: string
   position: MapCoordinate
@@ -10,6 +12,11 @@ export type MapMarker = {
   label?: string
   profileImageSrc?: string
   revealAfterDraw?: string
+  interactive?: boolean
+  interactionId?: string
+  categoryCode?: string
+  category?: MapMarkerCategory
+  selected?: boolean
 }
 
 export type MapRoute = {
@@ -31,11 +38,18 @@ export type MapRoute = {
   chevrons?: boolean
 }
 
+export type MapViewFit = {
+  coordinates: MapCoordinate[]
+  padding?: [top: number, right: number, bottom: number, left: number]
+  maxZoom?: number
+}
+
 export type BaseMapScene = {
   center: MapCoordinate
   zoom: number
   markers?: MapMarker[]
   routes?: MapRoute[]
+  viewFit?: MapViewFit
 }
 
 export type MapClickEvent = {

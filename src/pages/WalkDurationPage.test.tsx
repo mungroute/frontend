@@ -34,7 +34,7 @@ describe('WalkDurationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '30분 코스 보기' }))
 
     expect(onSelectDepartureTime).toHaveBeenCalledOnce()
-    expect(onContinue).toHaveBeenCalledWith(30)
+    expect(onContinue).toHaveBeenCalledWith(30, expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/))
   })
 
   it('opens a departure-time dialog and applies the confirmed time', () => {

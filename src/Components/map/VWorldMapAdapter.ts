@@ -8,13 +8,14 @@ import TileLayer from 'ol/layer/Tile.js'
 import VectorLayer from 'ol/layer/Vector.js'
 import { defaults as defaultControls } from 'ol/control/defaults.js'
 import { fromLonLat, toLonLat } from 'ol/proj.js'
+import { boundingExtent } from 'ol/extent.js'
 import XYZ from 'ol/source/XYZ.js'
 import VectorSource from 'ol/source/Vector.js'
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from 'ol/style.js'
 import { unByKey } from 'ol/Observable.js'
 import type { EventsKey } from 'ol/events.js'
 import type { Geometry } from 'ol/geom.js'
-import type { BaseMapAdapter, BaseMapScene, MapClickEvent, MapMarker } from './types'
+import type { BaseMapAdapter, BaseMapScene, MapClickEvent, MapMarker, MapMarkerCategory } from './types'
 import 'ol/ol.css'
 
 type VWorldMapAdapterOptions = {
@@ -28,14 +29,139 @@ export function buildVWorldTileUrl(apiKey: string, layer = 'Base') {
 
 function markerStyle(marker: MapMarker) {
   const current = marker.kind === 'current-location'
+  const place = Boolean(marker.category || marker.categoryCode)
+  const selected = place && marker.selected
 
   return new Style({
     image: new CircleStyle({
-      radius: current ? 8 : 7,
-      fill: new Fill({ color: '#f47a3a' }),
-      stroke: new Stroke({ color: '#ffffff', width: 3 }),
+      radius: current ? 8 : selected ? 20 : place ? 17 : 7,
+      fill: new Fill({ color: selected || !place ? '#f47a3a' : '#fde7d8' }),
+      stroke: new Stroke({ color: selected ? '#ffffff' : place ? '#f47a3a' : '#ffffff', width: 3 }),
     }),
+    text: place ? new Text({
+      text: marker.categoryCode,
+      font: `700 ${selected ? 14 : 12}px "Noto Sans KR", sans-serif`,
+      fill: new Fill({ color: selected ? '#ffffff' : '#f47a3a' }),
+    }) : undefined,
   })
+}
+
+const markerIconMarkup: Record<MapMarkerCategory, string> = {
+  restaurant: '<svg viewBox="0 0 24 24"><path d="M3 2v7a3 3 0 0 0 3 3h2a3 3 0 0 0 3-3V2M7 2v20M21 15V2a5 5 0 0 0-5 5v8h5Zm0 0v7"/></svg>',
+  hospital: '<svg viewBox="0 0 24 24"><path d="M11 2v5M8.5 4.5h5M6 3v6a5 5 0 0 0 10 0V3M11 14v2a4 4 0 0 0 8 0v-1"/><circle cx="19" cy="12" r="2"/></svg>',
+  pharmacy: '<svg viewBox="0 0 24 24"><path d="m10.5 20.5-7-7a4.24 4.24 0 0 1 6-6l7 7a4.24 4.24 0 0 1-6 6Z"/><path d="m8.5 9.5 6 6"/><path d="M18 3v6M15 6h6"/></svg>',
+  cafe: '<svg viewBox="0 0 24 24"><path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Z"/><path d="M17 10h1a3 3 0 0 1 0 6h-2M6 2v2M10 2v2M14 2v2M4 22h16"/></svg>',
+  convenience: '<svg viewBox="0 0 24 24"><path d="M6 8V6a6 6 0 0 1 12 0v2M4 8h16l-1 13H5L4 8Z"/><path d="M9 11v1M15 11v1"/></svg>',
+  grooming: '<svg viewBox="0 0 24 24"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="m8.7 8.4 12.3 6.1M8.7 15.6 21 9.5"/></svg>',
+  'dog-park': '<svg viewBox="0 0 24 24"><circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><circle cx="4" cy="11" r="2"/><circle cx="20" cy="11" r="2"/><path d="M8 20c-3 0-4-2-3-4 1-3 4-5 7-5s6 2 7 5c1 2 0 4-3 4-2 0-2-1-4-1s-2 1-4 1Z"/></svg>',
+}
+
+const resolveMarkerCategory = (marker: MapMarker): MapMarkerCategory | undefined => {
+  if (marker.category) return marker.category
+  switch (marker.categoryCode) {
+    case '식': return 'restaurant'
+    case '병': return 'hospital'
+    case '약': return 'pharmacy'
+    case '카': return 'cafe'
+    case '편': return 'convenience'
+    default: return undefined
+  }
+}
+
+function createPlaceMarkerElement(marker: MapMarker, index: number) {
+  const category = resolveMarkerCategory(marker) ?? 'restaurant'
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'map-provider-place-marker'
+  element.dataset.interactionId = marker.interactionId ?? marker.id
+  element.dataset.latitude = String(marker.position.latitude)
+  element.dataset.longitude = String(marker.position.longitude)
+  element.dataset.category = category
+  element.dataset.selected = marker.selected ? 'true' : 'false'
+  element.setAttribute('aria-label', marker.label ? `${marker.label} 장소 선택` : '장소 선택')
+  element.style.setProperty('--marker-delay', `${Math.min(index * 55, 550)}ms`)
+
+  if (marker.selected) {
+    const halo = document.createElement('span')
+    halo.className = 'map-provider-place-marker__halo'
+    halo.setAttribute('aria-hidden', 'true')
+    element.append(halo)
+  }
+  const icon = document.createElement('span')
+  icon.className = 'map-provider-place-marker__icon'
+  icon.setAttribute('aria-hidden', 'true')
+  icon.innerHTML = markerIconMarkup[category]
+  element.append(icon)
+  if (marker.selected && marker.label) {
+    const label = document.createElement('strong')
+    label.className = 'map-provider-place-marker__label'
+    label.textContent = marker.label
+    element.append(label)
+  }
+  return element
+}
+
+function createPlaceClusterElement(markers: MapMarker[], latitude: number, longitude: number, index: number) {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'map-provider-place-cluster'
+  element.dataset.cluster = 'true'
+  element.dataset.latitude = String(latitude)
+  element.dataset.longitude = String(longitude)
+  element.setAttribute('aria-label', `이 지역 장소 ${markers.length}개 확대해서 보기`)
+  element.style.setProperty('--marker-delay', `${Math.min(index * 55, 440)}ms`)
+  const count = document.createElement('strong')
+  count.textContent = String(markers.length)
+  const dots = document.createElement('span')
+  dots.className = 'map-provider-place-cluster__dots'
+  dots.setAttribute('aria-hidden', 'true')
+  element.append(count, dots)
+  return element
+}
+
+type PlaceMarkerGroup = {
+  markers: MapMarker[]
+  latitude: number
+  longitude: number
+  pixel: [number, number]
+}
+
+function clusterPlaceMarkers(map: Map, markers: MapMarker[]): PlaceMarkerGroup[] {
+  const zoom = map.getView().getZoom() ?? 17
+  if (zoom >= 17 || markers.length < 4) {
+    return markers.map((marker) => ({
+      markers: [marker],
+      latitude: marker.position.latitude,
+      longitude: marker.position.longitude,
+      pixel: map.getPixelFromCoordinate(fromLonLat([marker.position.longitude, marker.position.latitude])) as [number, number],
+    }))
+  }
+  const clusterRadius = zoom < 14 ? 72 : zoom < 16 ? 56 : 44
+  const groups: PlaceMarkerGroup[] = []
+  markers.forEach((marker) => {
+    if (marker.selected) {
+      groups.push({
+        markers: [marker],
+        latitude: marker.position.latitude,
+        longitude: marker.position.longitude,
+        pixel: map.getPixelFromCoordinate(fromLonLat([marker.position.longitude, marker.position.latitude])) as [number, number],
+      })
+      return
+    }
+    const pixel = map.getPixelFromCoordinate(fromLonLat([marker.position.longitude, marker.position.latitude])) as [number, number]
+    const group = groups.find((candidate) => candidate.markers.every((item) => !item.selected)
+      && Math.hypot(candidate.pixel[0] - pixel[0], candidate.pixel[1] - pixel[1]) <= clusterRadius)
+    if (!group) {
+      groups.push({ markers: [marker], latitude: marker.position.latitude, longitude: marker.position.longitude, pixel })
+      return
+    }
+    group.markers.push(marker)
+    const count = group.markers.length
+    group.latitude = (group.latitude * (count - 1) + marker.position.latitude) / count
+    group.longitude = (group.longitude * (count - 1) + marker.position.longitude) / count
+    group.pixel = map.getPixelFromCoordinate(fromLonLat([group.longitude, group.latitude])) as [number, number]
+  })
+  return groups
 }
 
 function createEndpointElement(marker: MapMarker) {
@@ -160,6 +286,47 @@ function createDogLocationElement(marker: MapMarker) {
   return element
 }
 
+function applySceneView(map: Map, scene: BaseMapScene, duration = 0) {
+  const fitCoordinates = scene.viewFit?.coordinates.filter((coordinate) => (
+    Number.isFinite(coordinate.latitude) && Number.isFinite(coordinate.longitude)
+  )) ?? []
+  const view = map.getView()
+
+  if (fitCoordinates.length > 0) {
+    map.updateSize()
+    const projected = fitCoordinates.map((coordinate) => fromLonLat([
+      coordinate.longitude,
+      coordinate.latitude,
+    ]))
+    if (projected.length === 1) {
+      view.animate({
+        center: projected[0],
+        zoom: Math.min(scene.viewFit?.maxZoom ?? 17, scene.zoom),
+        duration,
+      })
+      return
+    }
+    view.fit(boundingExtent(projected), {
+      size: map.getSize(),
+      padding: scene.viewFit?.padding ?? [24, 24, 24, 24],
+      maxZoom: scene.viewFit?.maxZoom ?? 17,
+      duration,
+    })
+    return
+  }
+
+  if (duration > 0) {
+    view.animate({
+      center: fromLonLat([scene.center.longitude, scene.center.latitude]),
+      zoom: scene.zoom,
+      duration,
+    })
+    return
+  }
+  view.setCenter(fromLonLat([scene.center.longitude, scene.center.latitude]))
+  view.setZoom(scene.zoom)
+}
+
 function applyScene(
   map: Map,
   source: VectorSource<Feature<Geometry>>,
@@ -175,8 +342,7 @@ function applyScene(
   updateView = true,
 ) {
   if (updateView) {
-    map.getView().setCenter(fromLonLat([scene.center.longitude, scene.center.latitude]))
-    map.getView().setZoom(scene.zoom)
+    applySceneView(map, scene)
   }
   source.clear()
   animatedStrokes.length = 0
@@ -290,7 +456,24 @@ function applyScene(
     && Math.abs(startMarker.position.latitude - finishMarker.position.latitude) < 0.00001
     && Math.abs(startMarker.position.longitude - finishMarker.position.longitude) < 0.00001)
 
+  const placeMarkers = scene.markers?.filter((marker) => Boolean(resolveMarkerCategory(marker))) ?? []
+  clusterPlaceMarkers(map, placeMarkers).forEach((group, index) => {
+    const element = group.markers.length > 1
+      ? createPlaceClusterElement(group.markers, group.latitude, group.longitude, index)
+      : createPlaceMarkerElement(group.markers[0], index)
+    const overlay = new Overlay({
+      element,
+      position: fromLonLat([group.longitude, group.latitude]),
+      positioning: 'bottom-center',
+      offset: [0, -4],
+      stopEvent: true,
+    })
+    markerOverlays.push(overlay)
+    map.addOverlay(overlay)
+  })
+
   scene.markers?.forEach((marker) => {
+    if (resolveMarkerCategory(marker)) return
     if (marker.kind === 'current-location') {
       const overlay = new Overlay({
         element: createDogLocationElement(marker),
@@ -328,6 +511,8 @@ function applyScene(
       geometry: new Point(fromLonLat([marker.position.longitude, marker.position.latitude])),
     })
     feature.setId(marker.id)
+    feature.set('interactive', marker.interactive === true)
+    feature.set('interactionId', marker.interactionId ?? marker.id)
     feature.setStyle(markerStyle(marker))
     source.addFeature(feature)
   })
@@ -419,7 +604,43 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
       if (!reduceMotion) animationFrameId = window.requestAnimationFrame(animateRoutes)
 
       let currentScene = initialScene
+      const resizeObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+          map.updateSize()
+          if (currentScene.viewFit) applySceneView(map, currentScene)
+        })
+        : undefined
+      resizeObserver?.observe(container)
       let clickHandler: ((event: MapClickEvent) => void) | undefined
+      const handlePlaceMarkerClick = (event: MouseEvent) => {
+        const target = event.target instanceof Element
+          ? event.target.closest<HTMLButtonElement>('.map-provider-place-marker, .map-provider-place-cluster')
+          : null
+        if (!target) return
+        event.preventDefault()
+        event.stopPropagation()
+        const latitude = Number(target.dataset.latitude)
+        const longitude = Number(target.dataset.longitude)
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
+        if (target.dataset.cluster === 'true') {
+          map.getView().animate({
+            center: fromLonLat([longitude, latitude]),
+            zoom: Math.min(19, (map.getView().getZoom() ?? 14) + 2),
+            duration: reduceMotion ? 0 : 320,
+          })
+          return
+        }
+        if (!clickHandler) return
+        const viewportRect = map.getViewport().getBoundingClientRect()
+        const markerRect = target.getBoundingClientRect()
+        clickHandler({
+          coordinate: { latitude, longitude },
+          xPercent: Math.min(100, Math.max(0, ((markerRect.left + markerRect.width / 2 - viewportRect.left) / Math.max(1, viewportRect.width)) * 100)),
+          yPercent: Math.min(100, Math.max(0, ((markerRect.top + markerRect.height / 2 - viewportRect.top) / Math.max(1, viewportRect.height)) * 100)),
+          featureId: target.dataset.interactionId,
+        })
+      }
+      map.getViewport().addEventListener('click', handlePlaceMarkerClick)
       const mapClickKey = map.on('singleclick', (event) => {
         if (!clickHandler) return
         const selectedFeature = map.getFeaturesAtPixel(event.pixel, { hitTolerance: 9 })
@@ -449,6 +670,26 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
         })
         hoveredInteractionId = nextInteractionId
         map.getViewport().style.cursor = nextInteractionId ? 'pointer' : ''
+      })
+      let clusterZoomBucket = Math.floor(map.getView().getZoom() ?? initialScene.zoom)
+      const moveEndKey = map.on('moveend', () => {
+        const nextBucket = Math.floor(map.getView().getZoom() ?? currentScene.zoom)
+        if (nextBucket === clusterZoomBucket) return
+        clusterZoomBucket = nextBucket
+        applyScene(
+          map,
+          vectorSource,
+          markerOverlays,
+          animatedStrokes,
+          pulsingStrokes,
+          chevronFlows,
+          drawnRouteGroups,
+          pendingDrawFeatures,
+          pendingDrawMarkers,
+          reduceMotion,
+          currentScene,
+          false,
+        )
       })
 
       let settled = false
@@ -488,6 +729,8 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           const viewChanged = nextScene.center.latitude !== currentScene.center.latitude
             || nextScene.center.longitude !== currentScene.center.longitude
             || nextScene.zoom !== currentScene.zoom
+            || nextScene.viewFit !== currentScene.viewFit
+          const animateView = viewChanged && !reduceMotion
           applyScene(
             map,
             vectorSource,
@@ -500,8 +743,11 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
             pendingDrawMarkers,
             reduceMotion,
             nextScene,
-            viewChanged,
+            viewChanged && !animateView,
           )
+          if (animateView) {
+            applySceneView(map, nextScene, 320)
+          }
           drawStartedAt = pendingDrawFeatures.length ? performance.now() : undefined
           currentScene = nextScene
         },
@@ -514,8 +760,11 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           if (tileErrorKey) unByKey(tileErrorKey)
           if (timeoutId) clearTimeout(timeoutId)
           if (animationFrameId !== undefined) window.cancelAnimationFrame(animationFrameId)
+          resizeObserver?.disconnect()
           unByKey(mapClickKey)
           unByKey(pointerMoveKey)
+          unByKey(moveEndKey)
+          map.getViewport().removeEventListener('click', handlePlaceMarkerClick)
           map.setTarget(undefined)
           map.dispose()
         },

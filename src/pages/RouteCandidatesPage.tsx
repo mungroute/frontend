@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { DraggableSheet } from '../Components/ui'
 import { CourseCandidateSection } from '../Components/courses/CourseCandidateCard'
 import { getCourseCandidates } from '../Components/courses/course-data'
 import type { CourseCandidate } from '../Components/courses/course-data'
+import { buildThermalRoutes } from '../Components/courses/thermal-route'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/route-candidates-page.css'
 
@@ -29,10 +30,42 @@ export function RouteCandidatesPage({
     ?? generatedCandidates[0]
     ?? savedCandidates[0]
   const [selectedRouteId, setSelectedRouteId] = useState(defaultCandidate?.id ?? '')
-  const selectedCandidate = candidates.find((candidate) => candidate.id === selectedRouteId) ?? defaultCandidate
-  const confirmLabel = !selectedCandidate?.withinTargetTime
-    ? '그래도 이 코스로 걷기'
-    : selectedCandidate.source === 'saved'
+  const resolvedSelectedRouteId = candidates.some((candidate) => candidate.id === selectedRouteId)
+    ? selectedRouteId
+    : defaultCandidate?.id ?? ''
+  const selectedCandidate = candidates.find((candidate) => candidate.id === resolvedSelectedRouteId) ?? defaultCandidate
+  const sceneOverlay = useMemo(() => {
+    if (!selectedCandidate?.routeCoordinates.length) return undefined
+    const latitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.latitude)
+    const longitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.longitude)
+    return {
+      center: {
+        latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+        longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+      },
+      viewFit: {
+        coordinates: selectedCandidate.routeCoordinates,
+        padding: [66, 20, 18, 20] as [number, number, number, number],
+        maxZoom: 17,
+      },
+      routes: buildThermalRoutes({
+        id: `recommendation-${selectedCandidate.id}`,
+        coordinates: selectedCandidate.routeCoordinates,
+        thermalSegments: selectedCandidate.thermalSegments,
+        estimatedSurfaceTempC: selectedCandidate.estimatedSurfaceTempC,
+        width: 7,
+        outlineColor: '#fff7f0',
+        outlineWidth: 11,
+        animated: true,
+        selected: true,
+      }),
+    }
+  }, [selectedCandidate])
+  const confirmLabel = selectedCandidate?.source === 'generated'
+    ? '추천 코스로 산책 시작'
+    : !selectedCandidate?.withinTargetTime
+      ? '그래도 이 코스로 걷기'
+      : selectedCandidate?.source === 'saved'
       ? '이 코스로 산책 시작'
       : '추천 코스로 산책 시작'
 
@@ -42,6 +75,7 @@ export function RouteCandidatesPage({
         className="route-candidates-page__map"
         ariaLabel={selectedCandidate ? `${selectedCandidate.name} 경로 지도` : '후보 코스 지도'}
         map={map}
+        sceneOverlay={sceneOverlay}
         fallback={{ src: '/assets/s03/map-preview.jpg' }}
       />
 
@@ -49,11 +83,11 @@ export function RouteCandidatesPage({
         <span aria-hidden="true">‹</span> 코스 후보
       </button>
 
-      <DraggableSheet className="route-candidates-page__sheet">
+      <DraggableSheet className="route-candidates-page__sheet" allowUpwardDrag={false}>
         <h1>{duration}분 안에 걸을 수 있는 코스예요</h1>
         <div className="route-candidates-page__content">
-          <CourseCandidateSection title="내 코스" candidates={savedCandidates} selectedId={selectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
-          <CourseCandidateSection title="새 추천 코스" candidates={generatedCandidates} selectedId={selectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
+          <CourseCandidateSection title="내 코스" candidates={savedCandidates} selectedId={resolvedSelectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
+          <CourseCandidateSection title="새 추천 코스" candidates={generatedCandidates} selectedId={resolvedSelectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
         </div>
         <button
           className="journey-page__primary-action route-candidates-page__confirm"

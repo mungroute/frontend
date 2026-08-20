@@ -9,6 +9,10 @@ export const drawnCourseSummary = {
 
 export type CourseCandidateSource = 'saved' | 'generated'
 import type { MapCoordinate } from '../map'
+import type { CourseRecommendationCandidate } from '../../api/recommendations'
+import type { CourseRecommendationThermalSegment } from '../../api/recommendations'
+import type { CourseSource } from '../../api/courses'
+import { courseRouteCoordinates } from './course-map'
 
 export type CourseCandidate = {
   id: string
@@ -16,22 +20,28 @@ export type CourseCandidate = {
   name: string
   durationMinutes: number
   distanceKm: number
-  shadeRatio: number
-  estimatedSurfaceTempC: number
+  shadeRatio: number | null
+  estimatedSurfaceTempC: number | null
+  shadeApplicable: boolean
   isRepresentative: boolean
   withinTargetTime: boolean
+  routeCoordinates: MapCoordinate[]
+  thermalSegments?: CourseRecommendationThermalSegment[]
+  courseSource?: CourseSource
+  courseId?: number
+  recommendationReasons?: string[]
 }
 
 type CourseCandidateSeed = Omit<CourseCandidate, 'withinTargetTime'>
 
 const savedCourseSeeds: CourseCandidateSeed[] = [
-  { id: 'saved-namsan-evening', source: 'saved', name: '저녁 남산길', durationMinutes: 29, distanceKm: 1.8, shadeRatio: 68, estimatedSurfaceTempC: 34, isRepresentative: true },
-  { id: 'saved-hangang-sunset', source: 'saved', name: '한강 노을 산책', durationMinutes: 42, distanceKm: 2.7, shadeRatio: 54, estimatedSurfaceTempC: 37, isRepresentative: false },
+  { id: 'saved-namsan-evening', source: 'saved', name: '저녁 남산길', durationMinutes: 29, distanceKm: 1.8, shadeRatio: 68, estimatedSurfaceTempC: 34, shadeApplicable: true, isRepresentative: true, routeCoordinates: [] },
+  { id: 'saved-hangang-sunset', source: 'saved', name: '한강 노을 산책', durationMinutes: 42, distanceKm: 2.7, shadeRatio: 54, estimatedSurfaceTempC: 37, shadeApplicable: true, isRepresentative: false, routeCoordinates: [] },
 ]
 
 const generatedCourseSeeds: CourseCandidateSeed[] = [
-  { id: 'generated-namsan-loop-a', source: 'generated', name: '남산 둘레길 A', durationMinutes: 30, distanceKm: 1.9, shadeRatio: 72, estimatedSurfaceTempC: 33, isRepresentative: false },
-  { id: 'generated-jangchung-park-b', source: 'generated', name: '장충단 공원길 B', durationMinutes: 31, distanceKm: 2, shadeRatio: 61, estimatedSurfaceTempC: 36, isRepresentative: false },
+  { id: 'generated-namsan-loop-a', source: 'generated', name: '남산 둘레길 A', durationMinutes: 30, distanceKm: 1.9, shadeRatio: 72, estimatedSurfaceTempC: 33, shadeApplicable: true, isRepresentative: false, routeCoordinates: [] },
+  { id: 'generated-jangchung-park-b', source: 'generated', name: '장충단 공원길 B', durationMinutes: 31, distanceKm: 2, shadeRatio: 61, estimatedSurfaceTempC: 36, shadeApplicable: true, isRepresentative: false, routeCoordinates: [] },
 ]
 
 const withTargetTime = (candidate: CourseCandidateSeed, targetMinutes: number): CourseCandidate => ({
@@ -42,7 +52,30 @@ const withTargetTime = (candidate: CourseCandidateSeed, targetMinutes: number): 
 /** P1 mock adapter. Replace this function body with the future candidate API response mapper. */
 export function getCourseCandidates(targetMinutes: number, options: { includeSaved?: boolean } = {}): CourseCandidate[] {
   const saved = options.includeSaved === false ? [] : savedCourseSeeds
-  return [...saved, ...generatedCourseSeeds].map((candidate) => withTargetTime(candidate, targetMinutes))
+  return [...saved, ...generatedCourseSeeds].map((candidate) => ({
+    ...withTargetTime(candidate, targetMinutes),
+    routeCoordinates: getCourseRouteCoordinates(candidate.id),
+  }))
+}
+
+export function mapRecommendationCandidate(candidate: CourseRecommendationCandidate): CourseCandidate {
+  return {
+    id: candidate.candidateId,
+    source: candidate.candidateType === 'SAVED' ? 'saved' : 'generated',
+    name: candidate.name,
+    durationMinutes: candidate.durationMinutes,
+    distanceKm: candidate.distanceM / 1_000,
+    shadeRatio: candidate.shadeRatio === null ? null : Math.round(candidate.shadeRatio * 100),
+    estimatedSurfaceTempC: candidate.estimatedSurfaceTempC === null ? null : Math.round(candidate.estimatedSurfaceTempC),
+    shadeApplicable: candidate.shadeApplicable,
+    isRepresentative: candidate.representative,
+    withinTargetTime: candidate.withinTargetTime,
+    routeCoordinates: courseRouteCoordinates(candidate.route),
+    thermalSegments: candidate.thermalSegments ?? [],
+    courseSource: candidate.courseSource ?? undefined,
+    courseId: candidate.courseId ?? undefined,
+    recommendationReasons: candidate.recommendationReasons,
+  }
 }
 
 const namsanRoute: MapCoordinate[] = [

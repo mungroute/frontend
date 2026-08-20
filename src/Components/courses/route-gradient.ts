@@ -6,6 +6,11 @@ export type GradientRoutePiece = {
   progress: number
 }
 
+export type WeightedGradientSegment = {
+  weight: number
+  color: string
+}
+
 const parseHex = (hex: string) => {
   const value = hex.replace('#', '')
   const normalized = value.length === 3
@@ -76,6 +81,56 @@ export const splitLineIntoGradientPieces = (
       ],
       color: interpolateHexColor(startColor, endColor, (index + 0.5) / count),
       progress: (index + 1) / count,
+    }
+  })
+}
+
+export const splitLineIntoWeightedGradientPieces = (
+  coordinates: MapCoordinate[],
+  segments: WeightedGradientSegment[],
+): GradientRoutePiece[] => {
+  const usableSegments = segments.filter((segment) => Number.isFinite(segment.weight) && segment.weight > 0)
+  if (coordinates.length < 2 || usableSegments.length === 0) return []
+
+  const cumulativeRoute = coordinates.map((_, index) => index === 0
+    ? 0
+    : distance(coordinates[index - 1], coordinates[index]))
+    .reduce<number[]>((values, length, index) => {
+      values.push(index === 0 ? 0 : values[index - 1] + length)
+      return values
+    }, [])
+  const routeLength = cumulativeRoute.at(-1) ?? 0
+  const totalWeight = usableSegments.reduce((sum, segment) => sum + segment.weight, 0)
+  if (routeLength <= 0 || totalWeight <= 0) return []
+
+  const cumulativeWeight = usableSegments.reduce<number[]>((values, segment, index) => {
+    values.push((values[index - 1] ?? 0) + segment.weight)
+    return values
+  }, [])
+  const pieceCount = Math.max(12, Math.min(48, usableSegments.length * 3))
+
+  return Array.from({ length: pieceCount }, (_, index) => {
+    const fromDistance = routeLength * index / pieceCount
+    const toDistance = routeLength * (index + 1) / pieceCount
+    const midpointWeight = totalWeight * (index + 0.5) / pieceCount
+    const segmentIndex = Math.max(0, cumulativeWeight.findIndex((value) => value >= midpointWeight))
+    const segmentStart = cumulativeWeight[segmentIndex - 1] ?? 0
+    const segmentWeight = usableSegments[segmentIndex]?.weight ?? 1
+    const segmentProgress = Math.min(1, Math.max(0, (midpointWeight - segmentStart) / segmentWeight))
+    const startColor = usableSegments[segmentIndex]?.color ?? usableSegments[0].color
+    const endColor = usableSegments[segmentIndex + 1]?.color ?? startColor
+    const interior = coordinates.filter((_, coordinateIndex) => (
+      cumulativeRoute[coordinateIndex] > fromDistance && cumulativeRoute[coordinateIndex] < toDistance
+    ))
+
+    return {
+      coordinates: [
+        coordinateAt(coordinates, cumulativeRoute, fromDistance),
+        ...interior,
+        coordinateAt(coordinates, cumulativeRoute, toDistance),
+      ],
+      color: interpolateHexColor(startColor, endColor, segmentProgress),
+      progress: (index + 1) / pieceCount,
     }
   })
 }

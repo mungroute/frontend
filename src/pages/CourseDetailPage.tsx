@@ -422,7 +422,12 @@ export function CourseDetailPage({
         )}
       </BaseMapViewport>
 
-      <DraggableSheet className="course-detail-page__sheet" aria-label="코스 상세 패널">
+      <DraggableSheet
+        className="course-detail-page__sheet"
+        aria-label="코스 상세 패널"
+        collapsedHeight={28}
+        upwardDragBoundarySelector=".course-detail-page__delete"
+      >
         <div className="course-detail-page__metrics">
           <MetricGrid ariaLabel="코스 정보" items={metricItems} />
         </div>

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { authApi } from './auth'
 import { apiRequest, setAccessToken } from './http'
 import { apiUrl } from './url'
+import { getDevLocationOverride, setDevLocationOverrideUser } from '../utils/devLocationOverride'
 
 const authBody = {
   accessToken: 'issued-access-token',
@@ -13,6 +14,7 @@ const authBody = {
 describe('authApi', () => {
   afterEach(() => {
     setAccessToken(null)
+    setDevLocationOverrideUser(undefined)
     vi.unstubAllGlobals()
   })
 
@@ -69,6 +71,21 @@ describe('authApi', () => {
 
     await expect(Promise.all([first, second])).resolves.toEqual([authBody, authBody])
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('activates the local location override after authenticating a test account', async () => {
+    const testAccountBody = {
+      ...authBody,
+      user: { ...authBody.user, email: 'test@naver.com' },
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(testAccountBody), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+
+    await authApi.login('test@naver.com', 'mungroute1')
+
+    expect(getDevLocationOverride()).toEqual({ latitude: 37.564, longitude: 126.997 })
   })
 
   it('refreshes a rejected access token and retries the protected request once', async () => {

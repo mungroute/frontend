@@ -12,7 +12,7 @@ type WalkDurationPageProps = {
   initialDepartureDialogOpen?: boolean
   map?: BaseMapBinding
   onBack?: () => void
-  onContinue?: (duration: number) => void
+  onContinue?: (duration: number, departureAt: string) => void
   onSelectDepartureTime?: () => void
 }
 
@@ -23,6 +23,15 @@ function formatKoreanTime(value: string) {
   const period = hours >= 12 ? '오후' : '오전'
   const displayHours = hours % 12 || 12
   return `${period} ${padTimePart(displayHours)}:${padTimePart(minutes)}`
+}
+
+function resolveDepartureAt(value: string | null, now = new Date()) {
+  if (!value) return now.toISOString()
+  const [hours, minutes] = value.split(':').map(Number)
+  const departureAt = new Date(now)
+  departureAt.setHours(hours, minutes, 0, 0)
+  if (departureAt.getTime() < now.getTime() - 60_000) departureAt.setDate(departureAt.getDate() + 1)
+  return departureAt.toISOString()
 }
 
 export function WalkDurationPage({
@@ -93,7 +102,7 @@ export function WalkDurationPage({
       <button
         className="journey-page__primary-action walk-duration-page__continue"
         type="button"
-        onClick={() => onContinue(duration)}
+        onClick={() => onContinue(duration, resolveDepartureAt(departureTime))}
       >
         {duration}분 코스 보기
       </button>
