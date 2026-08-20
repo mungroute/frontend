@@ -123,7 +123,10 @@ describe('NavigationMap', () => {
     fake.map.easeTo.mockClear()
 
     fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
-    expect(fake.map.easeTo).toHaveBeenCalledOnce()
+    expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
+      center: [126.98, 37.56],
+      offset: [0, 0],
+    }))
   })
 
   it('opens the accepted meet profile instead of treating its marker as a place', async () => {
@@ -199,6 +202,7 @@ describe('NavigationMap', () => {
       center: [126.98, 37.56],
       zoom: 18,
       pitch: 54,
+      offset: [0, 0],
     }))
     expect(screen.getByRole('button', { name: '전체 경로 2D로 보기' })).toBeInTheDocument()
     expect(vworldInstance.destroy).toHaveBeenCalledOnce()

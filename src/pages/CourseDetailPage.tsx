@@ -384,7 +384,11 @@ export function CourseDetailPage({
             {selectedLeg && <>
               <div className="course-detail-page__segment-heading">
                 <div>
-                  <span>{String(diagnostics.referenceHour).padStart(2, '0')}시 기준</span>
+                  <span>
+                    {metrics?.weatherSource === 'NOWCAST' && '실시간 ASOS · '}
+                    {metrics?.weatherSource === 'CACHED' && '최근 ASOS 캐시 · '}
+                    {String(diagnostics.referenceHour).padStart(2, '0')}시 기준
+                  </span>
                   <strong>{selectedLeg.sequence}구간 · {selectedLegDescription}</strong>
                 </div>
                 <button type="button" aria-label="구간 정보 닫기" onClick={() => {
