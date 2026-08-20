@@ -15,7 +15,6 @@ describe('PausedWalkPage', () => {
     expect(screen.getByText('1.2km')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '산책 재개' }))
-    fireEvent.click(screen.getByRole('button', { name: '산책 패널 펼치기' }))
     fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: '산책 종료 확인' })).getByRole('button', { name: '산책 종료 확정' }))
     fireEvent.click(screen.getByRole('button', { name: '사진 촬영' }))

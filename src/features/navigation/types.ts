@@ -1,6 +1,7 @@
 import type { CourseRouteGeoJson } from '../../api/courses'
 import type { ThermalRouteSegment } from '../../Components/courses/thermal-route'
 import type { MapCoordinate } from '../../Components/map'
+import type { LockedWalkPresenceMode } from '../../api/walks'
 
 export type WalkNavigationRouteOrigin =
   | 'REPRESENTATIVE_COURSE'
@@ -40,5 +41,6 @@ export type WalkRouteSelection = {
 export type ActiveWalkRouteSnapshot = {
   sessionId: number
   route: WalkNavigationRoute | null
+  presenceMode: LockedWalkPresenceMode | null
+  presenceEnabled: boolean
 }
-

@@ -133,9 +133,9 @@ export function buildRouteProgress(route: PreparedRoute, projection: RouteProjec
   }
 }
 
-export function chevronsAhead(route: PreparedRoute, progressM: number, count = 4) {
-  return Array.from({ length: count }, (_, index) => progressM + 45 + index * 55)
+export function chevronsAhead(route: PreparedRoute, progressM: number, count = 4, spacingM = 55) {
+  const firstOffsetM = Math.min(30, spacingM)
+  return Array.from({ length: count }, (_, index) => progressM + firstOffsetM + index * spacingM)
     .filter((distanceM) => distanceM < route.totalDistanceM - 5)
     .map((distanceM) => ({ ...coordinateAtDistance(route, distanceM), distanceM }))
 }
-

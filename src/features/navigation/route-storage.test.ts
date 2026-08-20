@@ -21,10 +21,10 @@ describe('walk route session storage', () => {
 
   it('round-trips pending and active snapshots with derived coordinates rebuilt', () => {
     writePendingWalkRoute({ route, routeRequired: true })
-    writeActiveWalkRoute({ sessionId: 42, route })
+    writeActiveWalkRoute({ sessionId: 42, route, presenceMode: 'distance', presenceEnabled: true })
 
     expect(readPendingWalkRoute()).toEqual({ route, routeRequired: true })
-    expect(readActiveWalkRoute()).toEqual({ sessionId: 42, route })
+    expect(readActiveWalkRoute()).toEqual({ sessionId: 42, route, presenceMode: 'distance', presenceEnabled: true })
   })
 
   it('discards malformed JSON and structurally invalid routes safely', () => {
@@ -43,9 +43,23 @@ describe('walk route session storage', () => {
     expect(window.sessionStorage.getItem('mungroute.walk-route.active.v1')).toBeNull()
   })
 
+  it('restores legacy active snapshots with presence safely disabled', () => {
+    window.sessionStorage.setItem('mungroute.walk-route.active.v1', JSON.stringify({
+      version: 1,
+      snapshot: { sessionId: 42, route },
+    }))
+
+    expect(readActiveWalkRoute()).toEqual({
+      sessionId: 42,
+      route,
+      presenceMode: null,
+      presenceEnabled: false,
+    })
+  })
+
   it('clears both snapshots when a walk lifecycle ends', () => {
     writePendingWalkRoute({ route, routeRequired: true })
-    writeActiveWalkRoute({ sessionId: 42, route })
+    writeActiveWalkRoute({ sessionId: 42, route, presenceMode: null, presenceEnabled: false })
 
     clearWalkRoutes()
 

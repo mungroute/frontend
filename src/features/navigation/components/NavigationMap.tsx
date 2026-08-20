@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MapLibreMap, MapOptions, Marker } from 'maplibre-gl'
-import { LocateFixed, RotateCcw } from 'lucide-react'
+import { LocateFixed, RotateCcw, Route as RouteIcon } from 'lucide-react'
 import { BaseMapViewport } from '../../../Components/map'
 import type { BaseMapBinding, MapCoordinate, MapMarker } from '../../../Components/map'
 import { buildThermalRoutes } from '../../../Components/courses/thermal-route'
@@ -13,6 +13,7 @@ import type { PreparedRoute } from '../utils/route-progress'
 import { resolveMapStyleUrl } from '../map-style'
 
 export type NavigationMapFactory = (options: MapOptions) => MapLibreMap
+export type NavigationMapViewMode = 'navigation' | 'overview'
 
 type NavigationMapProps = {
   route: WalkNavigationRoute | null
@@ -23,6 +24,7 @@ type NavigationMapProps = {
   walkedCoordinates?: MapCoordinate[]
   placeMarkers?: MapMarker[]
   meetMarker?: MapMarker
+  currentLocationMarker?: Pick<MapMarker, 'label' | 'profileImageSrc'>
   paused?: boolean
   padding?: { top: number; right: number; bottom: number; left: number }
   fallbackMap?: BaseMapBinding
@@ -30,6 +32,7 @@ type NavigationMapProps = {
   styleUrl?: string
   onPlaceSelect?: (featureId: string) => void
   onReadyChange?: (ready: boolean) => void
+  onViewModeChange?: (mode: NavigationMapViewMode) => void
 }
 
 const STYLE_URL = resolveMapStyleUrl(import.meta.env.VITE_MAPLIBRE_STYLE_URL, import.meta.env.VITE_MAPTILER_KEY)
@@ -64,33 +67,39 @@ const setSourceData = (map: MapLibreMap, id: string, data: unknown) => {
   source?.setData(data as never)
 }
 
-export function NavigationMap({ route, position, heading, preparedRoute, progress, walkedCoordinates = [], placeMarkers = [], meetMarker, paused = false, padding = DEFAULT_PADDING, fallbackMap, mapFactory, styleUrl = STYLE_URL, onPlaceSelect, onReadyChange }: NavigationMapProps) {
+export function NavigationMap({ route, position, heading, preparedRoute, progress, walkedCoordinates = [], placeMarkers = [], meetMarker, currentLocationMarker, paused = false, padding = DEFAULT_PADDING, fallbackMap, mapFactory, styleUrl = STYLE_URL, onPlaceSelect, onReadyChange, onViewModeChange }: NavigationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | undefined>(undefined)
   const markerRef = useRef<Marker | undefined>(undefined)
+  const paddingRef = useRef(padding)
   const loadedRef = useRef(false)
   const cameraAtRef = useRef(0)
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string>()
   const [retryKey, setRetryKey] = useState(0)
   const [followMode, setFollowMode] = useState(true)
+  const [viewMode, setViewMode] = useState<NavigationMapViewMode>('navigation')
   const useFallback = !styleUrl || (import.meta.env.MODE === 'test' && !mapFactory) || Boolean(loadError)
   const allPlaceMarkers = useMemo(() => meetMarker ? [meetMarker, ...placeMarkers] : placeMarkers, [meetMarker, placeMarkers])
   const fallbackFitCoordinates = useMemo(() => route?.coordinateParts.flat() ?? [], [route])
-  const chevrons = useMemo(() => preparedRoute && progress
-    ? chevronsAhead(preparedRoute, progress.progressM).map((item, index) => ({
+  const chevrons = useMemo(() => preparedRoute
+    ? chevronsAhead(preparedRoute, progress?.progressM ?? 0, 48, 35).map((item, index) => ({
         type: 'Feature' as const,
         id: `chevron-${index}`,
-        properties: { bearing: item.bearing },
+        properties: { rotation: (item.bearing + 270) % 360 },
         geometry: { type: 'Point' as const, coordinates: [item.coordinate.longitude, item.coordinate.latitude] },
       }))
     : [], [preparedRoute, progress])
   const fallbackScene = useMemo(() => ({
     viewFit: fallbackFitCoordinates.length >= 2 ? {
       coordinates: fallbackFitCoordinates,
-      padding: [66, 20, 18, 20] as [number, number, number, number],
+      padding: [72, 20, padding.bottom, 20] as [number, number, number, number],
       maxZoom: 17,
     } : undefined,
+    markers: [
+      ...(position ? [{ id: 'current-location', position: position.coordinate, kind: 'current-location' as const, ...currentLocationMarker }] : []),
+      ...allPlaceMarkers,
+    ],
     routes: [
       ...route?.coordinateParts.flatMap((coordinates, index) => buildThermalRoutes({
         id: index === 0 ? 'planned-course' : `planned-course-${index}`,
@@ -103,11 +112,19 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       })) ?? [],
       ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#8c8985', width: 6 }] : []),
     ],
-  }), [fallbackFitCoordinates, route, walkedCoordinates])
+  }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, padding.bottom, position, route, walkedCoordinates])
+
+  useEffect(() => {
+    paddingRef.current = padding
+  }, [padding])
 
   useEffect(() => {
     onReadyChange?.(ready)
   }, [onReadyChange, ready])
+
+  useEffect(() => {
+    onViewModeChange?.(viewMode)
+  }, [onViewModeChange, viewMode])
 
   useEffect(() => {
     if (useFallback || !containerRef.current || !styleUrl) return
@@ -142,12 +159,16 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
     })
     map.once('load', () => {
       loadedRef.current = true
+      map.setTerrain(null)
+      map.getStyle().layers.forEach((layer) => {
+        if (layer.type === 'hillshade') map.setLayoutProperty(layer.id, 'visibility', 'none')
+      })
       SOURCE_IDS.forEach((id) => map.addSource(id, { type: 'geojson', data: emptyCollection() }))
       map.addLayer({ id: 'navigation-route-outline', type: 'line', source: 'navigation-route', paint: { 'line-color': '#fff9f2', 'line-width': 12, 'line-opacity': 0.96 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-route-base', type: 'line', source: 'navigation-route', paint: { 'line-color': '#f47a3a', 'line-width': 7, 'line-opacity': 0.48 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-passed-line', type: 'line', source: 'navigation-passed', paint: { 'line-color': '#8c8985', 'line-width': 7 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
       map.addLayer({ id: 'navigation-remaining-line', type: 'line', source: 'navigation-remaining', paint: { 'line-color': '#f47a3a', 'line-width': 7 }, layout: { 'line-cap': 'round', 'line-join': 'round' } })
-      map.addLayer({ id: 'navigation-chevron-symbol', type: 'symbol', source: 'navigation-chevron', layout: { 'text-field': '›', 'text-size': 25, 'text-rotate': ['get', 'bearing'], 'text-rotation-alignment': 'map', 'text-allow-overlap': true }, paint: { 'text-color': '#fffaf4', 'text-halo-color': '#f47a3a', 'text-halo-width': 1.5 } })
+      map.addLayer({ id: 'navigation-chevron-symbol', type: 'symbol', source: 'navigation-chevron', layout: { 'text-field': '›', 'text-size': 20, 'text-rotate': ['get', 'rotation'], 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#fffaf4', 'text-halo-color': '#f47a3a', 'text-halo-width': 1 } })
       map.addLayer({ id: 'navigation-places', type: 'circle', source: 'navigation-places', paint: { 'circle-radius': 8, 'circle-color': '#fffaf4', 'circle-stroke-width': 4, 'circle-stroke-color': '#f47a3a' } })
       map.on('click', 'navigation-places', (event) => {
         const id = event.features?.[0]?.properties?.id
@@ -159,7 +180,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
           (value, coordinate) => value.extend([coordinate.longitude, coordinate.latitude]),
           new maplibregl.LngLatBounds(),
         )
-        map.fitBounds(bounds, { padding, maxZoom: 18, duration: prefersReducedMotion() ? 0 : 650, pitch: 50 })
+        map.fitBounds(bounds, { padding: paddingRef.current, maxZoom: 18, duration: prefersReducedMotion() ? 0 : 650, pitch: 50 })
       }
     })
     return () => {
@@ -169,7 +190,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       if (mapRef.current === map) mapRef.current = undefined
       loadedRef.current = false
     }
-  }, [mapFactory, onPlaceSelect, padding, retryKey, route?.navigationPolyline, styleUrl, useFallback])
+  }, [mapFactory, onPlaceSelect, retryKey, route?.navigationPolyline, styleUrl, useFallback])
 
   useEffect(() => {
     const map = mapRef.current
@@ -213,25 +234,60 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
   }, [followMode, heading, padding, paused, position, ready])
 
   const restoreFollow = () => {
+    setViewMode('navigation')
     setFollowMode(true)
     cameraAtRef.current = 0
+    if (!position || !mapRef.current || !ready) return
+    mapRef.current.easeTo({
+      center: [position.coordinate.longitude, position.coordinate.latitude],
+      zoom: 18,
+      pitch: 54,
+      bearing: heading ?? mapRef.current.getBearing(),
+      padding: paddingRef.current,
+      offset: [0, (containerRef.current?.clientHeight ?? 700) * (FOLLOW_ANCHOR_Y - 0.5)],
+      duration: prefersReducedMotion() ? 0 : 450,
+      essential: true,
+    })
+    cameraAtRef.current = Date.now()
+  }
+
+  const showOverview = () => {
+    setViewMode('overview')
+    setFollowMode(false)
   }
 
   return (
-    <div className={`navigation-map${ready ? ' navigation-map--ready' : ''}`}>
-      {useFallback && (
+    <div className={`navigation-map navigation-map--${viewMode}${ready ? ' navigation-map--ready' : ''}`}>
+      {(useFallback || viewMode === 'overview') && (
         <BaseMapViewport
           className="navigation-map__fallback"
-          ariaLabel="산책 내비게이션 지도"
+          ariaLabel={viewMode === 'overview' ? '전체 경로 2D 지도' : '산책 내비게이션 지도'}
           map={fallbackMap}
           sceneOverlay={fallbackScene}
-          showLocationControl
-          onProviderReadyChange={setReady}
+          replaceBaseMarkers={viewMode === 'overview'}
+          showLocationControl={viewMode === 'navigation'}
+          onMapClick={(event) => { if (event.featureId) onPlaceSelect?.(event.featureId) }}
+          onProviderReadyChange={useFallback ? setReady : undefined}
           fallback={{ src: '/assets/s07/map.jpg', hideOverlayWhenReady: true, overlay: <WalkRouteProgress planned={route?.navigationPolyline ?? []} walked={walkedCoordinates} /> }}
         />
       )}
       <div ref={containerRef} className="navigation-map__canvas" aria-label="MapLibre 산책 내비게이션 지도" />
-      {!followMode && position && <button type="button" className="navigation-map__follow" onClick={restoreFollow}><LocateFixed aria-hidden="true" /> 내 위치</button>}
+      {viewMode === 'navigation' && !useFallback && <div className="base-map-viewport__location-control navigation-map__location-control">
+        <button type="button" aria-label="내 위치로 이동" className="base-map-viewport__location-button" onClick={restoreFollow}>
+          <LocateFixed size={23} aria-hidden="true" />
+          <span>내 위치</span>
+        </button>
+      </div>}
+      {viewMode === 'navigation' && (
+        <button type="button" className="navigation-map__overview-control" aria-label="전체 경로 2D로 보기" onClick={showOverview}>
+          <RouteIcon aria-hidden="true" />
+        </button>
+      )}
+      {viewMode === 'overview' && (
+        <button type="button" className="navigation-map__return-follow" onClick={restoreFollow}>
+          <LocateFixed aria-hidden="true" /> 내 위치로
+        </button>
+      )}
       {loadError && (
         <div className="navigation-map__error" role="alert">
           <span>{loadError}</span>

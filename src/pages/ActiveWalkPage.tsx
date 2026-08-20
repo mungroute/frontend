@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { MapPlaceSearch } from '../Components/map'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import { MapPlaceSearch, useMapLocation } from '../Components/map'
 import type { BaseMapBinding, MapCoordinate, MapMarker, MapPlaceSearchHandle } from '../Components/map'
 import type { ThermalRouteSegment } from '../Components/courses/thermal-route'
 import { PresenceModeControl } from '../Components/walk/DistanceModeControl'
 import { DistanceRangeControl } from '../Components/walk/DistanceRangeControl'
 import { WalkSessionControls } from '../Components/walk/WalkSessionControls'
 import { MeetWalkPanel } from '../Components/walk/MeetWalkPanel'
+import { WalkStats } from '../Components/walk/WalkStats'
 import { WalkEndDialog } from '../Components/system'
+import { DraggableSheet } from '../Components/ui'
 import type { GpsSignal } from '../features/walk-record/useWalkTracker'
 import type { NavigationPositionFix, WalkNavigationRoute } from '../features/navigation/types'
 import { normalizeWalkRoute } from '../features/navigation/route-normalizer'
@@ -14,8 +17,8 @@ import { useNavigationProgress } from '../features/navigation/hooks/useNavigatio
 import { useNavigationHeading } from '../features/navigation/hooks/useNavigationHeading'
 import { nextManeuver } from '../features/navigation/utils/maneuver'
 import { NavigationMap } from '../features/navigation/components/NavigationMap'
+import type { NavigationMapViewMode } from '../features/navigation/components/NavigationMap'
 import { NavigationHUD } from '../features/navigation/components/NavigationHUD'
-import { WalkNavigationSheet } from '../features/navigation/components/WalkNavigationSheet'
 import { DistanceAlertOverlay } from '../features/navigation/components/DistanceAlertOverlay'
 import type { LockedWalkPresenceMode, NearbyPresence } from '../api/walks'
 import type { PlaceApi } from '../api/places'
@@ -24,6 +27,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/active-walk-page.css'
 import '../styles/features/navigation.css'
+import '../styles/components/walk-session-glass.css'
 
 export type WalkSessionViewState = 'active' | 'distance-alert' | 'paused'
 
@@ -133,8 +137,12 @@ export function ActiveWalkPage({
   const [isPlaceSearchOpen, setIsPlaceSearchOpen] = useState(false)
   const [isPlaceDetailOpen, setIsPlaceDetailOpen] = useState(false)
   const [isMapReady, setIsMapReady] = useState(false)
-  const [sheetHeight, setSheetHeight] = useState(158)
+  const [mapViewMode, setMapViewMode] = useState<NavigationMapViewMode>('navigation')
+  const [sheetHeight, setSheetHeight] = useState(338)
+  const { currentLocationMarker } = useMapLocation()
   const placeSearchRef = useRef<MapPlaceSearchHandle>(null)
+  const sheetMotionRef = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
   const resolvedMode = presenceMode === undefined ? 'distance' : presenceMode
   const resolvedEnabled = presenceEnabled ?? distanceMode ?? true
   const changePresence = onPresenceEnabledChange ?? onDistanceModeChange
@@ -160,11 +168,32 @@ export function ActiveWalkPage({
   const selectPlace = useCallback((featureId: string) => {
     placeSearchRef.current?.selectFeature(featureId)
   }, [])
-  const modeSummary = !resolvedEnabled || !resolvedMode
-    ? '일반 산책'
-    : resolvedMode === 'distance'
-      ? `거리두기 ON · ${distanceRadius}m`
-      : '산책 친구 만나기 ON'
+  const changeMapViewMode = useCallback((mode: NavigationMapViewMode) => {
+    setMapViewMode(mode)
+    if (mode === 'navigation') {
+      setIsPlaceSearchOpen(false)
+      setIsPlaceDetailOpen(false)
+      setPlaceMarkers([])
+    }
+  }, [])
+  const sheetSizeClass = resolvedMode === 'meet' && resolvedEnabled
+    ? ' active-walk-page__sheet-motion--with-meet'
+    : resolvedMode === 'distance' && resolvedEnabled
+      ? ' active-walk-page__sheet-motion--with-range'
+      : ''
+
+  useEffect(() => {
+    const target = sheetMotionRef.current
+    if (!target) return
+    const report = () => {
+      const height = target.getBoundingClientRect().height
+      if (height > 0) setSheetHeight(height)
+    }
+    report()
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(report) : undefined
+    observer?.observe(target)
+    return () => observer?.disconnect()
+  }, [resolvedEnabled, resolvedMode])
   const meetMarker: MapMarker | undefined = meetConnection
     ? {
         id: 'meet-friend',
@@ -179,6 +208,7 @@ export function ActiveWalkPage({
     <main className={`journey-page active-walk-page active-walk-page--${sessionState}`} style={{ '--navigation-sheet-height': `${sheetHeight}px` } as React.CSSProperties}>
       {sessionState === 'active' && <h1 className="active-walk-page__screen-title">산책 중</h1>}
       <NavigationMap
+        key={resolvedRoute?.routeKey ?? 'free-walk'}
         route={resolvedRoute}
         position={currentPosition}
         heading={heading}
@@ -187,15 +217,17 @@ export function ActiveWalkPage({
         walkedCoordinates={walkedCoordinates}
         placeMarkers={placeMarkers}
         meetMarker={meetMarker}
+        currentLocationMarker={currentLocationMarker}
         paused={paused}
         padding={navigationPadding}
         fallbackMap={map}
         onPlaceSelect={selectPlace}
         onReadyChange={setIsMapReady}
+        onViewModeChange={changeMapViewMode}
       />
 
-      {resolvedRoute && <NavigationHUD maneuver={maneuver} routeName={resolvedRoute.name} offRoute={progress?.offRoute} />}
-      <div className={`active-walk-page__gps active-walk-page__gps--${gpsSignal}${resolvedRoute ? ' active-walk-page__gps--with-hud' : ''}`} role="status"><span>●</span> {gpsLabels[gpsSignal]}</div>
+      {resolvedRoute && mapViewMode === 'navigation' && <NavigationHUD maneuver={maneuver} routeName={resolvedRoute.name} offRoute={progress?.offRoute} />}
+      <div className={`active-walk-page__gps active-walk-page__gps--${gpsSignal}`} role="status"><span>●</span> {gpsLabels[gpsSignal]}</div>
 
       {sessionState === 'distance-alert' && <DistanceAlertOverlay alert={alert} />}
       {paused && (
@@ -206,7 +238,7 @@ export function ActiveWalkPage({
         </section>
       )}
 
-      {!paused && (
+      {!paused && mapViewMode === 'overview' && (
         <MapPlaceSearch
           ref={placeSearchRef}
           isWalking
@@ -220,27 +252,28 @@ export function ActiveWalkPage({
         />
       )}
 
-      <WalkNavigationSheet
-        time={time}
-        distance={distance}
-        modeSummary={modeSummary}
-        paused={paused}
-        onPause={onPause}
-        onResume={onResume}
-        onHeightChange={setSheetHeight}
-        hidden={isPlaceDetailOpen}
-        shifted={isPlaceSearchOpen}
+      <motion.div
+        ref={sheetMotionRef}
+        className={`active-walk-page__sheet-motion${sheetSizeClass}`}
+        animate={{ y: isPlaceDetailOpen ? '100%' : isPlaceSearchOpen ? 112 : 0 }}
+        transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 330, damping: 36, mass: 0.9 }}
+        aria-hidden={isPlaceDetailOpen}
+        data-place-detail={isPlaceDetailOpen ? 'open' : 'closed'}
+        data-place-search={isPlaceSearchOpen ? 'open' : 'closed'}
       >
-        <div className="active-walk-page__summary-mode">
-          <PresenceModeControl mode={resolvedMode} enabled={resolvedEnabled} onChange={changePresence} />
-        </div>
-        {resolvedMode === 'distance' && resolvedEnabled && <DistanceRangeControl value={distanceRadius} onChange={onDistanceRadiusChange} />}
-        {resolvedMode === 'meet' && resolvedEnabled && <MeetWalkPanel candidates={meetCandidates} requests={meetRequests} connection={meetConnection} onRequest={(value) => onMeetRequest?.(value)} onAccept={(value) => onMeetAccept?.(value)} onReject={(value) => onMeetReject?.(value)} onCancel={(value) => onMeetCancel?.(value)} onEnd={(value) => onMeetEnd?.(value)} onBlock={(value) => onMeetBlock?.(value)} />}
-        <div className="active-walk-page__status-row"><h2>{paused ? '산책 일시정지' : '산책 중'}</h2></div>
-        {paused
-          ? <WalkSessionControls mode="paused" onResume={onResume} onStop={() => setIsEndDialogOpen(true)} onPhoto={onPhoto} />
-          : <WalkSessionControls onPause={onPause} onStop={() => setIsEndDialogOpen(true)} onPhoto={onPhoto} />}
-      </WalkNavigationSheet>
+        <DraggableSheet className="active-walk-page__sheet walk-session-glass" aria-label="산책 정보 패널" upwardDragTop={250}>
+          <div className="active-walk-page__summary">
+            <WalkStats time={time} distance={distance} />
+            <PresenceModeControl mode={resolvedMode} enabled={resolvedEnabled} onChange={changePresence} />
+          </div>
+          {resolvedMode === 'distance' && resolvedEnabled && <DistanceRangeControl value={distanceRadius} onChange={onDistanceRadiusChange} />}
+          {resolvedMode === 'meet' && resolvedEnabled && <MeetWalkPanel candidates={meetCandidates} requests={meetRequests} connection={meetConnection} onRequest={(value) => onMeetRequest?.(value)} onAccept={(value) => onMeetAccept?.(value)} onReject={(value) => onMeetReject?.(value)} onCancel={(value) => onMeetCancel?.(value)} onEnd={(value) => onMeetEnd?.(value)} onBlock={(value) => onMeetBlock?.(value)} />}
+          <div className="active-walk-page__status-row"><strong>{paused ? '산책 일시정지' : '산책 중'}</strong></div>
+          {paused
+            ? <WalkSessionControls mode="paused" onResume={onResume} onStop={() => setIsEndDialogOpen(true)} onPhoto={onPhoto} />
+            : <WalkSessionControls onPause={onPause} onStop={() => setIsEndDialogOpen(true)} onPhoto={onPhoto} />}
+        </DraggableSheet>
+      </motion.div>
 
       {isEndDialogOpen && <WalkEndDialog onClose={() => setIsEndDialogOpen(false)} onConfirm={() => { setIsEndDialogOpen(false); onStop?.() }} />}
     </main>

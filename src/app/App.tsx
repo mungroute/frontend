@@ -49,7 +49,7 @@ import { mapRecommendationCandidate } from '../Components/courses/course-data'
 import type { CourseCandidate } from '../Components/courses/course-data'
 import { walkApi } from '../api/walks'
 import type { LockedWalkPresenceMode, NearbyPresence, PresenceUpdatePayload, PresenceUpdateResult, WalkEndResult, WalkPresenceMode, WalkRecordDetail, WalkStatistics } from '../api/walks'
-import { getValidAccessToken } from '../api/http'
+import { ApiError, getValidAccessToken } from '../api/http'
 import { connectPresenceSocket } from '../api/presenceSocket'
 import type { PresenceSocketClient } from '../api/presenceSocket'
 import { authApi } from '../api/auth'
@@ -152,8 +152,8 @@ export function App() {
   const [location, setLocation] = useState(readLocation)
   const [locationError, setLocationError] = useState(false)
   const [showSignupLocationPermission, setShowSignupLocationPermission] = useState(false)
-  const [walkPresenceMode, setWalkPresenceMode] = useState<LockedWalkPresenceMode | null>('distance')
-  const [presenceEnabled, setPresenceEnabled] = useState(true)
+  const [walkPresenceMode, setWalkPresenceMode] = useState<LockedWalkPresenceMode | null>(restoredActiveSnapshot?.presenceMode ?? null)
+  const [presenceEnabled, setPresenceEnabled] = useState(restoredActiveSnapshot?.presenceEnabled ?? false)
   const [distanceRadius, setDistanceRadius] = useState(100)
   const [dogs, setDogs] = useState<AppDog[]>(initialDogs)
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>(initialDogs[0] ? [initialDogs[0].id] : [])
@@ -244,8 +244,10 @@ export function App() {
           radiusM: distanceRadius,
           }
           if (walkPresenceMode === 'distance') {
-            if (presenceSocketRef.current?.send(payload)) return undefined
-            return await walkApi.updatePresence(payload)
+            const socket = presenceSocketRef.current
+            if (!socket?.isConnected()) return undefined
+            socket.send(payload)
+            return undefined
           }
           if (meetSocketRef.current?.send(payload)) return undefined
           return await meetApi.updatePresence(payload)
@@ -255,7 +257,20 @@ export function App() {
           if ('nearby' in response) applyPresenceResponse(response)
           else applyMeetResponse(response)
         })
-        .catch(() => undefined)
+        .catch((error: unknown) => {
+          if (!(error instanceof ApiError) || error.status !== 409) return
+          setPresenceEnabled(false)
+          setNearbyPresence(undefined)
+          setMeetCandidates([])
+          setMeetConnection(undefined)
+          const sessionId = walkSessionIdRef.current
+          if (sessionId) writeActiveWalkRoute({
+            sessionId,
+            route: activeWalkRoute,
+            presenceMode: walkPresenceMode,
+            presenceEnabled: false,
+          })
+        })
     },
     devLocationOverride,
   )
@@ -439,6 +454,8 @@ export function App() {
     clearActiveWalkRoute()
     walkSessionIdRef.current = undefined
     walkStartedAtRef.current = undefined
+    let startedPresenceMode: LockedWalkPresenceMode | null = null
+    let startedPresenceEnabled = false
     const persistedDogIds = dogIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
     const pending = walkApi.start(mode, persistedDogIds).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
       if (mode !== 'off' && (activeMode !== mode || lockedMode !== mode)) {
@@ -447,6 +464,8 @@ export function App() {
       walkSessionIdRef.current = sessionId
       walkStartedAtRef.current = startedAt
       const resolvedLockedMode = lockedMode ?? (activeMode === 'off' ? null : activeMode)
+      startedPresenceMode = resolvedLockedMode
+      startedPresenceEnabled = activeMode !== 'off'
       setWalkPresenceMode(resolvedLockedMode)
       setPresenceEnabled(activeMode !== 'off')
       if (activeMode !== 'off') {
@@ -476,7 +495,12 @@ export function App() {
       const sessionId = walkSessionIdRef.current
       if (!sessionId) throw new Error('산책 세션을 확인하지 못했습니다.')
       setActiveWalkRoute(route)
-      writeActiveWalkRoute({ sessionId, route })
+      writeActiveWalkRoute({
+        sessionId,
+        route,
+        presenceMode: startedPresenceMode,
+        presenceEnabled: startedPresenceEnabled,
+      })
       clearPendingWalkRoute()
       setPendingWalkSelection({ route: null, routeRequired: false })
       setBackendWalkStarted(true)
@@ -511,8 +535,16 @@ export function App() {
       .then((sessionId) => walkApi.changeMode(sessionId, nextMode)
         .then(async (response) => {
           if (enabled) await walkApi.consentPresence(sessionId)
-          setWalkPresenceMode(response.lockedMode ?? walkPresenceMode)
-          setPresenceEnabled(response.mode !== 'off')
+          const resolvedMode = response.lockedMode ?? walkPresenceMode
+          const resolvedEnabled = response.mode !== 'off'
+          setWalkPresenceMode(resolvedMode)
+          setPresenceEnabled(resolvedEnabled)
+          writeActiveWalkRoute({
+            sessionId,
+            route: activeWalkRoute,
+            presenceMode: resolvedMode,
+            presenceEnabled: resolvedEnabled,
+          })
         }))
       .catch((error: Error) => setWalkApiError(error.message))
   }

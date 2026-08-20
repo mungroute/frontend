@@ -47,6 +47,12 @@ const createFakeMap = () => {
     }),
     addSource: vi.fn((id: string) => { sources.set(id, { setData: vi.fn() }); return map }),
     addLayer: vi.fn(() => map),
+    getStyle: vi.fn(() => ({ layers: [
+      { id: 'terrain-shade', type: 'hillshade' },
+      { id: '3d-buildings', type: 'fill-extrusion' },
+    ] })),
+    setLayoutProperty: vi.fn(() => map),
+    setTerrain: vi.fn(() => map),
     getSource: vi.fn((id: string) => sources.get(id)),
     fitBounds: vi.fn(() => map),
     easeTo: vi.fn(() => map),
@@ -70,14 +76,26 @@ describe('NavigationMap', () => {
     )
 
     await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
+    expect(fake.map.setTerrain).toHaveBeenCalledWith(null)
+    expect(fake.map.setLayoutProperty).toHaveBeenCalledWith('terrain-shade', 'visibility', 'none')
+    expect(fake.map.setLayoutProperty).not.toHaveBeenCalledWith('3d-buildings', 'visibility', 'none')
+    expect(fake.map.addLayer).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'navigation-chevron-symbol',
+      layout: expect.objectContaining({
+        'text-field': '›',
+        'text-rotate': ['get', 'rotation'],
+        'text-ignore-placement': true,
+      }),
+    }))
     expect(fake.map.fitBounds).toHaveBeenCalledOnce()
-    expect(markerSpies.setLngLat).toHaveBeenCalledWith([126.98, 37.56])
+    await waitFor(() => expect(markerSpies.setLngLat).toHaveBeenCalledWith([126.98, 37.56]))
 
     view.rerender(
       <NavigationMap
         route={route}
         position={{ coordinate: { latitude: 37.561, longitude: 126.981 }, accuracy: 5, observedAt: 2, heading: 46, speed: 1 }}
         walkedCoordinates={[route.coordinateParts[0][0], { latitude: 37.561, longitude: 126.981 }]}
+        padding={{ top: 120, right: 24, bottom: 360, left: 24 }}
         mapFactory={factory}
         styleUrl="https://example.test/style.json"
       />,
@@ -94,11 +112,68 @@ describe('NavigationMap', () => {
     render(<NavigationMap route={route} position={position} mapFactory={() => fake.map as never} styleUrl="https://example.test/style.json" />)
     await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
 
+    expect(screen.getByRole('button', { name: '내 위치로 이동' })).toHaveClass('base-map-viewport__location-button')
     act(() => fake.handlers.get('dragstart')?.({ originalEvent: {} }))
-    expect(screen.getByRole('button', { name: '내 위치' })).toBeInTheDocument()
+    fake.map.easeTo.mockClear()
 
-    fireEvent.click(screen.getByRole('button', { name: '내 위치' }))
-    expect(screen.queryByRole('button', { name: '내 위치' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
+    expect(fake.map.easeTo).toHaveBeenCalledOnce()
+  })
+
+  it('switches between the full-route 2D overview and current-location navigation', async () => {
+    const fake = createFakeMap()
+    const onViewModeChange = vi.fn()
+    const vworldInstance = { ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }
+    const vworldAdapter = { mount: vi.fn(() => vworldInstance) }
+    const position = { coordinate: route.coordinateParts[0][0], accuracy: 5, observedAt: 1, heading: 45, speed: 1 }
+    render(
+      <NavigationMap
+        route={route}
+        position={position}
+        currentLocationMarker={{ label: '망고', profileImageSrc: '/registered/mango.jpg' }}
+        fallbackMap={{ adapter: vworldAdapter, scene: { center: position.coordinate, zoom: 17 } }}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+        onViewModeChange={onViewModeChange}
+      />,
+    )
+    await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
+
+    fake.map.fitBounds.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
+
+    await waitFor(() => expect(vworldAdapter.mount).toHaveBeenCalled())
+    expect(screen.getByRole('region', { name: '전체 경로 2D 지도' })).toBeInTheDocument()
+    expect(vworldAdapter.mount).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      viewFit: expect.objectContaining({
+        coordinates: route.coordinateParts.flat(),
+        padding: [72, 20, 180, 20],
+        maxZoom: 17,
+      }),
+      markers: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'current-location',
+          label: '망고',
+          profileImageSrc: '/registered/mango.jpg',
+        }),
+      ]),
+    }))
+    expect(fake.map.fitBounds).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^내 위치로$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '전체 경로 2D로 보기' })).not.toBeInTheDocument()
+    await waitFor(() => expect(onViewModeChange).toHaveBeenLastCalledWith('overview'))
+
+    fake.map.easeTo.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: /^내 위치로$/ }))
+
+    expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
+      center: [126.98, 37.56],
+      zoom: 18,
+      pitch: 54,
+    }))
+    expect(screen.getByRole('button', { name: '전체 경로 2D로 보기' })).toBeInTheDocument()
+    expect(vworldInstance.destroy).toHaveBeenCalledOnce()
+    await waitFor(() => expect(onViewModeChange).toHaveBeenLastCalledWith('navigation'))
   })
 
   it('shows the existing-map fallback and a retry action when MapLibre cannot start', async () => {

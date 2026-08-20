@@ -105,7 +105,15 @@ export function readActiveWalkRoute(): ActiveWalkRouteSnapshot | undefined {
     storage()?.removeItem(ACTIVE_KEY)
     return undefined
   }
-  return { ...snapshot, route }
+  const presenceMode = snapshot.presenceMode === 'distance' || snapshot.presenceMode === 'meet'
+    ? snapshot.presenceMode
+    : null
+  return {
+    ...snapshot,
+    route,
+    presenceMode,
+    presenceEnabled: presenceMode !== null && snapshot.presenceEnabled === true,
+  }
 }
 
 export function clearActiveWalkRoute() {

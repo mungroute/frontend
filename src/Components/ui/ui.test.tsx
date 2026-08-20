@@ -152,4 +152,30 @@ describe('shared UI', () => {
 
     expect(sheet).toHaveStyle({ transform: 'translateY(272px)' })
   })
+
+  it('caps upward dragging at the configured sheet top', () => {
+    const { container } = render(
+      <main className="journey-page">
+        <DraggableSheet upwardDragTop={250}>시트 내용</DraggableSheet>
+      </main>,
+    )
+    const viewport = container.querySelector('main') as HTMLElement
+    const sheet = screen.getByText('시트 내용').closest('section') as HTMLElement
+    const handle = screen.getByRole('button', { name: '패널 높이 조절' })
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 800 },
+      getBoundingClientRect: { configurable: true, value: () => ({ top: 0 }) },
+    })
+    Object.defineProperty(sheet, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => {
+        const offset = Number(sheet.style.transform.match(/-?\d+/)?.[0] ?? 0)
+        return { top: 500 + offset }
+      },
+    })
+
+    for (let index = 0; index < 10; index += 1) fireEvent.keyDown(handle, { key: 'ArrowUp' })
+
+    expect(sheet).toHaveStyle({ transform: 'translateY(-250px)' })
+  })
 })

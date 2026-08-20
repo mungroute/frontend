@@ -79,4 +79,16 @@ describe('navigation calculations', () => {
     expect(chevrons).toHaveLength(4)
     expect(chevrons.every((item) => item.distanceM > 100 && item.distanceM < prepared.totalDistanceM)).toBe(true)
   })
+
+  it('can densely cover the remaining route for repeated direction guidance', () => {
+    const prepared = prepareRoute([
+      { latitude: 37.56, longitude: 126.99 },
+      { latitude: 37.57, longitude: 126.99 },
+    ])!
+    const chevrons = chevronsAhead(prepared, 0, 48, 35)
+
+    expect(chevrons.length).toBeGreaterThan(20)
+    expect(chevrons[0].distanceM).toBe(30)
+    expect(chevrons[1].distanceM - chevrons[0].distanceM).toBe(35)
+  })
 })

@@ -808,7 +808,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: '산책 패널 펼치기' }))
+    await screen.findByRole('button', { name: '패널 높이 조절' })
     const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     expect(window.location.pathname).toBe('/walk/active')
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
@@ -839,7 +839,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: '산책 패널 펼치기' }))
+    await screen.findByRole('button', { name: '패널 높이 조절' })
     const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(activeSwitch)
@@ -859,7 +859,7 @@ describe('App location permission route', () => {
       name: '테스트 추천 코스',
       geometry: { type: 'LineString', coordinates: [[126.997, 37.564], [126.999, 37.565]] },
     })
-    writeActiveWalkRoute({ sessionId: 42, route })
+    writeActiveWalkRoute({ sessionId: 42, route, presenceMode: null, presenceEnabled: false })
     window.history.replaceState({}, '', '/walk/active')
     render(<App />)
 
@@ -888,7 +888,7 @@ describe('App location permission route', () => {
     window.history.replaceState({}, '', '/walk/paused')
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: '산책 패널 펼치기' }))
+    expect(screen.getByRole('button', { name: '패널 높이 조절' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
     fireEvent.click(within(screen.getByRole('dialog', { name: '산책 종료 확인' })).getByRole('button', { name: '산책 종료 확정' }))
     expect(window.location.pathname).toBe('/walk/complete')

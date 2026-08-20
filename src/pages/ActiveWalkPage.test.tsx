@@ -43,8 +43,6 @@ describe('ActiveWalkPage', () => {
     )
 
     expect(screen.getByText('00:17:00')).toBeInTheDocument()
-    expect(screen.queryByRole('slider', { name: '거리두기 알림 범위' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '산책 패널 펼치기' }))
     const distanceRange = screen.getByRole('slider', { name: '거리두기 알림 범위' })
     expect(distanceRange).toHaveValue('150')
     fireEvent.change(distanceRange, { target: { value: '300' } })
@@ -92,7 +90,7 @@ describe('ActiveWalkPage', () => {
       { latitude: 37.566, longitude: 127.001 },
     ]
 
-    render(
+    const { container } = render(
       <ActiveWalkPage
         map={{ adapter, scene }}
         plannedRouteCoordinates={coordinates}
@@ -103,10 +101,13 @@ describe('ActiveWalkPage', () => {
       />,
     )
 
+    expect(container.querySelector('.active-walk-page__sheet')).toHaveClass('ui-draggable-sheet')
+    expect(screen.getByRole('button', { name: '패널 높이 조절' })).toBeInTheDocument()
+
     const mountedScene = vi.mocked(adapter.mount).mock.calls[0][1]
     expect(mountedScene.viewFit).toEqual({
       coordinates,
-      padding: [66, 20, 18, 20],
+      padding: [72, 20, expect.any(Number), 20],
       maxZoom: 17,
     })
     const thermalColors = new Set(mountedScene.routes
@@ -140,16 +141,32 @@ describe('ActiveWalkPage', () => {
   it('moves the walk panel away while the selected place card expands', async () => {
     const { container } = render(<ActiveWalkPage placeApi={placeApiStub} />)
 
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
     fireEvent.click(screen.getByRole('button', { name: '장소 검색 열기' }))
     fireEvent.click(screen.getByRole('button', { name: '음식점' }))
     fireEvent.click(await screen.findByRole('button', { name: '도그라운지 성수, 620m' }))
     fireEvent.click(await screen.findByRole('button', { name: '자세히 보기' }))
 
     expect(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).toBeInTheDocument()
-    expect(container.querySelector('.walk-navigation-sheet')).toHaveClass('walk-navigation-sheet--hidden')
+    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'open')
 
     fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
     expect(screen.getByRole('article', { name: '도그라운지 성수 장소 요약' })).toBeInTheDocument()
-    expect(container.querySelector('.walk-navigation-sheet')).not.toHaveClass('walk-navigation-sheet--hidden')
+    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'closed')
+  })
+
+  it('shows place search only in the 2D route overview and returns to navigation', () => {
+    render(<ActiveWalkPage placeApi={placeApiStub} />)
+
+    expect(screen.queryByRole('button', { name: '장소 검색 열기' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
+
+    expect(screen.getByRole('button', { name: '장소 검색 열기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^내 위치로$/ })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^내 위치로$/ }))
+
+    expect(screen.queryByRole('button', { name: '장소 검색 열기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '전체 경로 2D로 보기' })).toBeInTheDocument()
   })
 })
