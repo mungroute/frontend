@@ -54,6 +54,13 @@ describe('walk tracker calculations', () => {
       { latitude: 37.5665, longitude: 126.978 },
       { latitude: 37.5666, longitude: 126.978 },
     ])
+    expect(result.current.currentPosition).toEqual({
+      coordinate: { latitude: 37.5666, longitude: 126.978 },
+      accuracy: 6,
+      observedAt: 6_000,
+      heading: null,
+      speed: null,
+    })
 
     unmount()
     expect(clearWatch).toHaveBeenCalledWith(7)

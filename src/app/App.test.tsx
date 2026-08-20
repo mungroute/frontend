@@ -8,6 +8,8 @@ import { groupApi } from '../api/groups'
 import type { GroupDetail, GroupSharedCourse } from '../api/groups'
 import { recommendationApi } from '../api/recommendations'
 import type { CourseRecommendation } from '../api/recommendations'
+import { normalizeWalkRoute } from '../features/navigation/route-normalizer'
+import { readActiveWalkRoute, writeActiveWalkRoute } from '../features/navigation/route-storage'
 
 const courseMetrics = {
   lengthM: 1800, durationMin: 45, shadeRatio: 0.68, estimatedSurfaceTempC: 34,
@@ -24,7 +26,8 @@ const catalogDetail: CourseDetail = {
 const catalogComparison: CourseComparison = {
   courseSource: 'custom', courseId: 42, courseName: '저녁 남산길', hasAlternative: true,
   usual: courseMetrics, alternative: { ...courseMetrics, lengthM: 1900, durationMin: 48, estimatedSurfaceTempC: 31 },
-  usualRoute: catalogDetail.route, alternativeRoute: catalogDetail.route,
+  usualRoute: catalogDetail.route,
+  alternativeRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [126.985, 37.565], [126.992, 37.568]] },
   temperatureImprovementC: 3, distanceDifferenceM: 100,
   swappedSections: [{ sectionIndex: 0, originalSegmentIds: [1], alternativeSegmentIds: [2], temperatureImprovementC: 3, addedLengthM: 100 }],
   unavailableReason: null,
@@ -120,6 +123,7 @@ vi.mock('../api/profile', () => ({
 
 describe('App location permission route', () => {
   beforeEach(() => {
+    window.sessionStorage.clear()
     vi.spyOn(walkApi, 'start').mockResolvedValue({
       sessionId: 42,
       startedAt: '2026-08-14T14:30:00+09:00',
@@ -177,6 +181,7 @@ describe('App location permission route', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
+    window.sessionStorage.clear()
     vi.unstubAllGlobals()
   })
 
@@ -349,14 +354,54 @@ describe('App location permission route', () => {
     await screen.findByRole('heading', { name: '저녁 남산길' })
     fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
 
-    expect(window.location.search).toContain('courseSource=custom')
-    expect(window.location.search).toContain('courseId=42')
+    expect(window.location.search).not.toContain('courseSource')
+    expect(window.location.search).not.toContain('courseId')
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
     expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
-    expect(courseCatalogApi.diagnostics).toHaveBeenCalledWith('custom', 42)
+    expect(screen.getByText('저녁 남산길')).toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      choice: 'usual',
+      cardName: '나의 기존 코스',
+      startName: '기존 코스로 산책 시작',
+      origin: 'COMPARISON_USUAL' as const,
+      routeName: '저녁 남산길',
+      geometry: catalogComparison.usualRoute,
+      backendId: 'custom:42',
+    },
+    {
+      choice: 'alternative',
+      cardName: '오늘의 추천 대안',
+      startName: '대안 코스로 산책 시작',
+      origin: 'COMPARISON_ALTERNATIVE' as const,
+      routeName: '저녁 남산길 추천 대안',
+      geometry: catalogComparison.alternativeRoute,
+      backendId: undefined,
+    },
+  ])('keeps the $choice comparison geometry through final walk confirmation', async ({ choice, cardName, startName, origin, routeName, geometry, backendId }) => {
+    window.history.replaceState({}, '', '/courses/compare?source=custom&id=42')
+    render(<App />)
+
+    await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })
+    if (choice === 'usual') fireEvent.click(screen.getByRole('button', { name: new RegExp(cardName) }))
+    fireEvent.click(screen.getByRole('button', { name: startName }))
+
+    expect(window.location.pathname).toBe('/walk/dogs')
+    expect(walkApi.start).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
+
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    const active = readActiveWalkRoute()
+    expect(walkApi.start).toHaveBeenCalledOnce()
+    expect(active?.route).toEqual(expect.objectContaining({ origin, name: routeName, geometry, backendId }))
+    expect(screen.getByText(routeName)).toBeInTheDocument()
   })
 
   it('keeps home course actions as separate flows', async () => {
@@ -715,9 +760,8 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
-    expect(window.location.search).toContain('courseSource=saved')
-    expect(window.location.search).toContain('candidateId=saved-namsan-evening')
-    expect(window.location.search).toContain('entry=time-candidates')
+    expect(window.location.search).toBe('')
+    expect(screen.getByText('저녁 남산길')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
@@ -747,7 +791,8 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
+    fireEvent.click(await screen.findByRole('button', { name: '산책 패널 펼치기' }))
+    const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     expect(window.location.pathname).toBe('/walk/active')
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     expect(walkApi.start).toHaveBeenCalledWith('distance', [])
@@ -777,7 +822,8 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
+    fireEvent.click(await screen.findByRole('button', { name: '산책 패널 펼치기' }))
+    const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(activeSwitch)
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
@@ -790,19 +836,24 @@ describe('App location permission route', () => {
   })
 
   it('pauses and resumes the active walk without reloading the document', () => {
-    window.history.replaceState({}, '', '/walk/active?candidateId=generated-namsan-loop-a&courseSource=generated')
+    const route = normalizeWalkRoute({
+      routeKey: 'test-active-route',
+      origin: 'TIME_RECOMMENDATION',
+      name: '테스트 추천 코스',
+      geometry: { type: 'LineString', coordinates: [[126.997, 37.564], [126.999, 37.565]] },
+    })
+    writeActiveWalkRoute({ sessionId: 42, route })
+    window.history.replaceState({}, '', '/walk/active')
     render(<App />)
 
     expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '일시정지' }))
     expect(window.location.pathname).toBe('/walk/paused')
-    expect(window.location.search).toContain('candidateId=generated-namsan-loop-a')
     expect(screen.getByRole('heading', { name: '산책을 잠시 멈췄어요' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '산책 재개' }))
     expect(window.location.pathname).toBe('/walk/active')
-    expect(window.location.search).toContain('candidateId=generated-namsan-loop-a')
     expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
@@ -820,7 +871,9 @@ describe('App location permission route', () => {
     window.history.replaceState({}, '', '/walk/paused')
     render(<App />)
 
+    fireEvent.click(screen.getByRole('button', { name: '산책 패널 펼치기' }))
     fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '산책 종료 확인' })).getByRole('button', { name: '산책 종료 확정' }))
     expect(window.location.pathname).toBe('/walk/complete')
     expect(screen.getByRole('heading', { name: '산책을 마쳤어요!' })).toBeInTheDocument()
 

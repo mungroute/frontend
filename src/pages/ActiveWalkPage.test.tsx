@@ -43,6 +43,8 @@ describe('ActiveWalkPage', () => {
     )
 
     expect(screen.getByText('00:17:00')).toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: '거리두기 알림 범위' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '산책 패널 펼치기' }))
     const distanceRange = screen.getByRole('slider', { name: '거리두기 알림 범위' })
     expect(distanceRange).toHaveValue('150')
     fireEvent.change(distanceRange, { target: { value: '300' } })
@@ -144,10 +146,10 @@ describe('ActiveWalkPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '자세히 보기' }))
 
     expect(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).toBeInTheDocument()
-    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'open')
+    expect(container.querySelector('.walk-navigation-sheet')).toHaveClass('walk-navigation-sheet--hidden')
 
     fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
     expect(screen.getByRole('article', { name: '도그라운지 성수 장소 요약' })).toBeInTheDocument()
-    expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'closed')
+    expect(container.querySelector('.walk-navigation-sheet')).not.toHaveClass('walk-navigation-sheet--hidden')
   })
 })

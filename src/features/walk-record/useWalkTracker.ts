@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { MapCoordinate } from '../../Components/map'
 import { GEOLOCATION_OPTIONS } from '../../Components/map/geolocation'
 import { getDevLocationOverride } from '../../utils/devLocationOverride'
+import type { NavigationPositionFix } from '../navigation/types'
 
 const EARTH_RADIUS_METERS = 6_371_000
 const MAX_USABLE_ACCURACY_METERS = 40
@@ -58,11 +59,14 @@ export function useWalkTracker(
   const [distanceMeters, setDistanceMeters] = useState(0)
   const [walkedCoordinates, setWalkedCoordinates] = useState<MapCoordinate[]>([])
   const [gpsSignal, setGpsSignal] = useState<GpsSignal>('waiting')
+  const [currentPosition, setCurrentPosition] = useState<NavigationPositionFix>()
   const lastAcceptedPositionRef = useRef<AcceptedPosition | undefined>(undefined)
   const lastObservedPositionRef = useRef<AcceptedPosition | undefined>(undefined)
   const lastPresenceSentAtRef = useRef<number | undefined>(undefined)
   const onPointRef = useRef(onPoint)
   const onPresenceFixRef = useRef(onPresenceFix)
+  const overrideLatitude = locationOverride?.latitude
+  const overrideLongitude = locationOverride?.longitude
 
   useEffect(() => {
     onPointRef.current = onPoint
@@ -97,6 +101,17 @@ export function useWalkTracker(
 
         setGpsSignal('good')
         const observedAt = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now()
+        const navigationFix: NavigationPositionFix = {
+          coordinate,
+          accuracy,
+          observedAt,
+          heading: Number.isFinite(coords.heading) && coords.heading !== null
+            ? Math.min(359.99, Math.max(0, coords.heading))
+            : null,
+          speed: Number.isFinite(coords.speed) && coords.speed !== null && coords.speed >= 0
+            ? coords.speed
+            : null,
+        }
         const previousObserved = lastObservedPositionRef.current
         const observedElapsedSeconds = previousObserved
           ? Math.max((observedAt - previousObserved.observedAt) / 1000, 0.25)
@@ -128,6 +143,7 @@ export function useWalkTracker(
         const previous = lastAcceptedPositionRef.current
         if (!previous) {
           lastAcceptedPositionRef.current = { coordinate, accuracy, observedAt }
+          setCurrentPosition(navigationFix)
           setWalkedCoordinates((current) => [...current, coordinate])
           void onPointRef.current?.({
             ...coordinate,
@@ -153,6 +169,7 @@ export function useWalkTracker(
           && speedMetersPerSecond <= MAX_WALKING_SPEED_METERS_PER_SECOND
         ) {
           lastAcceptedPositionRef.current = { coordinate, accuracy, observedAt }
+          setCurrentPosition(navigationFix)
           setDistanceMeters((current) => current + segmentMeters)
           setWalkedCoordinates((current) => [...current, coordinate])
           void onPointRef.current?.({
@@ -162,7 +179,9 @@ export function useWalkTracker(
           })
         }
       }
-    const overriddenLocation = locationOverride ?? getDevLocationOverride()
+    const overriddenLocation = overrideLatitude !== undefined && overrideLongitude !== undefined
+      ? { latitude: overrideLatitude, longitude: overrideLongitude }
+      : getDevLocationOverride()
     let overrideIntervalId: number | undefined
     const watchId = overriddenLocation
       ? undefined
@@ -197,12 +216,13 @@ export function useWalkTracker(
       lastObservedPositionRef.current = undefined
       lastPresenceSentAtRef.current = undefined
     }
-  }, [isTracking, locationOverride?.latitude, locationOverride?.longitude])
+  }, [isTracking, overrideLatitude, overrideLongitude])
 
   const reset = () => {
     setElapsedSeconds(0)
     setDistanceMeters(0)
     setWalkedCoordinates([])
+    setCurrentPosition(undefined)
     lastAcceptedPositionRef.current = undefined
     lastObservedPositionRef.current = undefined
     lastPresenceSentAtRef.current = undefined
@@ -214,6 +234,7 @@ export function useWalkTracker(
     formattedTime: formatWalkTime(elapsedSeconds),
     formattedDistance: formatWalkDistance(distanceMeters),
     walkedCoordinates,
+    currentPosition,
     gpsSignal,
     reset,
   }

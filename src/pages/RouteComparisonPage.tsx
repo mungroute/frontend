@@ -193,8 +193,8 @@ export function RouteComparisonPage({
                 {alternativeSelected ? '대안 코스로 산책 시작' : '기존 코스로 산책 시작'}
               </button>
               {comparison.hasAlternative && (
-                <button className="route-comparison-page__usual" type="button" onClick={() => alternativeSelected ? onStartUsual(comparison) : onStartAlternative(comparison)}>
-                  {alternativeSelected ? '기존 코스로 시작' : '대안 코스로 시작'}
+                <button className="route-comparison-page__usual" type="button" onClick={() => setSelectedRoute(alternativeSelected ? 'usual' : 'alternative')}>
+                  {alternativeSelected ? '기존 코스 선택' : '대안 코스 선택'}
                 </button>
               )}
             </div>

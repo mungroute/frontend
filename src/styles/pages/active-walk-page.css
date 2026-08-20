@@ -1,23 +1,24 @@
-.active-walk-page__map { position: absolute; top: -1px; right: -1px; left: -1px; height: calc(var(--map-sheet-top, calc(100% - 338px)) + 1px); }
-.active-walk-page__destination { position: absolute; top: 567px; left: 329px; width: 20px; height: 20px; }
+.active-walk-page { min-height: min(640px, 100dvh); height: 100dvh; border-radius: 0; background: #eee9df; }
+.active-walk-page__screen-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .active-walk-page__route-progress { position: absolute; inset: 70px 34px 250px; width: calc(100% - 68px); height: calc(100% - 320px); overflow: visible; filter: drop-shadow(0 1px 2px rgba(55,43,34,.18)); }
 .active-walk-page__route-progress polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .active-walk-page__route-planned { stroke: #f47b50; stroke-width: 7; }
-.active-walk-page__route-walked { stroke: var(--color-primary); stroke-width: 6; }
-.active-walk-page__gps { position: absolute; z-index: 3; top: 30px; left: 20px; display: flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: var(--radius-full); color: #6b9c72; background: rgba(255,255,255,.92); box-shadow: var(--elevation-floating); font-size: 12px; font-weight: 600; white-space: nowrap; }
-.active-walk-page__gps span { color: #55a76a; font-size: 10px; }
-.active-walk-page__sheet-motion { position: absolute; z-index: 7; right: -1px; bottom: -1px; left: -1px; height: 240px; pointer-events: none; will-change: transform; }
-.active-walk-page__sheet-motion--with-range { height: 338px; }
-.active-walk-page__sheet-motion--with-meet { height: 374px; }
-.active-walk-page__sheet-motion[data-place-detail='open'] { pointer-events: none; }
-.active-walk-page__sheet { position: absolute; inset: 0; width: 100%; height: 100%; padding: 28px 20px 16px; border-radius: var(--radius-28) var(--radius-28) 0 0; pointer-events: auto; }
-.active-walk-page__handle { width: 42px; height: 4px; margin: 0 auto 12px; border-radius: var(--radius-full); background: var(--color-border-strong); }
-.active-walk-page__summary { display: grid; grid-template-columns: minmax(0, 1fr) 154px; align-items: center; gap: 8px; }
-.active-walk-page__summary > .walk-stats { min-width: 0; }
-.active-walk-page__summary .walk-stats strong { font-size: 20px; line-height: 29px; }
-.active-walk-page__summary .walk-stats > div { min-width: 0; padding: 0 4px; }
-.active-walk-page__status-row { height: 31px; display: flex; align-items: center; padding-left: 8px; }
-.active-walk-page__status-row h1 { margin: 0; font-size: 16px; line-height: 24px; }
-@media (max-height: 700px) { .active-walk-page__sheet-motion { height: 220px; } .active-walk-page__sheet-motion--with-range { height: 308px; } .active-walk-page__sheet-motion--with-meet { height: 344px; } .active-walk-page__sheet { padding-top: 9px; } .active-walk-page__destination { top: 477px; } .active-walk-page__handle { margin-bottom: 7px; } .active-walk-page__status-row { height: 24px; } }
+.active-walk-page__route-walked { stroke: #8c8985; stroke-width: 6; }
+.active-walk-page__gps { position: absolute; z-index: 5; top: max(20px, env(safe-area-inset-top)); left: 18px; display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; color: #6b9c72; background: rgba(255,250,244,.94); box-shadow: 0 5px 14px rgba(72,43,27,.14); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.active-walk-page__gps--with-hud { top: max(104px, calc(env(safe-area-inset-top) + 88px)); }
+.active-walk-page__gps span { color: #55a76a; font-size: 9px; }
+.active-walk-page__gps--weak { color: #9b7434; }
+.active-walk-page__gps--weak span { color: #d79a38; }
+.active-walk-page__gps--error { color: #a34f3c; }
+.active-walk-page__gps--error span { color: #df674e; }
+.active-walk-page__summary-mode { margin-bottom: 10px; }
+.active-walk-page__status-row { min-height: 30px; display: flex; align-items: center; padding: 3px 8px; }
+.active-walk-page__status-row h2 { margin: 0; font-size: 15px; }
 
-@media (prefers-reduced-motion: reduce) { .active-walk-page__sheet-motion { will-change: auto; } }
+@media (min-width: 391px) {
+  .active-walk-page { width: min(100%, 430px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .active-walk-page * { scroll-behavior: auto !important; }
+}
