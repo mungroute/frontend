@@ -3,7 +3,6 @@ import { Clock3 } from 'lucide-react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { BottomSheet, TimePicker } from '../Components/ui'
-import { clamp } from '../utils/number'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/walk-duration-page.css'
 
@@ -44,21 +43,35 @@ export function WalkDurationPage({
 }: WalkDurationPageProps) {
   const [duration, setDuration] = useState(initialDuration)
   const [departureTime, setDepartureTime] = useState<string | null>(null)
-  const [draftDepartureTime, setDraftDepartureTime] = useState(initialDepartureDialogOpen ? '18:30' : '')
+  const [draftPeriod, setDraftPeriod] = useState<'am' | 'pm'>(initialDepartureDialogOpen ? 'pm' : 'am')
+  const [draftHourInput, setDraftHourInput] = useState(initialDepartureDialogOpen ? '6' : '')
+  const [draftMinuteInput, setDraftMinuteInput] = useState(initialDepartureDialogOpen ? '30' : '')
   const [isDepartureDialogOpen, setIsDepartureDialogOpen] = useState(initialDepartureDialogOpen)
-  const [draftHours = 0, draftMinutes = 0] = draftDepartureTime.split(':').map(Number)
-  const isDraftPm = draftHours >= 12
-  const draftDisplayHours = draftHours % 12 || 12
+  const draftHours = Number(draftHourInput)
+  const draftMinutes = Number(draftMinuteInput)
+  const hasValidDraftTime = draftHourInput !== ''
+    && draftMinuteInput !== ''
+    && Number.isInteger(draftHours)
+    && Number.isInteger(draftMinutes)
+    && draftHours >= 1
+    && draftHours <= 12
+    && draftMinutes >= 0
+    && draftMinutes <= 59
+  const draftDepartureTime = hasValidDraftTime
+    ? `${padTimePart((draftHours % 12) + (draftPeriod === 'pm' ? 12 : 0))}:${padTimePart(draftMinutes)}`
+    : ''
 
-  const updateDraftTime = (hours: number, minutes: number, isPm: boolean) => {
-    const nextHours = (clamp(hours, 1, 12) % 12) + (isPm ? 12 : 0)
-    setDraftDepartureTime(`${padTimePart(nextHours)}:${padTimePart(clamp(minutes, 0, 59))}`)
+  const setDraftFromTime = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number)
+    setDraftPeriod(hours >= 12 ? 'pm' : 'am')
+    setDraftHourInput(String(hours % 12 || 12))
+    setDraftMinuteInput(padTimePart(minutes))
   }
 
   const openDepartureDialog = () => {
     const now = new Date()
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-    setDraftDepartureTime(departureTime ?? currentTime)
+    setDraftFromTime(departureTime ?? currentTime)
     setIsDepartureDialogOpen(true)
     onSelectDepartureTime()
   }
@@ -131,16 +144,16 @@ export function WalkDurationPage({
                 <button
                   type="button"
                   aria-label="오전 선택"
-                  aria-pressed={!isDraftPm}
-                  onClick={() => updateDraftTime(draftDisplayHours, draftMinutes, false)}
+                  aria-pressed={draftPeriod === 'am'}
+                  onClick={() => setDraftPeriod('am')}
                 >
                   오전
                 </button>
                 <button
                   type="button"
                   aria-label="오후 선택"
-                  aria-pressed={isDraftPm}
-                  onClick={() => updateDraftTime(draftDisplayHours, draftMinutes, true)}
+                  aria-pressed={draftPeriod === 'pm'}
+                  onClick={() => setDraftPeriod('pm')}
                 >
                   오후
                 </button>
@@ -152,8 +165,8 @@ export function WalkDurationPage({
                   aria-label="출발 시"
                   min="1"
                   max="12"
-                  value={draftDisplayHours}
-                  onChange={(event) => updateDraftTime(Number(event.target.value), draftMinutes, isDraftPm)}
+                  value={draftHourInput}
+                  onChange={(event) => setDraftHourInput(event.target.value)}
                   autoFocus
                 />
               </label>
@@ -165,19 +178,19 @@ export function WalkDurationPage({
                   aria-label="출발 분"
                   min="0"
                   max="59"
-                  value={draftMinutes}
-                  onChange={(event) => updateDraftTime(draftDisplayHours, Number(event.target.value), isDraftPm)}
+                  value={draftMinuteInput}
+                  onChange={(event) => setDraftMinuteInput(event.target.value)}
                 />
               </label>
             </div>
             <div className="walk-duration-page__time-preview" aria-live="polite">
               <span>선택한 시간</span>
-              <strong>{formatKoreanTime(draftDepartureTime)}</strong>
+              <strong>{hasValidDraftTime ? formatKoreanTime(draftDepartureTime) : '시간을 입력해 주세요'}</strong>
               <Clock3 size={24} aria-hidden="true" />
             </div>
             <div className="walk-duration-page__dialog-actions">
               <button type="button" onClick={closeDepartureDialog}>취소</button>
-              <button type="button" onClick={confirmDepartureTime} disabled={!draftDepartureTime}>선택 완료</button>
+              <button type="button" onClick={confirmDepartureTime} disabled={!hasValidDraftTime}>선택 완료</button>
             </div>
           </BottomSheet>
         </div>

@@ -12,20 +12,23 @@
 .active-walk-page__gps--error span { color: #df674e; }
 .active-walk-page__sheet-motion { position: absolute; z-index: 7; right: -1px; bottom: -1px; left: -1px; height: 240px; pointer-events: none; will-change: transform; }
 .active-walk-page__sheet-motion--with-range { height: 338px; }
-.active-walk-page__sheet-motion--with-meet { height: 374px; }
+.active-walk-page__sheet-motion--with-meet { height: 486px; }
 .active-walk-page__sheet-motion[data-place-detail='open'] { pointer-events: none; }
 .active-walk-page__sheet { --draggable-sheet-background: var(--active-walk-surface); position: absolute; inset: 0; width: 100%; height: 100%; padding: 28px 20px 16px; border-radius: var(--radius-28) var(--radius-28) 0 0; pointer-events: auto; transition: none; }
+.active-walk-page__sheet .ui-draggable-sheet__tail { z-index: -1; }
 .active-walk-page__summary { display: grid; grid-template-columns: minmax(0, 1fr) 154px; align-items: center; gap: 8px; }
 .active-walk-page__summary > .walk-stats { min-width: 0; }
 .active-walk-page__summary .walk-stats strong { font-size: 20px; line-height: 29px; }
 .active-walk-page__summary .walk-stats > div { min-width: 0; padding: 0 4px; }
 .active-walk-page__status-row { height: 31px; display: flex; align-items: center; padding-left: 8px; }
 .active-walk-page__status-row > strong { margin: 0; font-size: 15px; }
+.active-walk-page__dev-tools { position: absolute; z-index: 9; right: 12px; bottom: calc(100% - var(--map-sheet-top, calc(100% - var(--navigation-sheet-height, 338px))) + 92px); display: grid; justify-items: end; gap: 5px; pointer-events: none; }
+.active-walk-page__dev-tools button { min-height: 28px; padding: 4px 9px; border: 1px dashed rgba(244,122,58,.5); border-radius: 10px; color: #a64f29; background: rgba(255,250,244,.92); box-shadow: 0 2px 8px rgba(72,43,27,.08); font: inherit; font-size: 9px; font-weight: 700; pointer-events: auto; }
 
 @media (max-height: 700px) {
   .active-walk-page__sheet-motion { height: 220px; }
   .active-walk-page__sheet-motion--with-range { height: 308px; }
-  .active-walk-page__sheet-motion--with-meet { height: 344px; }
+  .active-walk-page__sheet-motion--with-meet { height: 456px; }
   .active-walk-page__sheet { padding-top: 9px; }
   .active-walk-page__status-row { height: 24px; }
 }

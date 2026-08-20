@@ -4,6 +4,7 @@ import type { GeoJSONSource, Map as MapLibreMap, MapOptions, Marker } from 'mapl
 import { LocateFixed, RotateCcw, Route as RouteIcon } from 'lucide-react'
 import { BaseMapViewport } from '../../../Components/map'
 import type { BaseMapBinding, MapCoordinate, MapMarker } from '../../../Components/map'
+import { createProfileLocationMarkerElement } from '../../../Components/map/profileLocationMarker'
 import { buildThermalRoutes } from '../../../Components/courses/thermal-route'
 import { WalkRouteProgress } from '../../../Components/walk/WalkRouteProgress'
 import type { NavigationPositionFix, WalkNavigationRoute } from '../types'
@@ -38,9 +39,14 @@ type NavigationMapProps = {
 
 const STYLE_URL = resolveMapStyleUrl(import.meta.env.VITE_MAPLIBRE_STYLE_URL, import.meta.env.VITE_MAPTILER_KEY)
 const FOLLOW_ANCHOR_Y = 0.68
+const DEFAULT_MAP_HEIGHT = 700
 const DEFAULT_PADDING = { top: 116, right: 20, bottom: 180, left: 20 }
 const SOURCE_IDS = ['navigation-route', 'navigation-passed', 'navigation-remaining', 'navigation-chevron', 'navigation-places'] as const
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+const followOffset = (height?: number): [number, number] => [
+  0,
+  Math.round((height && height > 0 ? height : DEFAULT_MAP_HEIGHT) * (FOLLOW_ANCHOR_Y - 0.5)),
+]
 
 const lineFeatureCollection = (lines: MapCoordinate[][]) => ({
   type: 'FeatureCollection' as const,
@@ -72,6 +78,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | undefined>(undefined)
   const markerRef = useRef<Marker | undefined>(undefined)
+  const meetMarkerRef = useRef<Marker | undefined>(undefined)
   const paddingRef = useRef(padding)
   const onPlaceSelectRef = useRef(onPlaceSelect)
   const onMeetSelectRef = useRef(onMeetSelect)
@@ -184,17 +191,12 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
         else if (typeof id === 'string') onPlaceSelectRef.current?.(id)
       })
       setReady(true)
-      if (route?.navigationPolyline?.length) {
-        const bounds = route.navigationPolyline.reduce(
-          (value, coordinate) => value.extend([coordinate.longitude, coordinate.latitude]),
-          new maplibregl.LngLatBounds(),
-        )
-        map.fitBounds(bounds, { padding: paddingRef.current, maxZoom: 18, duration: prefersReducedMotion() ? 0 : 650, pitch: 50 })
-      }
     })
     return () => {
       markerRef.current?.remove()
       markerRef.current = undefined
+      meetMarkerRef.current?.remove()
+      meetMarkerRef.current = undefined
       map.remove()
       if (mapRef.current === map) mapRef.current = undefined
       loadedRef.current = false
@@ -208,8 +210,34 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
     setSourceData(map, 'navigation-passed', lineFeatureCollection(progress?.passed ? [progress.passed] : []))
     setSourceData(map, 'navigation-remaining', lineFeatureCollection(progress?.remaining ? [progress.remaining] : route?.coordinateParts ?? []))
     setSourceData(map, 'navigation-chevron', { type: 'FeatureCollection', features: chevrons })
-    setSourceData(map, 'navigation-places', pointFeatureCollection(allPlaceMarkers))
-  }, [allPlaceMarkers, chevrons, progress, ready, route])
+    setSourceData(map, 'navigation-places', pointFeatureCollection(placeMarkers))
+  }, [chevrons, placeMarkers, progress, ready, route])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    meetMarkerRef.current?.remove()
+    meetMarkerRef.current = undefined
+    if (!meetMarker) return
+
+    const element = createProfileLocationMarkerElement(meetMarker, {
+      interactive: true,
+      onClick: () => onMeetSelectRef.current?.(),
+    })
+    const marker = new maplibregl.Marker({
+      element,
+      anchor: 'bottom',
+      pitchAlignment: 'viewport',
+      rotationAlignment: 'viewport',
+    })
+      .setLngLat([meetMarker.position.longitude, meetMarker.position.latitude])
+      .addTo(map)
+    meetMarkerRef.current = marker
+    return () => {
+      marker.remove()
+      if (meetMarkerRef.current === marker) meetMarkerRef.current = undefined
+    }
+  }, [meetMarker, ready])
 
   useEffect(() => {
     const map = mapRef.current
@@ -229,14 +257,13 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
     const now = Date.now()
     if (now - cameraAtRef.current < 350) return
     cameraAtRef.current = now
-    const height = containerRef.current?.clientHeight ?? 700
     map.easeTo({
       center: [position.coordinate.longitude, position.coordinate.latitude],
       zoom: 18,
       pitch: 54,
       bearing: heading ?? map.getBearing(),
       padding,
-      offset: [0, height * (FOLLOW_ANCHOR_Y - 0.5)],
+      offset: followOffset(containerRef.current?.clientHeight),
       duration: prefersReducedMotion() ? 0 : 650,
       essential: true,
     })
@@ -253,7 +280,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       pitch: 54,
       bearing: heading ?? mapRef.current.getBearing(),
       padding: paddingRef.current,
-      offset: [0, 0],
+      offset: followOffset(containerRef.current?.clientHeight),
       duration: prefersReducedMotion() ? 0 : 450,
       essential: true,
     })

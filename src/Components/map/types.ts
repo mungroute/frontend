@@ -8,7 +8,7 @@ export type MapMarkerCategory = 'restaurant' | 'hospital' | 'pharmacy' | 'cafe' 
 export type MapMarker = {
   id: string
   position: MapCoordinate
-  kind?: 'current-location' | 'start' | 'finish' | 'default'
+  kind?: 'current-location' | 'profile-location' | 'start' | 'finish' | 'default'
   label?: string
   profileImageSrc?: string
   revealAfterDraw?: string
@@ -47,6 +47,7 @@ export type MapViewFit = {
 export type BaseMapScene = {
   center: MapCoordinate
   zoom: number
+  mouseWheelZoom?: boolean
   markers?: MapMarker[]
   routes?: MapRoute[]
   viewFit?: MapViewFit

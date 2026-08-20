@@ -79,6 +79,22 @@ describe('CourseDetailPage', () => {
     expect(onDeleted).toHaveBeenCalledOnce()
   })
 
+  it('keeps a course when the server reports that it is shared with a group', async () => {
+    const api = apiFor()
+    const message = '그룹에 공유 중인 코스는 삭제할 수 없습니다. 먼저 그룹에서 공유를 취소해 주세요.'
+    vi.mocked(api.delete).mockRejectedValueOnce(new Error(message))
+    const onDeleted = vi.fn()
+    render(<CourseDetailPage source="custom" courseId={42} api={api} onDeleted={onDeleted} />)
+    await screen.findByText('주말 산책길')
+
+    fireEvent.click(screen.getByRole('button', { name: '코스 삭제' }))
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(onDeleted).not.toHaveBeenCalled()
+    expect(screen.getByText('주말 산책길')).toBeInTheDocument()
+  })
+
   it('labels shade as unavailable at night', async () => {
     const night = { ...dayCourse, metrics: { ...dayCourse.metrics!, shadeRatio: null, solarState: 'NIGHT' as const, shadeApplicable: false } }
     const nightDiagnostics: CourseDiagnostics = {

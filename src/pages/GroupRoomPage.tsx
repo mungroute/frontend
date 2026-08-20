@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
-import type { BaseMapBinding, MapCoordinate } from '../Components/map'
+import type { BaseMapBinding } from '../Components/map'
 import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { SharedRouteRow } from '../Components/groups/GroupCards'
 import { Button, ManagementPageHeader } from '../Components/ui'
@@ -9,6 +9,9 @@ import { courseCatalogApi } from '../api/courses'
 import type { CourseCatalogApi, CourseSummary } from '../api/courses'
 import { groupApi } from '../api/groups'
 import type { GroupApi, GroupDetail, GroupInvite, GroupJoinPolicy, GroupVisibility } from '../api/groups'
+import { connectGroupCourseSocket } from '../api/groupCourseSocket'
+import type { GroupCourseSocketConnector } from '../api/groupCourseSocket'
+import { getValidAccessToken } from '../api/http'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/profile-group-pages.css'
 
@@ -22,19 +25,7 @@ type GroupRoomPageProps = {
   onOpenActivity?: () => void
   onOpenAllCourses?: () => void
   onClosed?: () => void
-}
-
-const routeViewport = (coordinates: MapCoordinate[]) => {
-  if (!coordinates.length) return undefined
-  const west = Math.min(...coordinates.map((point) => point.longitude))
-  const east = Math.max(...coordinates.map((point) => point.longitude))
-  const south = Math.min(...coordinates.map((point) => point.latitude))
-  const north = Math.max(...coordinates.map((point) => point.latitude))
-  const span = Math.max(east - west, north - south, 0.0002)
-  return {
-    center: { latitude: (south + north) / 2, longitude: (west + east) / 2 },
-    zoom: Math.max(11, Math.min(17, Math.log2(360 / span) - 8)),
-  }
+  connectCourseEvents?: GroupCourseSocketConnector
 }
 
 const shareOption = (course: CourseSummary) => ({
@@ -55,7 +46,7 @@ export const groupRouteColorForUser = (userId: number) => {
   return GROUP_ROUTE_COLORS[(hash >>> 0) % GROUP_ROUTE_COLORS.length]
 }
 
-export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = courseCatalogApi, onBack, onOpenSharedCourse, onOpenActivity, onOpenAllCourses, onClosed }: GroupRoomPageProps) {
+export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = courseCatalogApi, onBack, onOpenSharedCourse, onOpenActivity, onOpenAllCourses, onClosed, connectCourseEvents = connectGroupCourseSocket }: GroupRoomPageProps) {
   const [group, setGroup] = useState<GroupDetail>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
@@ -104,6 +95,19 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
     return () => { active = false }
   }, [api, groupId])
 
+  useEffect(() => {
+    const socket = connectCourseEvents({
+      groupId,
+      tokenProvider: getValidAccessToken,
+      onEvent: () => {
+        void api.detail(groupId)
+          .then(setGroup)
+          .catch((reason: Error) => setActionError(reason.message))
+      },
+    })
+    return () => socket.close()
+  }, [api, connectCourseEvents, groupId])
+
   const mapOverlay = useMemo(() => {
     const routes = group?.recentCourses.map((shared) => ({
       id: `group-route-${shared.sharedCourseId}`,
@@ -117,7 +121,17 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
       interactionId: String(shared.sharedCourseId),
     })).filter((route) => route.coordinates.length > 1) ?? []
     const allCoordinates = routes.flatMap((route) => route.coordinates)
-    return { ...routeViewport(allCoordinates), routes, markers: [] }
+    return {
+      routes,
+      markers: [],
+      viewFit: allCoordinates.length
+        ? {
+            coordinates: allCoordinates,
+            padding: [40, 24, 24, 24] as [number, number, number, number],
+            maxZoom: 16,
+          }
+        : undefined,
+    }
   }, [group])
 
   const openShare = () => {
@@ -127,7 +141,10 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
         setCourses(value)
         setIsShareOpen(true)
       })
-      .catch((reason: Error) => setActionError(reason.message))
+      .catch((reason: Error) => {
+        setIsShareOpen(false)
+        setActionError(reason.message)
+      })
   }
 
   const share = (id: string) => {
@@ -135,11 +152,21 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
     if ((source !== 'walk' && source !== 'custom') || !Number.isSafeInteger(Number(rawId))) return
     setActionError(undefined)
     void api.shareCourse(groupId, source, Number(rawId))
-      .then(() => {
+      .then((shared) => {
         setIsShareOpen(false)
-        load()
+        setGroup((current) => {
+          if (!current || current.recentCourses.some((course) => course.sharedCourseId === shared.sharedCourseId)) return current
+          return {
+            ...current,
+            sharedCourseCount: current.sharedCourseCount + 1,
+            recentCourses: [shared, ...current.recentCourses].slice(0, 3),
+          }
+        })
       })
-      .catch((reason: Error) => setActionError(reason.message))
+      .catch((reason: Error) => {
+        setIsShareOpen(false)
+        setActionError(reason.message)
+      })
   }
 
   const issueInvite = () => {

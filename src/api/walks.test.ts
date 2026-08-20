@@ -77,4 +77,43 @@ describe('walkApi', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(apiUrl('/api/presence'), expect.objectContaining({ method: 'PUT' }))
   })
+
+  it('requests a privacy-preserving safe detour with only the remaining route', async () => {
+    const result = {
+      requestId: 'detour-1', decision: 'WAIT', message: '잠시 기다려 주세요.',
+      firstManeuver: null, addedDistanceM: null, addedDurationSec: null,
+      route: [], validUntil: '2026-08-20T12:00:10+09:00', retryAfterSeconds: 25,
+    }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await walkApi.safeDetour(42, {
+      requestId: 'detour-1',
+      alertTrend: 'APPROACHING',
+      remainingRoute: [{ lat: 37.5665, lon: 126.978 }, { lat: 37.568, lon: 126.979 }],
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(apiUrl('/api/presence/42/safe-detour'), expect.objectContaining({
+      method: 'POST',
+      body: expect.not.stringContaining('candidate'),
+    }))
+  })
+
+  it('loads the authoritative active-walk timer after a refresh', async () => {
+    const state = {
+      sessionId: 42, status: 'ACTIVE', startedAt: '2026-08-20T12:00:00+09:00',
+      elapsedSeconds: 367, distanceM: 1234, mode: 'distance', lockedMode: 'distance',
+    }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(state), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(walkApi.state(42)).resolves.toEqual(state)
+    expect(fetchMock).toHaveBeenCalledWith(apiUrl('/api/walks/42/state'), expect.anything())
+  })
 })

@@ -14,8 +14,8 @@ describe('requestBrowserLocation', () => {
     setDevLocationOverrideUser('test@naver.com')
 
     await expect(requestBrowserLocation()).resolves.toEqual({
-      latitude: 37.564,
-      longitude: 126.997,
+      latitude: 37.565825,
+      longitude: 126.9874593,
     })
     expect(getCurrentPosition).not.toHaveBeenCalled()
   })
@@ -36,6 +36,6 @@ describe('requestBrowserLocation', () => {
       coords: { latitude: 37.485, longitude: 126.895, accuracy: 5 },
     } as GeolocationPosition)
 
-    await expect(pendingLocation).resolves.toEqual({ latitude: 37.564, longitude: 126.997 })
+    await expect(pendingLocation).resolves.toEqual({ latitude: 37.565825, longitude: 126.9874593 })
   })
 })

@@ -32,12 +32,42 @@ export type PresenceUpdatePayload = {
   radiusM: number
 }
 
+export type SafeDetourDecision = 'DETOUR' | 'WAIT' | 'KEEP_ROUTE' | 'NO_ROUTE'
+
+export type SafeDetourResult = {
+  requestId: string
+  decision: SafeDetourDecision
+  message: string
+  firstManeuver: 'LEFT' | 'RIGHT' | 'STRAIGHT' | null
+  addedDistanceM: number | null
+  addedDurationSec: number | null
+  route: { lat: number; lon: number }[]
+  validUntil: string
+  retryAfterSeconds: number
+}
+
+export type SafeDetourPayload = {
+  requestId: string
+  alertTrend: PresenceTrend
+  remainingRoute: { lat: number; lon: number }[]
+}
+
 export type WalkModeResult = {
   sessionId: number
   mode: WalkPresenceMode
   lockedMode?: LockedWalkPresenceMode | null
   startedAt?: string
   changedAt?: string
+}
+
+export type ActiveWalkState = {
+  sessionId: number
+  status: 'ACTIVE' | 'PAUSED' | 'ENDED'
+  startedAt: string
+  elapsedSeconds: number
+  distanceM: number
+  mode: WalkPresenceMode
+  lockedMode: LockedWalkPresenceMode | null
 }
 
 export type GeoJsonLineString = {
@@ -146,6 +176,15 @@ export const walkApi = {
   updatePresence(payload: PresenceUpdatePayload) {
     return apiRequest<PresenceUpdateResult>('/api/presence', {
       method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+  state(sessionId: number) {
+    return apiRequest<ActiveWalkState>(`/api/walks/${sessionId}/state`)
+  },
+  safeDetour(sessionId: number, payload: SafeDetourPayload) {
+    return apiRequest<SafeDetourResult>(`/api/presence/${sessionId}/safe-detour`, {
+      method: 'POST',
       body: JSON.stringify(payload),
     })
   },

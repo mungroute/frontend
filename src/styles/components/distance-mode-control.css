@@ -7,6 +7,7 @@
 .walk-presence-mode-control__copy small { overflow: hidden; color: var(--color-primary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 7px; line-height: 10px; font-weight: 700; letter-spacing: .04em; text-overflow: ellipsis; white-space: nowrap; }
 .walk-presence-mode-control--meet .walk-presence-mode-control__copy small { color: var(--color-shade); }
 .walk-presence-mode-control__copy strong { overflow: hidden; font-size: 10px; line-height: 15px; letter-spacing: -.035em; text-overflow: ellipsis; white-space: nowrap; }
+.walk-presence-mode-control--meet .walk-presence-mode-control__copy strong { overflow: visible; line-height: 12px; text-overflow: clip; white-space: normal; word-break: keep-all; }
 .walk-presence-mode-control__state { position: absolute; top: 9px; right: 9px; color: var(--color-text-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 7px; font-weight: 700; }
 .walk-presence-mode-control > button > i { position: relative; width: 30px; height: 16px; grid-column: 3; align-self: end; border-radius: 999px; background: var(--color-control-inactive); transition: background .22s ease; }
 .walk-presence-mode-control > button > i b { position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(41,36,33,.25); transition: transform .22s cubic-bezier(.2,.8,.2,1); }

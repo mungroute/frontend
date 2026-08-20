@@ -1,26 +1,7 @@
-import type { NearbyPresence } from '../../../api/walks'
-
-const distanceLabels: Record<NearbyPresence['distanceBand'], string> = {
-  VERY_CLOSE: '30m 안쪽 아주 가까운 곳',
-  BAND_30_50: '30~50m',
-  BAND_50_100: '50~100m',
-  BAND_100_500: '100m 이상',
-}
-
-const headingDirections = ['앞쪽', '오른쪽 앞', '오른쪽', '오른쪽 뒤', '뒤쪽', '왼쪽 뒤', '왼쪽', '왼쪽 앞']
-const mapDirections = ['지도 위쪽', '지도 오른쪽 위', '지도 오른쪽', '지도 오른쪽 아래', '지도 아래쪽', '지도 왼쪽 아래', '지도 왼쪽', '지도 왼쪽 위']
-const trendLabels: Record<NearbyPresence['trend'], string> = {
-  NEW: '주변에서 새로 감지됐어요.',
-  APPROACHING: '가까워지고 있어요. 잠시 속도를 줄여주세요.',
-  STEADY: '비슷한 거리를 유지하고 있어요.',
-  LEAVING: '점점 멀어지고 있어요.',
-}
-
-const directionLabel = (alert: NearbyPresence) => {
-  if (alert.directionOctant === null) return '바로 가까운 곳'
-  const labels = alert.directionReference === 'HEADING' ? headingDirections : mapDirections
-  return labels[alert.directionOctant] ?? '주변'
-}
+import { useEffect, useState } from 'react'
+import { LoaderCircle, X } from 'lucide-react'
+import type { NearbyPresence, SafeDetourResult } from '../../../api/walks'
+import { distanceBandLabels, distanceDirectionLabel, distanceTrendDescriptions } from '../../distance-alert/distance-alert-format'
 
 const defaultAlert: NearbyPresence = {
   distanceBand: 'BAND_50_100',
@@ -30,14 +11,85 @@ const defaultAlert: NearbyPresence = {
   trend: 'APPROACHING',
 }
 
-export function DistanceAlertOverlay({ alert = defaultAlert }: { alert?: NearbyPresence }) {
+type DistanceAlertOverlayProps = {
+  alert?: NearbyPresence
+  onRequestDetour?: () => Promise<SafeDetourResult>
+  onApplyDetour?: (result: SafeDetourResult) => void
+}
+
+export function DistanceAlertOverlay({ alert = defaultAlert, onRequestDetour, onApplyDetour }: DistanceAlertOverlayProps) {
+  const [visible, setVisible] = useState(true)
+  const [checking, setChecking] = useState(false)
+  const [result, setResult] = useState<SafeDetourResult>()
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    if (checking) return
+    const timer = window.setTimeout(() => setVisible(false), 5_000)
+    return () => window.clearTimeout(timer)
+  }, [checking, error, result])
+
+  if (!visible) return null
+
+  const dismiss = () => {
+    if (!checking) setVisible(false)
+  }
+  const requestDetour = async () => {
+    if (!onRequestDetour || checking) return
+    setChecking(true)
+    setError(undefined)
+    try {
+      setResult(await onRequestDetour())
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '우회 경로를 확인하지 못했어요.')
+    } finally {
+      setChecking(false)
+    }
+  }
   return (
-    <section className="navigation-distance-alert" aria-live="polite">
+    <section
+      className="navigation-distance-alert"
+      aria-label="주변 접근 알림"
+      aria-live="polite"
+      role="status"
+    >
+      <button type="button" className="navigation-distance-alert__dismiss" aria-label="거리두기 알림 닫기" onClick={dismiss}>
+        <X aria-hidden="true" />
+      </button>
       <img src="/assets/mascot/states/04-distance-alert.png" alt="" />
-      <div>
-        <h1>주변 접근 알림</h1>
-        <strong>{directionLabel(alert)} · {distanceLabels[alert.distanceBand]}</strong>
-        <p>{trendLabels[alert.trend]}</p>
+      <div className="navigation-distance-alert__content">
+        <h1>{result ? '안전 경로 안내' : '주변 접근 알림'}</h1>
+        {result
+          ? <p className={`navigation-distance-alert__result navigation-distance-alert__result--${result.decision.toLowerCase()}`}>{result.message}</p>
+          : <>
+              <strong>{distanceDirectionLabel(alert)} · {distanceBandLabels[alert.distanceBand]}</strong>
+              <p>{checking ? '겹치지 않는 길을 확인하고 있어요.' : error ?? distanceTrendDescriptions[alert.trend]}</p>
+            </>}
+        {onRequestDetour && !result && (
+          <button
+            type="button"
+            className="navigation-distance-alert__action"
+            disabled={checking}
+            onClick={(event) => {
+              event.stopPropagation()
+              void requestDetour()
+            }}
+          >
+            {checking && <LoaderCircle className="navigation-distance-alert__spinner" aria-hidden="true" />}
+            {checking ? '경로 확인 중' : error ? '다시 확인' : '다른 길로 안내'}
+          </button>
+        )}
+        {result?.decision === 'DETOUR' && (
+          <button
+            type="button"
+            className="navigation-distance-alert__action"
+            onClick={(event) => {
+              event.stopPropagation()
+              onApplyDetour?.(result)
+              setVisible(false)
+            }}
+          >이 경로로 이동</button>
+        )}
       </div>
     </section>
   )

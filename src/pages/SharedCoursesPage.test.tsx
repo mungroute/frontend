@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { GroupSharedCourse } from '../api/groups'
+import type { GroupCourseEvent, GroupCourseSocketConnector } from '../api/groupCourseSocket'
 import { SharedCoursesPage } from './SharedCoursesPage'
 
 const course: GroupSharedCourse = {
@@ -20,5 +21,27 @@ describe('SharedCoursesPage', () => {
     fireEvent.click(shortFilter)
     expect(shortFilter).toHaveAttribute('aria-pressed', 'true')
     await waitFor(() => expect(api.courses).toHaveBeenLastCalledWith(10, 'shortest'))
+  })
+
+  it('refreshes the list when a realtime course event arrives', async () => {
+    const realtimeCourse = {
+      ...course,
+      sharedCourseId: 5,
+      course: { ...course.course, courseId: 10, courseName: '방금 공유한 코스' },
+    }
+    const courses = vi.fn().mockResolvedValueOnce([course]).mockResolvedValueOnce([realtimeCourse, course])
+    let receiveEvent: ((event: GroupCourseEvent) => void) | undefined
+    const connectCourseEvents: GroupCourseSocketConnector = vi.fn((options) => {
+      receiveEvent = options.onEvent
+      return { close: vi.fn() }
+    })
+
+    render(<SharedCoursesPage groupId={10} api={{ courses }} connectCourseEvents={connectCourseEvents} />)
+    await screen.findByRole('button', { name: '조용한 공원길 상세 보기' })
+
+    act(() => receiveEvent?.({ groupId: 10, type: 'COURSE_SHARED', sharedCourseId: 5 }))
+
+    expect(await screen.findByRole('button', { name: '방금 공유한 코스 상세 보기' })).toBeInTheDocument()
+    expect(courses).toHaveBeenCalledTimes(2)
   })
 })

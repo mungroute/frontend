@@ -1,10 +1,66 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ActiveWalkPage } from './ActiveWalkPage'
 import { placeApiStub } from '../test/placeApiStub'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 
+afterEach(() => vi.unstubAllGlobals())
+
 describe('ActiveWalkPage', () => {
+  it('explains watch notifications before requesting permission and keeps the in-app alert after later', () => {
+    const requestPermission = vi.fn()
+    vi.stubGlobal('Notification', class {
+      static permission = 'default'
+      static requestPermission = requestPermission
+    })
+    const onWatchSystemNotificationEnabledChange = vi.fn()
+    render(
+      <ActiveWalkPage
+        sessionState="distance-alert"
+        presenceMode="distance"
+        presenceEnabled
+        watchSystemNotificationEnabled
+        onWatchSystemNotificationEnabledChange={onWatchSystemNotificationEnabledChange}
+      />,
+    )
+
+    expect(screen.getByRole('dialog', { name: '워치에서도 알림을 받아볼까요?' })).toBeInTheDocument()
+    expect(screen.getByText('알림을 허용하지 않아도 멍루트 앱 안의 거리두기 알림은 계속 표시돼요.')).toBeInTheDocument()
+    expect(requestPermission).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '나중에 하기' }))
+    expect(onWatchSystemNotificationEnabledChange).toHaveBeenCalledWith(false)
+    expect(screen.getByRole('heading', { name: '주변 접근 알림' })).toBeInTheDocument()
+  })
+
+  it('requests system notification permission only after the watch button gesture', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('granted')
+    vi.stubGlobal('Notification', class {
+      static permission = 'default'
+      static requestPermission = requestPermission
+    })
+    const onWatchSystemNotificationEnabledChange = vi.fn()
+    render(
+      <ActiveWalkPage
+        presenceMode="distance"
+        presenceEnabled
+        watchSystemNotificationEnabled
+        onWatchSystemNotificationEnabledChange={onWatchSystemNotificationEnabledChange}
+      />,
+    )
+
+    expect(requestPermission).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: '워치 알림 받기' }))
+    await waitFor(() => expect(requestPermission).toHaveBeenCalledOnce())
+    expect(onWatchSystemNotificationEnabledChange).toHaveBeenCalledWith(true)
+  })
+
+  it('does not repeat the permission guide after permission was granted', () => {
+    vi.stubGlobal('Notification', class {
+      static permission = 'granted'
+    })
+    render(<ActiveWalkPage presenceMode="distance" presenceEnabled watchSystemNotificationEnabled />)
+    expect(screen.queryByRole('dialog', { name: '워치에서도 알림을 받아볼까요?' })).not.toBeInTheDocument()
+  })
   it('never exposes a meet profile or marker while distance mode is active', () => {
     const adapter: BaseMapAdapter = {
       mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
@@ -50,17 +106,58 @@ describe('ActiveWalkPage', () => {
     expect(container.querySelector('.active-walk-page__route-walked')).toBeInTheDocument()
   })
 
+  it('lets meet mode control the actual friend search radius', () => {
+    const onDistanceRadiusChange = vi.fn()
+    render(
+      <ActiveWalkPage
+        presenceMode="meet"
+        presenceEnabled
+        distanceRadius={200}
+        onDistanceRadiusChange={onDistanceRadiusChange}
+      />,
+    )
+
+    const meetRange = screen.getByRole('slider', { name: '산책 친구 찾기 범위' })
+    expect(meetRange).toHaveValue('200')
+    expect(screen.getByText('산책 친구 찾기 범위')).toBeInTheDocument()
+    fireEvent.change(meetRange, { target: { value: '350' } })
+    expect(onDistanceRadiusChange).toHaveBeenCalledWith(350)
+  })
+
+  it('lets the user toggle navigation voice directly during a routed walk', () => {
+    const onNavigationVoiceEnabledChange = vi.fn()
+    render(
+      <ActiveWalkPage
+        plannedRouteCoordinates={[
+          { latitude: 37.56, longitude: 126.996 },
+          { latitude: 37.559, longitude: 126.998 },
+        ]}
+        navigationVoiceEnabled
+        onNavigationVoiceEnabledChange={onNavigationVoiceEnabledChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
+    const voiceToggle = screen.getByRole('button', { name: '내비게이션 음성 안내 끄기' })
+    expect(voiceToggle).toHaveAttribute('aria-pressed', 'true')
+    expect(voiceToggle).not.toHaveTextContent('음성 ON')
+    expect(voiceToggle.querySelector('svg')).toBeInTheDocument()
+    fireEvent.click(voiceToggle)
+    expect(onNavigationVoiceEnabledChange).toHaveBeenCalledWith(false)
+  })
+
   it('exposes the active walk controls and distance mode', () => {
     const onPause = vi.fn()
     const onStop = vi.fn()
-    const onPhoto = vi.fn()
+    const onNavigationVoiceEnabledChange = vi.fn()
     const onDistanceModeChange = vi.fn()
     const onDistanceRadiusChange = vi.fn()
     render(
       <ActiveWalkPage
         onPause={onPause}
         onStop={onStop}
-        onPhoto={onPhoto}
+        navigationVoiceEnabled
+        onNavigationVoiceEnabledChange={onNavigationVoiceEnabledChange}
         onDistanceModeChange={onDistanceModeChange}
         distanceRadius={150}
         onDistanceRadiusChange={onDistanceRadiusChange}
@@ -78,9 +175,7 @@ describe('ActiveWalkPage', () => {
     expect(endDialog).toBeInTheDocument()
     expect(onStop).not.toHaveBeenCalled()
     fireEvent.click(within(endDialog).getByRole('button', { name: '산책 종료 확정' }))
-    const photoInput = screen.getByLabelText('산책 사진 선택')
-    const photoPicker = vi.spyOn(photoInput, 'click')
-    fireEvent.click(screen.getByRole('button', { name: '사진 촬영' }))
+    fireEvent.click(screen.getByRole('button', { name: '내비게이션 음성 안내 끄기' }))
     const distanceMode = screen.getByRole('switch', { name: '거리두기 알림 모드' })
     fireEvent.click(distanceMode)
 
@@ -96,8 +191,8 @@ describe('ActiveWalkPage', () => {
 
     expect(onPause).toHaveBeenCalledOnce()
     expect(onStop).toHaveBeenCalledOnce()
-    expect(onPhoto).toHaveBeenCalledOnce()
-    expect(photoPicker).toHaveBeenCalledOnce()
+    expect(onNavigationVoiceEnabledChange).toHaveBeenCalledWith(false)
+    expect(screen.queryByRole('button', { name: '사진 촬영' })).not.toBeInTheDocument()
     expect(onDistanceModeChange).toHaveBeenCalledWith(false)
     expect(distanceMode).toHaveAttribute('aria-checked', 'true')
   })

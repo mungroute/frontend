@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { normalizeWalkRoute } from '../route-normalizer'
 import { NavigationMap } from './NavigationMap'
 
@@ -8,12 +8,16 @@ const markerSpies = vi.hoisted(() => ({
   remove: vi.fn(),
   setLngLat: vi.fn(),
   setRotation: vi.fn(),
+  elements: [] as HTMLElement[],
 }))
 
 vi.mock('maplibre-gl', async () => {
   const actual = await vi.importActual<typeof import('maplibre-gl')>('maplibre-gl')
   class Marker {
     private hasLngLat = false
+    constructor(options?: { element?: HTMLElement }) {
+      if (options?.element) markerSpies.elements.push(options.element)
+    }
     addTo(map: unknown) {
       if (!this.hasLngLat) throw new Error('Marker must receive coordinates before addTo')
       markerSpies.addTo(map)
@@ -63,6 +67,11 @@ const createFakeMap = () => {
 }
 
 describe('NavigationMap', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    markerSpies.elements.length = 0
+  })
+
   it('creates one MapLibre instance, loads navigation layers, and reuses it for GPS updates', async () => {
     const fake = createFakeMap()
     const factory = vi.fn(() => fake.map as never)
@@ -91,8 +100,12 @@ describe('NavigationMap', () => {
         'text-ignore-placement': true,
       }),
     }))
-    expect(fake.map.fitBounds).toHaveBeenCalledOnce()
+    expect(fake.map.fitBounds).not.toHaveBeenCalled()
     await waitFor(() => expect(markerSpies.setLngLat).toHaveBeenCalledWith([126.98, 37.56]))
+    await waitFor(() => expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
+      center: [126.98, 37.56],
+      offset: [0, 126],
+    })))
 
     view.rerender(
       <NavigationMap
@@ -125,7 +138,7 @@ describe('NavigationMap', () => {
     fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
     expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
       center: [126.98, 37.56],
-      offset: [0, 0],
+      offset: [0, 126],
     }))
   })
 
@@ -136,7 +149,7 @@ describe('NavigationMap', () => {
     render(
       <NavigationMap
         route={route}
-        meetMarker={{ id: 'meet-friend', position: route.coordinateParts[0][0], label: '쿠키' }}
+        meetMarker={{ id: 'meet-friend', position: route.coordinateParts[0][0], kind: 'profile-location', label: '쿠키', profileImageSrc: '/cookie.jpg' }}
         mapFactory={() => fake.map as never}
         styleUrl="https://example.test/style.json"
         onMeetSelect={onMeetSelect}
@@ -145,8 +158,11 @@ describe('NavigationMap', () => {
     )
     await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
 
-    const click = fake.handlers.get('click') as unknown as (event: { features: Array<{ properties: { id: string } }> }) => void
-    click({ features: [{ properties: { id: 'meet-friend' } }] })
+    await waitFor(() => expect(markerSpies.elements).toHaveLength(1))
+    const profileMarker = markerSpies.elements[0]
+    expect(profileMarker).toHaveAttribute('aria-label', '쿠키 프로필 보기')
+    expect(profileMarker.querySelector('img')).toHaveAttribute('src', '/cookie.jpg')
+    fireEvent.click(profileMarker)
 
     expect(onMeetSelect).toHaveBeenCalledOnce()
     expect(onPlaceSelect).not.toHaveBeenCalled()
@@ -163,6 +179,7 @@ describe('NavigationMap', () => {
         route={route}
         position={position}
         currentLocationMarker={{ label: '망고', profileImageSrc: '/registered/mango.jpg' }}
+        meetMarker={{ id: 'meet-friend', position: route.coordinateParts[0][1], kind: 'profile-location', label: '쿠키', profileImageSrc: '/registered/cookie.jpg' }}
         fallbackMap={{ adapter: vworldAdapter, scene: { center: position.coordinate, zoom: 17 } }}
         mapFactory={() => fake.map as never}
         styleUrl="https://example.test/style.json"
@@ -188,6 +205,12 @@ describe('NavigationMap', () => {
           label: '망고',
           profileImageSrc: '/registered/mango.jpg',
         }),
+        expect.objectContaining({
+          id: 'meet-friend',
+          kind: 'profile-location',
+          label: '쿠키',
+          profileImageSrc: '/registered/cookie.jpg',
+        }),
       ]),
     }))
     expect(fake.map.fitBounds).not.toHaveBeenCalled()
@@ -202,7 +225,7 @@ describe('NavigationMap', () => {
       center: [126.98, 37.56],
       zoom: 18,
       pitch: 54,
-      offset: [0, 0],
+      offset: [0, 126],
     }))
     expect(screen.getByRole('button', { name: '전체 경로 2D로 보기' })).toBeInTheDocument()
     expect(vworldInstance.destroy).toHaveBeenCalledOnce()
