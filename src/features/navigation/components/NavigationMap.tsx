@@ -253,7 +253,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       pitch: 54,
       bearing: heading ?? mapRef.current.getBearing(),
       padding: paddingRef.current,
-      offset: [0, (containerRef.current?.clientHeight ?? 700) * (FOLLOW_ANCHOR_Y - 0.5)],
+      offset: [0, 0],
       duration: prefersReducedMotion() ? 0 : 450,
       essential: true,
     })

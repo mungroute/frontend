@@ -78,7 +78,7 @@ const courseRecommendation: CourseRecommendation = {
     candidateId: 'generated-1', candidateType: 'GENERATED', courseSource: null, courseId: null,
     name: '중구 추천 순환길 A', durationMinutes: 35, distanceM: 1400, shadeRatio: 0.62,
     estimatedSurfaceTempC: 33, representative: false, withinTargetTime: true,
-    shadeApplicable: true, referenceHour: 18,
+    shadeApplicable: true, referenceHour: 18, weatherSource: 'SCENARIO',
     route: { type: 'LineString', coordinates: [[126.997, 37.564], [126.999, 37.565], [126.997, 37.564]] },
     segmentIds: [1, 2], recommendationReasons: ['선택한 시간과 잘 맞아요'],
   }],
@@ -780,6 +780,28 @@ describe('App location permission route', () => {
     expect(window.location.search).toBe('?duration=35')
     expect(screen.getByRole('spinbutton', { name: '목표 산책 시간' })).toHaveAttribute('aria-valuenow', '35')
     expect(screen.queryByRole('heading', { name: '함께 산책할 반려견 선택' })).not.toBeInTheDocument()
+  })
+
+  it('returns from candidates to duration and then home without reopening candidates', async () => {
+    const getCurrentPosition = vi.fn()
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { getCurrentPosition },
+    })
+    window.history.replaceState({}, '', '/home')
+    window.history.pushState({}, '', '/walk/time')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '30분 코스 보기' }))
+    act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.564, longitude: 126.997 } }))
+    await waitFor(() => expect(window.location.pathname).toBe('/courses/candidates'))
+
+    fireEvent.click(screen.getByRole('button', { name: '코스 후보에서 뒤로 가기' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/time'))
+
+    fireEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/home'))
+    expect(screen.queryByRole('heading', { name: '30분 안에 걸을 수 있는 코스예요' })).not.toBeInTheDocument()
   })
 
   it('stays on dog selection and shows the API error when walk start fails', async () => {

@@ -227,9 +227,13 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
             </div>
             {latest?.metrics && (
               <p className="draw-course-page__calculation-note">
-                {latest.metrics.shadeApplicable
-                  ? `${latest.metrics.referenceHour}시 기준 추정값이에요.`
-                  : `${latest.metrics.referenceHour}시 온도 참고값 · 일몰 후에는 그늘 비율을 표시하지 않아요.`}
+                {latest.metrics.weatherSource === 'NOWCAST'
+                  ? `실시간 ASOS 날씨 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
+                  : latest.metrics.weatherSource === 'CACHED'
+                    ? `최근 ASOS 캐시 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
+                    : latest.metrics.shadeApplicable
+                      ? `${latest.metrics.referenceHour}시 기준 추정값이에요.`
+                      : `${latest.metrics.referenceHour}시 온도 참고값 · 일몰 후에는 그늘 비율을 표시하지 않아요.`}
               </p>
             )}
             <label className="draw-course-page__save-field" htmlFor="draw-course-name">

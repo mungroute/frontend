@@ -103,6 +103,17 @@ const walkSelectionUrl = (returnTo: string, context: Record<string, string | num
 
 const readLocation = () => ({ pathname: window.location.pathname, search: window.location.search })
 
+type NavigationOptions = {
+  replace?: boolean
+  state?: Record<string, unknown>
+}
+
+type RecommendationHistoryStep = 'time' | 'loading' | 'candidates'
+
+const recommendationHistoryStep = () => (
+  window.history.state?.recommendationHistoryStep as RecommendationHistoryStep | undefined
+)
+
 const readDuration = (search: string) => {
   const duration = Number(new URLSearchParams(search).get('duration'))
   return duration >= 10 && duration <= 60 && duration % 5 === 0 ? duration : 30
@@ -406,9 +417,20 @@ export function App() {
     return () => { active = false }
   }, [courseRecommendation?.requestId, recommendationReloadKey, recommendationRequestId])
 
-  const navigate = (url: string) => {
-    window.history.pushState({}, '', url)
+  const navigate = (url: string, options: NavigationOptions = {}) => {
+    const method = options.replace ? 'replaceState' : 'pushState'
+    window.history[method](options.state ?? {}, '', url)
     setLocation(readLocation())
+  }
+
+  const backFromRecommendationTime = () => {
+    if (recommendationHistoryStep() === 'time') {
+      window.history.back()
+      return
+    }
+    void resolveHomePath()
+      .then((homePath) => navigate(homePath, { replace: true }))
+      .catch(() => navigate('/home/no-course', { replace: true }))
   }
 
   const selectWalkRoute = (selection: WalkRouteSelection, url: string) => {
@@ -1098,7 +1120,13 @@ export function App() {
     const candidates: CourseCandidate[] | undefined = courseRecommendation?.requestId === recommendationRequestId
       ? [...courseRecommendation.savedCandidates, ...courseRecommendation.generatedCandidates].map(mapRecommendationCandidate)
       : undefined
-    return <RouteCandidatesPage duration={duration} candidates={candidates} onBack={() => navigate(`/walk/time?duration=${duration}`)} onConfirm={(candidate) => selectRequiredRoute(() => {
+    return <RouteCandidatesPage duration={duration} candidates={candidates} onBack={() => {
+      if (recommendationHistoryStep() === 'candidates') {
+        window.history.back()
+      } else {
+        navigate(`/walk/time?duration=${duration}`, { replace: true })
+      }
+    }} onConfirm={(candidate) => selectRequiredRoute(() => {
       if (!candidate.route) throw new Error('추천 코스 경로를 불러오지 못했습니다.')
       return normalizeWalkRoute({
         routeKey: `time-recommendation:${candidate.id}`,
@@ -1126,12 +1154,28 @@ export function App() {
         candidateCount: 2,
       })
       setCourseRecommendation(response)
-      navigate(`/courses/candidates?duration=${duration}&recommendationId=${encodeURIComponent(response.requestId)}`)
+      navigate(`/courses/candidates?duration=${duration}&recommendationId=${encodeURIComponent(response.requestId)}`, {
+        replace: true,
+        state: { recommendationHistoryStep: 'candidates' },
+      })
     }} />
   }
 
   if (location.pathname === '/walk/time') {
-    return <WalkDurationPage initialDuration={duration} onContinue={(selectedDuration, departureAt) => navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`)} />
+    return <WalkDurationPage
+      initialDuration={duration}
+      onBack={backFromRecommendationTime}
+      onContinue={(selectedDuration, departureAt) => {
+        window.history.replaceState(
+          { ...window.history.state, recommendationHistoryStep: 'time' },
+          '',
+          `/walk/time?duration=${selectedDuration}`,
+        )
+        navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`, {
+          state: { recommendationHistoryStep: 'loading' },
+        })
+      }}
+    />
   }
 
   if (location.pathname === '/home/no-course') {

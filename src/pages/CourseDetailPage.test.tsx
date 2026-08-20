@@ -95,6 +95,22 @@ describe('CourseDetailPage', () => {
     expect(screen.getByText(/일몰 후에는 그늘 지도를 제공하지 않아요/)).toBeInTheDocument()
   })
 
+  it('identifies temperatures calculated from live ASOS weather', async () => {
+    const nowcast = {
+      ...dayCourse,
+      metrics: {
+        ...dayCourse.metrics!,
+        weatherSource: 'NOWCAST' as const,
+        basisDate: '2026-08-20',
+      },
+    }
+    render(<CourseDetailPage source="custom" courseId={42} api={apiFor(nowcast, diagnostics)} />)
+    await screen.findByText('주말 산책길')
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+
+    expect(screen.getByText(/실시간 ASOS · 15시 기준/)).toBeInTheDocument()
+  })
+
   it('groups multiple road links into the waypoint-to-waypoint connection shown to users', async () => {
     const groupedDiagnostics: CourseDiagnostics = {
       ...diagnostics,

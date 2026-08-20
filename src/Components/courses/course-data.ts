@@ -22,6 +22,7 @@ export type CourseCandidate = {
   distanceKm: number
   shadeRatio: number | null
   estimatedSurfaceTempC: number | null
+  weatherSource?: CourseRecommendationCandidate['weatherSource']
   shadeApplicable: boolean
   isRepresentative: boolean
   withinTargetTime: boolean
@@ -74,6 +75,7 @@ export function mapRecommendationCandidate(candidate: CourseRecommendationCandid
     distanceKm: candidate.distanceM / 1_000,
     shadeRatio: candidate.shadeRatio === null ? null : Math.round(candidate.shadeRatio * 100),
     estimatedSurfaceTempC: candidate.estimatedSurfaceTempC === null ? null : Math.round(candidate.estimatedSurfaceTempC),
+    weatherSource: candidate.weatherSource,
     shadeApplicable: candidate.shadeApplicable,
     isRepresentative: candidate.representative,
     withinTargetTime: candidate.withinTargetTime,
