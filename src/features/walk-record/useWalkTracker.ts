@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MapCoordinate } from '../../Components/map'
 import { GEOLOCATION_OPTIONS } from '../../Components/map/geolocation'
 import { getDevLocationOverride } from '../../utils/devLocationOverride'
@@ -228,6 +228,11 @@ export function useWalkTracker(
     lastPresenceSentAtRef.current = undefined
   }
 
+  const restore = useCallback((state: { elapsedSeconds: number; distanceMeters: number }) => {
+    setElapsedSeconds((current) => Math.max(current, state.elapsedSeconds))
+    setDistanceMeters((current) => Math.max(current, state.distanceMeters))
+  }, [])
+
   return {
     elapsedSeconds,
     distanceMeters,
@@ -237,5 +242,6 @@ export function useWalkTracker(
     currentPosition,
     gpsSignal,
     reset,
+    restore,
   }
 }

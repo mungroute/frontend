@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { Volume2, VolumeX } from 'lucide-react'
 import '../../styles/components/walk-session-controls.css'
 
 type CommonWalkSessionControlsProps = {
   onStop?: () => void
-  onPhoto?: () => void
+  voiceEnabled?: boolean
+  onVoiceEnabledChange?: (enabled: boolean) => void
 }
 
 type WalkSessionControlsProps = CommonWalkSessionControlsProps & (
@@ -13,20 +14,14 @@ type WalkSessionControlsProps = CommonWalkSessionControlsProps & (
 
 const sharedControls = [
   { key: 'stop', label: '산책 종료', icon: '/assets/s07/icon-stop.svg' },
-  { key: 'photo', label: '사진 촬영', icon: '/assets/s07/icon-photo.svg' },
 ] as const
 
 const activeControls = [{ key: 'pause', label: '일시정지', icon: '/assets/s07/icon-pause.svg' }, ...sharedControls] as const
 const pausedControls = [{ key: 'resume', label: '산책 재개', icon: '/assets/st02/icon-resume.svg' }, ...sharedControls] as const
 
-export function WalkSessionControls({ mode = 'active', onPause, onResume, onStop, onPhoto }: WalkSessionControlsProps) {
-  const photoInputRef = useRef<HTMLInputElement>(null)
+export function WalkSessionControls({ mode = 'active', onPause, onResume, onStop, voiceEnabled = true, onVoiceEnabledChange }: WalkSessionControlsProps) {
   const controls = mode === 'paused' ? pausedControls : activeControls
-  const openCamera = () => {
-    onPhoto?.()
-    photoInputRef.current?.click()
-  }
-  const handlers = { pause: onPause, resume: onResume, stop: onStop, photo: openCamera }
+  const handlers = { pause: onPause, resume: onResume, stop: onStop }
 
   return (
     <div className="walk-session-controls" aria-label="산책 조작">
@@ -35,7 +30,15 @@ export function WalkSessionControls({ mode = 'active', onPause, onResume, onStop
           <img src={control.icon} alt="" />
         </button>
       ))}
-      <input ref={photoInputRef} className="walk-session-controls__photo-input" type="file" accept="image/*" capture="environment" aria-label="산책 사진 선택" />
+      <button
+        className={`walk-session-controls__control walk-session-controls__voice${voiceEnabled ? ' walk-session-controls__voice--enabled' : ''}`}
+        type="button"
+        aria-label={voiceEnabled ? '내비게이션 음성 안내 끄기' : '내비게이션 음성 안내 켜기'}
+        aria-pressed={voiceEnabled}
+        onClick={() => onVoiceEnabledChange?.(!voiceEnabled)}
+      >
+        {voiceEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+      </button>
     </div>
   )
 }

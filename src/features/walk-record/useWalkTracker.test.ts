@@ -66,6 +66,26 @@ describe('walk tracker calculations', () => {
     expect(clearWatch).toHaveBeenCalledWith(7)
   })
 
+  it('restores server elapsed time and distance after a page refresh', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { watchPosition: vi.fn(() => 18), clearWatch: vi.fn() },
+    })
+    const { result, unmount } = renderHook(() => useWalkTracker(true))
+
+    act(() => vi.advanceTimersByTime(2_000))
+    expect(result.current.formattedTime).toBe('00:00:02')
+
+    act(() => result.current.restore({ elapsedSeconds: 367, distanceMeters: 1_234 }))
+    expect(result.current.formattedTime).toBe('00:06:07')
+    expect(result.current.formattedDistance).toBe('1.23km')
+
+    act(() => vi.advanceTimersByTime(1_000))
+    expect(result.current.formattedTime).toBe('00:06:08')
+    unmount()
+  })
+
   it('does not record or send an inaccurate GPS fix', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-14T05:00:00.000Z'))
@@ -164,11 +184,11 @@ describe('walk tracker calculations', () => {
     expect(watchPosition).not.toHaveBeenCalled()
     expect(result.current.gpsSignal).toBe('good')
     expect(result.current.walkedCoordinates).toEqual([
-      { latitude: 37.56355, longitude: 126.99755 },
+      { latitude: 37.56457, longitude: 126.98693 },
     ])
     expect(onPresenceFix).toHaveBeenCalledWith(expect.objectContaining({
-      latitude: 37.56355,
-      longitude: 126.99755,
+      latitude: 37.56457,
+      longitude: 126.98693,
       accuracy: 5,
     }))
 

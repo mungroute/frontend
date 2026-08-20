@@ -37,6 +37,7 @@ export type MeetPresenceResult = {
   sessionId: number
   updatedAt: string
   nextUpdateAfterSeconds: number
+  radiusM: number
   candidates: MeetCandidate[]
   connection: MeetConnection | null
 }

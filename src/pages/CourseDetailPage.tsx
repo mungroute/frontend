@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { BaseMapViewport } from '../Components/map'
-import type { BaseMapBinding, MapClickEvent, MapMarker, MapRoute } from '../Components/map'
+import type { BaseMapBinding, MapClickEvent, MapMarker } from '../Components/map'
 import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { COURSE_REFERENCE_HOURS, requestedAtForHour } from '../Components/courses/course-thermal'
-import { splitLineIntoGradientPieces } from '../Components/courses/route-gradient'
+import { buildDiagnosticCourseRoutes, diagnosticRouteColor } from '../Components/courses/diagnostic-course-route'
 import { Button, DraggableSheet, ManagementPageHeader, MetricGrid, Switch } from '../Components/ui'
 import { CourseShareSheet } from '../Components/system'
 import { courseShareOptions } from '../Components/courses/course-data'
@@ -55,13 +55,6 @@ const temperatureGradeFor = (temperature: number): CourseTemperatureGrade => {
   if (temperature < 48) return 'HIGH'
   return 'VERY_HIGH'
 }
-
-const routeTemperatureColor = (grade: CourseTemperatureGrade) => ({
-  LOW: '#20BFA9',
-  MODERATE: '#F2A14B',
-  HIGH: '#F47A50',
-  VERY_HIGH: '#DE5A4F',
-}[grade])
 
 const mergeSegmentCoordinates = (segments: CourseSegmentDiagnostic[]) => segments.flatMap((segment, index) => {
   const coordinates = courseRouteCoordinates(segment.route)
@@ -179,16 +172,6 @@ export function CourseDetailPage({
         }
       : undefined
     const drawGroupId = `course-detail-${source}-${courseId}`
-    const chevronRoute: MapRoute | undefined = routeCoordinates.length > 1 ? {
-      id: 'course-direction-chevrons',
-      coordinates: routeCoordinates,
-      color: 'rgba(0, 0, 0, 0)',
-      width: 0,
-      drawOnLoad: true,
-      drawGroupId,
-      drawOrder: 1,
-      chevrons: true,
-    } : undefined
     if (routeCoordinates.length > 1) {
       routeMarkers.push(
         { id: 'course-start', position: routeCoordinates[0], kind: 'start', label: '출발' },
@@ -222,61 +205,18 @@ export function CourseDetailPage({
         }
       : routeCenter
 
-    if (!diagnostics?.segments.length) {
-      const plainPieces = splitLineIntoGradientPieces(routeCoordinates, '#F47A3A', '#F47A3A', 24)
-      return routeCoordinates.length
-        ? {
-            routes: [
-              ...plainPieces.map((piece, index) => ({
-                id: `course-detail-${index}`,
-                coordinates: piece.coordinates,
-                color: '#f47a3a',
-                width: 8,
-                outlineColor: 'rgba(255, 255, 255, .94)',
-                outlineWidth: 12,
-                drawOnLoad: true,
-                drawGroupId,
-                drawOrder: piece.progress,
-              })),
-              ...(chevronRoute ? [chevronRoute] : []),
-            ],
-            markers: routeMarkers,
-            center: routeCenter,
-            zoom: 17.2,
-          }
-        : undefined
-    }
-    const routePieces: MapRoute[] = diagnostics.segments.flatMap((segment, segmentIndex) => {
-      const coordinates = courseRouteCoordinates(segment.route)
-      const nextSegment = diagnostics.segments[segmentIndex + 1]
-      const pieces = splitLineIntoGradientPieces(
-        coordinates,
-        routeTemperatureColor(segment.temperatureGrade),
-        routeTemperatureColor(nextSegment?.temperatureGrade ?? segment.temperatureGrade),
-        6,
-      )
-      const totalPieceCount = Math.max(1, diagnostics.segments.length * 6)
-      return pieces.map((piece, pieceIndex) => {
-        const selected = segmentFocusActive && segment.legSequence === selectedLegSequence
-        return {
-          id: `course-segment-${segment.sequence}-${pieceIndex}`,
-          coordinates: piece.coordinates,
-          color: piece.color,
-          width: selected ? 10 : 8,
-          outlineColor: selected ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, .94)',
-          outlineWidth: selected ? 15 : 12,
-          lineCap: 'round' as const,
-          interactive: true,
-          interactionId: `course-leg-${segment.legSequence}`,
-          selected,
-          drawOnLoad: true,
-          drawGroupId,
-          drawOrder: (segmentIndex * 6 + pieceIndex + 1) / totalPieceCount,
-        }
-      })
+    const routes = buildDiagnosticCourseRoutes({
+      idPrefix: 'course-detail',
+      drawGroupId,
+      coordinates: routeCoordinates,
+      diagnostics,
+      interactive: true,
+      selectedLegSequence,
+      segmentFocusActive,
     })
+    if (!routes.length) return undefined
     return {
-      routes: [...routePieces, ...(chevronRoute ? [chevronRoute] : [])],
+      routes,
       markers: routeMarkers,
       center: focusedMapCenter,
       zoom: segmentFocusActive ? 17.5 : 17.2,
@@ -412,7 +352,7 @@ export function CourseDetailPage({
                       type="button"
                       aria-label={`${leg.sequence}번 연결 구간 ${leg.estimatedSurfaceTempC.toFixed(1)}도`}
                       aria-pressed={leg.sequence === selectedLegSequence}
-                      style={{ '--segment-color': routeTemperatureColor(leg.temperatureGrade) } as CSSProperties}
+                      style={{ '--segment-color': diagnosticRouteColor(leg.temperatureGrade) } as CSSProperties}
                       onClick={() => {
                         setSelectedLegSequence(leg.sequence)
                         setSegmentFocusActive(true)

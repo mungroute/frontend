@@ -4,6 +4,9 @@ import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { FilterChip, ManagementPageHeader } from '../Components/ui'
 import { groupApi } from '../api/groups'
 import type { GroupApi, GroupSharedCourse } from '../api/groups'
+import { connectGroupCourseSocket } from '../api/groupCourseSocket'
+import type { GroupCourseSocketConnector } from '../api/groupCourseSocket'
+import { getValidAccessToken } from '../api/http'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/profile-group-pages.css'
 
@@ -35,11 +38,12 @@ const routeThumbnail = (shared: GroupSharedCourse) => {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
-export function SharedCoursesPage({ groupId, api = groupApi, onBack, onOpenCourse }: {
+export function SharedCoursesPage({ groupId, api = groupApi, onBack, onOpenCourse, connectCourseEvents = connectGroupCourseSocket }: {
   groupId: number
   api?: Pick<GroupApi, 'courses'>
   onBack?: () => void
   onOpenCourse?: (sharedCourseId: number) => void
+  connectCourseEvents?: GroupCourseSocketConnector
 }) {
   const [filter, setFilter] = useState<SortKey>('latest')
   const [courses, setCourses] = useState<GroupSharedCourse[]>([])
@@ -62,6 +66,22 @@ export function SharedCoursesPage({ groupId, api = groupApi, onBack, onOpenCours
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [api, filter, groupId])
+
+  useEffect(() => {
+    const socket = connectCourseEvents({
+      groupId,
+      tokenProvider: getValidAccessToken,
+      onEvent: () => {
+        void api.courses(groupId, filter)
+          .then((value) => {
+            setCourses(value)
+            setError(undefined)
+          })
+          .catch((reason: Error) => setError(reason.message))
+      },
+    })
+    return () => socket.close()
+  }, [api, connectCourseEvents, filter, groupId])
 
   return (
     <main className="journey-page profile-group-page shared-courses-page">

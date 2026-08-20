@@ -20,25 +20,23 @@ type RouteCandidatesPageProps = {
 export function RouteCandidatesPage({
   duration = 30,
   map,
-  candidates = getCourseCandidates(duration),
+  candidates = getCourseCandidates(duration, { includeSaved: false }),
   onBack = () => window.history.back(),
   onConfirm = () => undefined,
 }: RouteCandidatesPageProps) {
-  const savedCandidates = candidates.filter((candidate) => candidate.source === 'saved')
   const generatedCandidates = candidates.filter((candidate) => candidate.source === 'generated')
-  const defaultCandidate = savedCandidates.find((candidate) => candidate.isRepresentative && candidate.withinTargetTime)
-    ?? generatedCandidates[0]
-    ?? savedCandidates[0]
+  const defaultCandidate = generatedCandidates[0]
   const [selectedRouteId, setSelectedRouteId] = useState(defaultCandidate?.id ?? '')
-  const resolvedSelectedRouteId = candidates.some((candidate) => candidate.id === selectedRouteId)
+  const resolvedSelectedRouteId = generatedCandidates.some((candidate) => candidate.id === selectedRouteId)
     ? selectedRouteId
     : defaultCandidate?.id ?? ''
-  const selectedCandidate = candidates.find((candidate) => candidate.id === resolvedSelectedRouteId) ?? defaultCandidate
+  const selectedCandidate = generatedCandidates.find((candidate) => candidate.id === resolvedSelectedRouteId) ?? defaultCandidate
   const sceneOverlay = useMemo(() => {
-    if (!selectedCandidate?.routeCoordinates.length) return undefined
+    if (!selectedCandidate?.routeCoordinates.length) return { mouseWheelZoom: false }
     const latitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.latitude)
     const longitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.longitude)
     return {
+      mouseWheelZoom: false,
       center: {
         latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
         longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
@@ -61,14 +59,6 @@ export function RouteCandidatesPage({
       }),
     }
   }, [selectedCandidate])
-  const confirmLabel = selectedCandidate?.source === 'generated'
-    ? '추천 코스로 산책 시작'
-    : !selectedCandidate?.withinTargetTime
-      ? '그래도 이 코스로 걷기'
-      : selectedCandidate?.source === 'saved'
-      ? '이 코스로 산책 시작'
-      : '추천 코스로 산책 시작'
-
   return (
     <main className="journey-page route-candidates-page">
       <BaseMapViewport
@@ -86,7 +76,6 @@ export function RouteCandidatesPage({
       <DraggableSheet className="route-candidates-page__sheet" allowUpwardDrag={false}>
         <h1>{duration}분 안에 걸을 수 있는 코스예요</h1>
         <div className="route-candidates-page__content">
-          <CourseCandidateSection title="내 코스" candidates={savedCandidates} selectedId={resolvedSelectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
           <CourseCandidateSection title="새 추천 코스" candidates={generatedCandidates} selectedId={resolvedSelectedRouteId} targetMinutes={duration} onSelect={(candidate) => setSelectedRouteId(candidate.id)} />
         </div>
         <button
@@ -95,7 +84,7 @@ export function RouteCandidatesPage({
           disabled={!selectedCandidate}
           onClick={() => selectedCandidate && onConfirm(selectedCandidate)}
         >
-          {confirmLabel}
+          추천 코스로 산책 시작
         </button>
       </DraggableSheet>
     </main>

@@ -11,7 +11,8 @@ type PausedWalkPageProps = {
   dogName?: string
   onResume?: () => void
   onStop?: () => void
-  onPhoto?: () => void
+  navigationVoiceEnabled?: boolean
+  onNavigationVoiceEnabledChange?: (enabled: boolean) => void
   distanceMode?: boolean
   onDistanceModeChange?: (checked: boolean) => void
   presenceMode?: LockedWalkPresenceMode | null

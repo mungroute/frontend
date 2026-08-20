@@ -43,16 +43,37 @@
 .walk-navigation-sheet__expanded[aria-hidden='true'] { visibility: hidden; }
 .walk-navigation-sheet--expanded .walk-navigation-sheet__expanded[aria-hidden='false'] { visibility: visible; }
 
-.navigation-distance-alert { position: absolute; z-index: 7; top: 112px; right: 16px; left: 16px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(244, 122, 58, .2); border-radius: 20px; color: #674334; background: rgba(255, 247, 238, .97); box-shadow: 0 8px 24px rgba(91, 52, 33, .18); }
+.navigation-distance-alert { position: absolute; z-index: 7; top: 112px; right: 16px; left: 16px; display: flex; align-items: center; gap: 12px; padding: 12px 42px 12px 14px; border: 1px solid rgba(244, 122, 58, .2); border-radius: 20px; outline: none; color: #674334; background: rgba(255, 247, 238, .97); box-shadow: 0 8px 24px rgba(91, 52, 33, .18); transition: box-shadow 120ms ease; }
+.navigation-distance-alert:focus-visible { box-shadow: 0 0 0 3px rgba(244,122,58,.25), 0 8px 24px rgba(91,52,33,.18); }
 .navigation-distance-alert img { width: 58px; height: 58px; object-fit: contain; }
-.navigation-distance-alert div { min-width: 0; }
+.navigation-distance-alert__content { flex: 1; min-width: 0; }
+.navigation-distance-alert__dismiss { position: absolute; top: 9px; right: 9px; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #8b6c5c; background: rgba(255,255,255,.58); cursor: pointer; }
+.navigation-distance-alert__dismiss svg { width: 17px; height: 17px; stroke-width: 2.5; }
+.navigation-distance-alert__dismiss:active { transform: scale(.92); }
+.navigation-distance-alert__dismiss:focus-visible { outline: 3px solid rgba(244,122,58,.24); }
 .navigation-distance-alert h1 { margin: 0 0 2px; font-size: 16px; }
 .navigation-distance-alert strong { display: block; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .navigation-distance-alert p { margin: 3px 0 0; color: #8b6c5c; font-size: 11px; }
+.navigation-distance-alert__result { line-height: 1.45; }
+.navigation-distance-alert__action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; margin-top: 8px; padding: 6px 12px; border: 1px solid rgba(244, 122, 58, .35); border-radius: 999px; color: #fff; background: #f47a3a; font-size: 12px; font-weight: 800; cursor: pointer; }
+.navigation-distance-alert__action:disabled { cursor: wait; opacity: .72; }
+.navigation-distance-alert__action:focus-visible { outline: 3px solid rgba(244, 122, 58, .25); outline-offset: 2px; }
+.navigation-distance-alert__spinner { width: 14px; height: 14px; animation: navigation-distance-alert-spin .8s linear infinite; }
+@keyframes navigation-distance-alert-spin { to { transform: rotate(360deg); } }
 .navigation-paused { position: absolute; z-index: 5; top: 118px; left: 50%; display: grid; justify-items: center; width: 230px; padding: 12px; border-radius: 20px; color: #604b3e; background: rgba(255,250,244,.94); box-shadow: 0 8px 22px rgba(72,43,27,.15); transform: translateX(-50%); text-align: center; }
 .navigation-paused img { width: 76px; height: 76px; object-fit: contain; }
 .navigation-paused h1 { margin: 4px 0 2px; font-size: 16px; }
 .navigation-paused p { margin: 0; color: #8b786b; font-size: 11px; }
+
+.distance-notification-permission__backdrop { position: absolute; z-index: 40; inset: 0; display: flex; align-items: flex-end; padding: 20px 16px max(24px, env(safe-area-inset-bottom)); background: rgba(47, 37, 30, .48); backdrop-filter: blur(3px); }
+.distance-notification-permission { width: 100%; display: grid; justify-items: center; padding: 26px 22px 22px; border: 1px solid rgba(255,255,255,.72); border-radius: 28px; color: #4f3c30; background: #fff8ee; box-shadow: 0 18px 48px rgba(61, 40, 27, .24); text-align: center; }
+.distance-notification-permission__icons { display: flex; align-items: center; gap: 9px; color: #f47a3a; }
+.distance-notification-permission__icons svg { width: 27px; height: 27px; stroke-width: 2.3; }
+.distance-notification-permission h2 { margin: 14px 0 8px; font-size: 21px; line-height: 30px; letter-spacing: -.02em; }
+.distance-notification-permission > p { max-width: 300px; margin: 0 0 18px; color: #7d6b60; font-size: 13px; line-height: 21px; word-break: keep-all; }
+.distance-notification-permission .ui-button { width: 100%; height: 54px; }
+.distance-notification-permission__later { margin: 12px 0 13px; padding: 5px 12px; border: 0; color: #806f64; background: transparent; font: inherit; font-size: 13px; font-weight: 700; }
+.distance-notification-permission > strong { max-width: 310px; padding-top: 12px; border-top: 1px solid rgba(121, 91, 69, .12); color: #a25737; font-size: 12px; line-height: 19px; word-break: keep-all; }
 
 @media (max-height: 700px) {
   .walk-navigation-sheet { --navigation-sheet-height: 148px; padding-top: 21px; }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mungroute-shell-v9'
+const CACHE_NAME = 'mungroute-shell-v10'
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -41,5 +41,20 @@ self.addEventListener('fetch', (event) => {
         if (event.request.mode === 'navigate') return caches.match('/')
         return Response.error()
       }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = event.notification.data?.url || '/walk/active'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients[0]
+      if (existing) {
+        await existing.navigate(targetUrl)
+        return existing.focus()
+      }
+      return self.clients.openWindow(targetUrl)
+    }),
   )
 })

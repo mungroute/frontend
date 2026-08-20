@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CourseCatalogApi, CourseSummary } from '../api/courses'
 import type { GroupApi, GroupDetail, GroupSharedCourse } from '../api/groups'
+import type { GroupCourseEvent, GroupCourseSocketConnector } from '../api/groupCourseSocket'
+import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { GroupRoomPage, groupRouteColorForUser } from './GroupRoomPage'
 
 const route = { type: 'LineString' as const, coordinates: [[126.98, 37.55], [126.981, 37.551]] }
@@ -36,6 +38,75 @@ describe('GroupRoomPage', () => {
     expect(onOpenSharedCourse).toHaveBeenCalledWith(31)
     fireEvent.click(screen.getByRole('button', { name: '그룹 활동 보기' }))
     expect(onOpenActivity).toHaveBeenCalledOnce()
+  })
+
+  it('fits the initial map view to every shared route without zooming in too far', async () => {
+    const secondRoute = { type: 'LineString' as const, coordinates: [[127.02, 37.58], [127.025, 37.585]] }
+    const secondShared: GroupSharedCourse = {
+      ...shared,
+      sharedCourseId: 32,
+      course: { ...shared.course, courseId: 9, courseName: '북쪽 코스', route: secondRoute },
+    }
+    const mapDetail: GroupDetail = {
+      ...detail,
+      sharedCourseCount: 2,
+      recentCourses: [shared, secondShared],
+    }
+    const mount = vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }))
+    const adapter: BaseMapAdapter = { mount }
+    const scene: BaseMapScene = {
+      center: { latitude: 37.55, longitude: 126.98 },
+      zoom: 18,
+    }
+
+    render(<GroupRoomPage groupId={10} api={apiWith({ detail: vi.fn().mockResolvedValue(mapDetail) })} map={{ adapter, scene }} />)
+
+    await screen.findByRole('heading', { name: '남산 댕댕이 산책단' })
+    await waitFor(() => expect(mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({
+      viewFit: {
+        coordinates: [
+          { latitude: 37.55, longitude: 126.98 },
+          { latitude: 37.551, longitude: 126.981 },
+          { latitude: 37.58, longitude: 127.02 },
+          { latitude: 37.585, longitude: 127.025 },
+        ],
+        padding: [40, 24, 24, 24],
+        maxZoom: 16,
+      },
+    })))
+  })
+
+  it('refreshes shared routes as soon as another member shares a course', async () => {
+    const realtimeCourse: GroupSharedCourse = {
+      ...shared,
+      sharedCourseId: 32,
+      sharedByUserId: 3,
+      sharerNickname: '쿠키 보호자',
+      course: { ...shared.course, courseId: 9, courseName: '실시간 새 코스' },
+    }
+    const updatedDetail = {
+      ...detail,
+      sharedCourseCount: 2,
+      recentCourses: [realtimeCourse, shared],
+    }
+    const detailRequest = vi.fn().mockResolvedValueOnce(detail).mockResolvedValueOnce(updatedDetail)
+    let receiveEvent: ((event: GroupCourseEvent) => void) | undefined
+    const connectCourseEvents: GroupCourseSocketConnector = vi.fn((options) => {
+      receiveEvent = options.onEvent
+      return { close: vi.fn() }
+    })
+
+    render(<GroupRoomPage
+      groupId={10}
+      api={apiWith({ detail: detailRequest })}
+      connectCourseEvents={connectCourseEvents}
+    />)
+    await screen.findByRole('button', { name: '남산 코스 보기' })
+
+    act(() => receiveEvent?.({ groupId: 10, type: 'COURSE_SHARED', sharedCourseId: 32 }))
+
+    expect(await screen.findByRole('button', { name: '실시간 새 코스 보기' })).toBeInTheDocument()
+    expect(detailRequest).toHaveBeenCalledTimes(2)
   })
 
   it('shows a read-only member list instead of management to a regular member', async () => {
@@ -129,5 +200,20 @@ describe('GroupRoomPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /한강 노을 산책/ }))
     fireEvent.click(screen.getByRole('button', { name: '선택한 코스 공유' }))
     await waitFor(() => expect(shareCourse).toHaveBeenCalledWith(10, 'custom', 8))
+  })
+
+  it('explains that a course saved from a group cannot be shared again', async () => {
+    const message = '그룹에서 저장한 코스는 다시 그룹에 공유할 수 없습니다.'
+    const shareCourse = vi.fn().mockRejectedValue(new Error(message))
+    const course: CourseSummary = { courseSource: 'custom', courseId: 8, courseName: '남산 코스 (그룹)', lengthM: 1800, durationMin: 25, loop: false, representative: false, createdAt: '2026-08-18T10:00:00+09:00', metrics: null }
+    const courseApi = { list: vi.fn().mockResolvedValue([course]) } as Pick<CourseCatalogApi, 'list'>
+    render(<GroupRoomPage groupId={10} api={apiWith({ shareCourse })} courseApi={courseApi} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '코스 공유하기' }))
+    fireEvent.click(await screen.findByRole('button', { name: /남산 코스 \(그룹\)/ }))
+    fireEvent.click(screen.getByRole('button', { name: '선택한 코스 공유' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(screen.queryByRole('dialog', { name: '코스 공유' })).not.toBeInTheDocument()
   })
 })

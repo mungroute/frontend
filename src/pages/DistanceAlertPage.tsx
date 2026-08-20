@@ -10,7 +10,8 @@ type DistanceAlertPageProps = {
   walkedCoordinates?: MapCoordinate[]
   onPause?: () => void
   onStop?: () => void
-  onPhoto?: () => void
+  navigationVoiceEnabled?: boolean
+  onNavigationVoiceEnabledChange?: (enabled: boolean) => void
   distanceMode?: boolean
   onDistanceModeChange?: (checked: boolean) => void
   time?: string

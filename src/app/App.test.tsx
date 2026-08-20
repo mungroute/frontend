@@ -141,6 +141,15 @@ describe('App location permission route', () => {
       lockedMode: 'distance',
       changedAt: '2026-08-14T14:31:00+09:00',
     }))
+    vi.spyOn(walkApi, 'state').mockResolvedValue({
+      sessionId: 42,
+      status: 'ACTIVE',
+      startedAt: '2026-08-14T14:30:00+09:00',
+      elapsedSeconds: 0,
+      distanceM: 0,
+      mode: 'off',
+      lockedMode: null,
+    })
     vi.spyOn(walkApi, 'list').mockResolvedValue([savedWalkRecord])
     vi.spyOn(walkApi, 'detail').mockResolvedValue(savedWalkDetail)
     vi.spyOn(walkApi, 'statistics').mockResolvedValue({
@@ -315,6 +324,14 @@ describe('App location permission route', () => {
 
     expect(await screen.findByRole('heading', { name: '저녁 남산길' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    expect(courseCatalogApi.diagnostics).toHaveBeenCalledWith(
+      'custom',
+      42,
+      expect.any(String),
+    )
+    const detailRequestedAt = vi.mocked(courseCatalogApi.detail).mock.calls[0][2]
+    const diagnosticsRequestedAt = vi.mocked(courseCatalogApi.diagnostics).mock.calls[0][2]
+    expect(diagnosticsRequestedAt).toBe(detailRequestedAt)
   })
 
   it('renders the no-course home state at /home/no-course', () => {
@@ -422,6 +439,17 @@ describe('App location permission route', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /지도에서 코스 그리기/ }))
     expect(window.location.pathname).toBe('/courses/draw')
+  })
+
+  it('returns from time-based course recommendations to /home', () => {
+    window.history.replaceState({}, '', '/home/no-course')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /시간 맞춤 코스 추천받기/ }))
+    expect(window.location.pathname).toBe('/walk/time')
+
+    fireEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
+    expect(window.location.pathname).toBe('/home')
   })
 
   it.each([
@@ -753,7 +781,7 @@ describe('App location permission route', () => {
     window.history.replaceState({}, '', '/courses/candidates')
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: '이 코스로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '추천 코스로 산책 시작' }))
     expect(window.location.pathname).toBe('/walk/dogs')
     expect(window.location.search).toContain('returnTo=%2Fcourses%2Fcandidates')
 
@@ -761,7 +789,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
     expect(window.location.search).toBe('')
-    expect(screen.getByText('저녁 남산길')).toBeInTheDocument()
+    expect(screen.getByText('남산 둘레길 A')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
@@ -895,6 +923,38 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/walk/active')
     expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
+  })
+
+  it('restores elapsed time and distance from the active server session after refresh', async () => {
+    const route = normalizeWalkRoute({
+      routeKey: 'restored-active-route',
+      origin: 'TIME_RECOMMENDATION',
+      name: '복구 테스트 코스',
+      geometry: { type: 'LineString', coordinates: [[126.997, 37.564], [126.999, 37.565]] },
+    })
+    writeActiveWalkRoute({
+      sessionId: 42,
+      startedAt: '2026-08-14T14:30:00+09:00',
+      route,
+      presenceMode: null,
+      presenceEnabled: false,
+    })
+    vi.mocked(walkApi.state).mockResolvedValueOnce({
+      sessionId: 42,
+      status: 'ACTIVE',
+      startedAt: '2026-08-14T14:30:00+09:00',
+      elapsedSeconds: 367,
+      distanceM: 1_234,
+      mode: 'off',
+      lockedMode: null,
+    })
+    window.history.replaceState({}, '', '/walk/active')
+
+    render(<App />)
+
+    expect(await screen.findByText('00:06:07')).toBeInTheDocument()
+    expect(screen.getByText('1.23km')).toBeInTheDocument()
+    expect(walkApi.state).toHaveBeenCalledWith(42)
   })
 
   it('pauses from the distance alert screen', () => {

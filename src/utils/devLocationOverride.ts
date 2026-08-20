@@ -1,8 +1,9 @@
 import type { MapCoordinate } from '../Components/map/types'
 
 export const DEV_TEST_ACCOUNT_LOCATIONS: Readonly<Record<string, MapCoordinate>> = {
-  'test@naver.com': { latitude: 37.564, longitude: 126.997 },
-  'test2@naver.com': { latitude: 37.56355, longitude: 126.99755 },
+  'test@naver.com': { latitude: 37.565825, longitude: 126.9874593 },
+  'test1@naver.com': { latitude: 37.5660894, longitude: 126.988264 },
+  'test2@naver.com': { latitude: 37.56457, longitude: 126.98693 },
 }
 
 const DEV_LOCATION_ACCOUNT_KEY = 'mungroute.dev-location-account'

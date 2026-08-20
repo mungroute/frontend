@@ -8,22 +8,32 @@ import {
 describe('development account location overrides', () => {
   afterEach(() => setDevLocationOverrideUser(undefined))
 
-  it('maps the two local test accounts to distinct Jung-gu coordinates', () => {
+  it('places the distance-mode test accounts 70m to 100m apart around the Euljiro corner', () => {
     setDevLocationOverrideUser(' TEST@NAVER.COM ')
     expect(getDevLocationOverride()).toEqual(DEV_TEST_ACCOUNT_LOCATIONS['test@naver.com'])
 
-    setDevLocationOverrideUser('test2@naver.com')
-    expect(getDevLocationOverride()).toEqual(DEV_TEST_ACCOUNT_LOCATIONS['test2@naver.com'])
+    setDevLocationOverrideUser('test1@naver.com')
+    expect(getDevLocationOverride()).toEqual(DEV_TEST_ACCOUNT_LOCATIONS['test1@naver.com'])
 
     const first = DEV_TEST_ACCOUNT_LOCATIONS['test@naver.com']
-    const second = DEV_TEST_ACCOUNT_LOCATIONS['test2@naver.com']
-    expect(first).not.toEqual(second)
-    expect(Math.abs(first.latitude - second.latitude)).toBeLessThan(0.003)
-    expect(Math.abs(first.longitude - second.longitude)).toBeLessThan(0.003)
+    const second = DEV_TEST_ACCOUNT_LOCATIONS['test1@naver.com']
+    const latitudeMeters = (second.latitude - first.latitude) * 111_320
+    const longitudeMeters = (second.longitude - first.longitude)
+      * 111_320
+      * Math.cos(first.latitude * Math.PI / 180)
+    const distanceMeters = Math.hypot(latitudeMeters, longitudeMeters)
+
+    expect(distanceMeters).toBeGreaterThanOrEqual(70)
+    expect(distanceMeters).toBeLessThanOrEqual(100)
   })
 
   it('does not override ordinary accounts', () => {
     setDevLocationOverrideUser('someone@example.com')
     expect(getDevLocationOverride()).toBeUndefined()
+  })
+
+  it('places test2 on the requested roadside pedestrian coordinate', () => {
+    setDevLocationOverrideUser('test2@naver.com')
+    expect(getDevLocationOverride()).toEqual({ latitude: 37.56457, longitude: 126.98693 })
   })
 })

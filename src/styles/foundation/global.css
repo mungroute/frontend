@@ -14,7 +14,7 @@ button { -webkit-tap-highlight-color: transparent; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-@media (min-width: 768px) and (min-height: 900px) {
+@media (min-width: 430px) and (min-height: 900px) {
   :root { --app-viewport-height: 850px; }
   body {
     min-height: 100dvh;

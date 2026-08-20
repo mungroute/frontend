@@ -4,6 +4,7 @@ import { bearingBetween, shortestHeadingDelta } from './bearing'
 export type ManeuverKind = 'STRAIGHT' | 'SLIGHT_LEFT' | 'LEFT' | 'SHARP_LEFT' | 'SLIGHT_RIGHT' | 'RIGHT' | 'SHARP_RIGHT'
 
 export type NavigationManeuver = {
+  id: string
   kind: ManeuverKind
   distanceM: number
 }
@@ -28,7 +29,9 @@ export function nextManeuver(route: PreparedRoute, progressM: number): Navigatio
     const incoming = bearingBetween(segment.start, segment.end)
     const outgoing = bearingBetween(next.start, next.end)
     const kind = classifyManeuver(shortestHeadingDelta(incoming, outgoing))
-    if (kind !== 'STRAIGHT' || distanceM <= 120) return { kind, distanceM }
+    if (kind !== 'STRAIGHT' || distanceM <= 120) {
+      return { id: `turn-${index}-${Math.round(turnAtM)}`, kind, distanceM }
+    }
   }
   return undefined
 }

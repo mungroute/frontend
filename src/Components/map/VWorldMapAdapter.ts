@@ -7,6 +7,7 @@ import LineString from 'ol/geom/LineString.js'
 import TileLayer from 'ol/layer/Tile.js'
 import VectorLayer from 'ol/layer/Vector.js'
 import { defaults as defaultControls } from 'ol/control/defaults.js'
+import { defaults as defaultInteractions } from 'ol/interaction/defaults.js'
 import { fromLonLat, toLonLat } from 'ol/proj.js'
 import { boundingExtent } from 'ol/extent.js'
 import XYZ from 'ol/source/XYZ.js'
@@ -16,6 +17,7 @@ import { unByKey } from 'ol/Observable.js'
 import type { EventsKey } from 'ol/events.js'
 import type { Geometry } from 'ol/geom.js'
 import type { BaseMapAdapter, BaseMapScene, MapClickEvent, MapMarker, MapMarkerCategory } from './types'
+import { createProfileLocationMarkerElement } from './profileLocationMarker'
 import 'ol/ol.css'
 
 type VWorldMapAdapterOptions = {
@@ -264,28 +266,6 @@ const updateChevronFlow = (flow: ChevronFlow, resolution: number, timestamp: num
   flow.feature.setStyle([...flow.baseStyles, ...visibleGlyphs.map((glyph) => glyph.style)])
 }
 
-function createDogLocationElement(marker: MapMarker) {
-  const element = document.createElement('div')
-  element.className = 'map-dog-location-marker'
-
-  const card = document.createElement('div')
-  card.className = 'map-dog-location-marker__card'
-  const image = document.createElement('img')
-  image.className = 'map-dog-location-marker__avatar'
-  image.src = marker.profileImageSrc || '/assets/shared/dog-profile-default.svg'
-  image.alt = ''
-  const label = document.createElement('strong')
-  label.textContent = marker.label || '내 위치'
-  card.append(image, label)
-
-  const pointer = document.createElement('span')
-  pointer.className = 'map-dog-location-marker__pointer'
-  const dot = document.createElement('span')
-  dot.className = 'map-dog-location-marker__dot'
-  element.append(card, pointer, dot)
-  return element
-}
-
 function applySceneView(map: Map, scene: BaseMapScene, duration = 0) {
   const fitCoordinates = scene.viewFit?.coordinates.filter((coordinate) => (
     Number.isFinite(coordinate.latitude) && Number.isFinite(coordinate.longitude)
@@ -474,12 +454,13 @@ function applyScene(
 
   scene.markers?.forEach((marker) => {
     if (resolveMarkerCategory(marker)) return
-    if (marker.kind === 'current-location') {
+    if (marker.kind === 'current-location' || marker.kind === 'profile-location') {
+      const interactive = marker.kind === 'profile-location'
       const overlay = new Overlay({
-        element: createDogLocationElement(marker),
+        element: createProfileLocationMarkerElement(marker, { interactive }),
         position: fromLonLat([marker.position.longitude, marker.position.latitude]),
         positioning: 'bottom-center',
-        stopEvent: false,
+        stopEvent: interactive,
       })
       markerOverlays.push(overlay)
       map.addOverlay(overlay)
@@ -550,6 +531,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           maxZoom: 19,
         }),
         controls: defaultControls({ zoom: false, rotate: false }),
+        interactions: defaultInteractions({ mouseWheelZoom: initialScene.mouseWheelZoom !== false }),
       })
 
       applyScene(
@@ -614,7 +596,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
       let clickHandler: ((event: MapClickEvent) => void) | undefined
       const handlePlaceMarkerClick = (event: MouseEvent) => {
         const target = event.target instanceof Element
-          ? event.target.closest<HTMLButtonElement>('.map-provider-place-marker, .map-provider-place-cluster')
+          ? event.target.closest<HTMLElement>('.map-provider-place-marker, .map-provider-place-cluster, .map-dog-location-marker--interactive')
           : null
         if (!target) return
         event.preventDefault()

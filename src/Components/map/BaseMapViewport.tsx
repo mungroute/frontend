@@ -18,7 +18,7 @@ type BaseMapViewportProps = {
   map?: BaseMapBinding
   children?: ReactNode
   showLocationControl?: boolean
-  sceneOverlay?: Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'markers' | 'routes' | 'viewFit'>>
+  sceneOverlay?: Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'mouseWheelZoom' | 'markers' | 'routes' | 'viewFit'>>
   replaceBaseMarkers?: boolean
   onMapClick?: (event: MapClickEvent) => void
   mapClickLabel?: string
@@ -48,6 +48,7 @@ export function BaseMapViewport({
       ...localBaseScene,
       center: sceneOverlay.center ?? localBaseScene.center,
       zoom: sceneOverlay.zoom ?? localBaseScene.zoom,
+      mouseWheelZoom: sceneOverlay.mouseWheelZoom ?? localBaseScene.mouseWheelZoom,
       viewFit: sceneOverlay.viewFit,
       markers: replaceBaseMarkers
         ? (sceneOverlay.markers ?? [])

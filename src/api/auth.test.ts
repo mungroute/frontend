@@ -85,7 +85,7 @@ describe('authApi', () => {
 
     await authApi.login('test@naver.com', 'mungroute1')
 
-    expect(getDevLocationOverride()).toEqual({ latitude: 37.564, longitude: 126.997 })
+    expect(getDevLocationOverride()).toEqual({ latitude: 37.565825, longitude: 126.9874593 })
   })
 
   it('refreshes a rejected access token and retries the protected request once', async () => {

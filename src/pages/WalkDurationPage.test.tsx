@@ -52,4 +52,22 @@ describe('WalkDurationPage', () => {
     expect(screen.getByText('15:30')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '시간 변경' })).toBeInTheDocument()
   })
+
+  it('allows the existing hour to be deleted before entering a replacement', () => {
+    render(<WalkDurationPage initialDepartureDialogOpen />)
+
+    const hourInput = screen.getByLabelText('출발 시')
+    const confirmButton = screen.getByRole('button', { name: '선택 완료' })
+
+    fireEvent.change(hourInput, { target: { value: '' } })
+
+    expect(hourInput).toHaveValue(null)
+    expect(confirmButton).toBeDisabled()
+
+    fireEvent.change(hourInput, { target: { value: '4' } })
+
+    expect(hourInput).toHaveValue(4)
+    expect(screen.getByText('오후 04:30')).toBeInTheDocument()
+    expect(confirmButton).toBeEnabled()
+  })
 })

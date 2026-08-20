@@ -40,6 +40,7 @@ export type WalkRouteSelection = {
 
 export type ActiveWalkRouteSnapshot = {
   sessionId: number
+  startedAt?: string
   route: WalkNavigationRoute | null
   presenceMode: LockedWalkPresenceMode | null
   presenceEnabled: boolean

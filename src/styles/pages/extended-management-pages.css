@@ -10,14 +10,22 @@
 .join-group-page__error { position: absolute; top: 329px; right: 19px; left: 19px; margin: 0; color: var(--color-alert); text-align: center; font-size: 12px; line-height: 18px; }
 .join-group-page__confirm { position: absolute; top: 365px; right: 19px; left: 19px; width: auto; height: 56px; }
 
-.notification-settings-page__list { position: absolute; top: 107px; right: 19px; left: 19px; display: grid; gap: 12px; }
+.notification-settings-page { overflow-y: auto; }
+.notification-settings-page__list { position: relative; margin: 107px 19px 0; display: grid; gap: 12px; padding-bottom: 8px; }
+.notification-settings-page__list h2 { margin: 10px 4px 0; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; letter-spacing: .02em; }
 .notification-settings-page__list .ui-switch-row { height: 72px; padding: 0 16px 0 18px; border-radius: 16px; background: var(--color-surface); }
 .notification-settings-page__list .ui-switch-title { font-size: 15px; font-weight: 500; }
 .notification-settings-page__list .ui-switch { width: 56px; height: 32px; }
 .notification-settings-page__list .ui-switch__thumb { width: 28px; height: 28px; }
 .notification-settings-page__list .ui-switch-row[aria-checked='true'] .ui-switch__thumb { transform: translateX(24px); }
 .notification-settings-page__item--separated { margin-top: 20px; }
-.notification-settings-page__privacy { position: absolute; top: 481px; left: 23px; width: 340px; margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
+.notification-settings-page__permission-help { margin: -3px 8px 3px; color: #a25737; font-size: 12px; line-height: 18px; word-break: keep-all; }
+.notification-settings-page__core-info { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px 0 18px; border: 1px solid rgba(244,122,58,.16); border-radius: 16px; background: rgba(255,248,238,.82); }
+.notification-settings-page__core-info > span { min-width: 0; display: grid; gap: 4px; }
+.notification-settings-page__core-info strong { font-size: 15px; font-weight: 500; }
+.notification-settings-page__core-info small { color: var(--color-text-secondary); font-size: 12px; line-height: 17px; }
+.notification-settings-page__core-info b { flex: 0 0 auto; padding: 5px 8px; border-radius: 999px; color: #b2562e; background: rgba(244,122,58,.11); font-size: 11px; }
+.notification-settings-page__privacy { margin: 7px 23px 30px; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
 
 .shade-timeline-page__map { position: absolute; top: 99px; right: 19px; left: 19px; height: 286px; border-radius: 20px; }
 .shade-timeline-page__chart { position: absolute; top: 409px; right: 19px; left: 19px; }
@@ -61,7 +69,6 @@
 .draw-course-page__save-actions .ui-button { width: 100%; height: 54px; }
 
 @media (max-width: 350px) {
-  .notification-settings-page__privacy { right: 19px; width: auto; }
   .draw-course-page__summary { padding-inline: 14px; }
   .draw-course-page__summary { grid-template-columns: 92px 112px 1fr; }
   .draw-course-page__summary strong { font-size: 18px; }
@@ -73,10 +80,9 @@
   .join-group-page__code { top: 176px; }
   .join-group-page__hint { top: 266px; }
   .join-group-page__confirm { top: 320px; }
-  .notification-settings-page__list { top: 91px; gap: 8px; }
+  .notification-settings-page__list { margin-top: 91px; gap: 8px; }
   .notification-settings-page__list .ui-switch-row { height: 64px; }
   .notification-settings-page__item--separated { margin-top: 8px; }
-  .notification-settings-page__privacy { top: 407px; }
   .shade-timeline-page__map { top: 92px; height: 216px; }
   .shade-timeline-page__chart { top: 322px; }
   .shade-timeline-page__walk { top: auto; bottom: 24px; }

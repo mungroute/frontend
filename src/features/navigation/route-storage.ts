@@ -108,8 +108,12 @@ export function readActiveWalkRoute(): ActiveWalkRouteSnapshot | undefined {
   const presenceMode = snapshot.presenceMode === 'distance' || snapshot.presenceMode === 'meet'
     ? snapshot.presenceMode
     : null
+  const startedAt = typeof snapshot.startedAt === 'string' && Number.isFinite(Date.parse(snapshot.startedAt))
+    ? snapshot.startedAt
+    : undefined
   return {
     ...snapshot,
+    ...(startedAt ? { startedAt } : {}),
     route,
     presenceMode,
     presenceEnabled: presenceMode !== null && snapshot.presenceEnabled === true,

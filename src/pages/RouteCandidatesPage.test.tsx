@@ -5,22 +5,22 @@ import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { RouteCandidatesPage } from './RouteCandidatesPage'
 
 describe('RouteCandidatesPage', () => {
-  it('shows saved and newly generated routes and selects the matching representative by default', () => {
+  it('shows only newly generated routes and selects the first recommendation by default', () => {
     render(<RouteCandidatesPage />)
 
     expect(screen.getByRole('heading', { name: '30분 안에 걸을 수 있는 코스예요' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: '내 코스' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '내 코스' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: '새 추천 코스' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /저녁 남산길/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /남산 둘레길 A/ })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText('선택한 30분보다 약 12분 길어요')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /저녁 남산길/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /남산 둘레길 A/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('hides the saved section and defaults to the first recommendation when no courses are saved', () => {
-    const generatedOnly = getCourseCandidates(30, { includeSaved: false })
-    render(<RouteCandidatesPage candidates={generatedOnly} />)
+  it('ignores saved routes even when they are included in the candidate data', () => {
+    render(<RouteCandidatesPage candidates={getCourseCandidates(30)} />)
 
     expect(screen.queryByRole('region', { name: '내 코스' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /저녁 남산길/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /한강 노을 산책/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /남산 둘레길 A/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -32,10 +32,6 @@ describe('RouteCandidatesPage', () => {
     expect(screen.getByRole('region', { name: '장충단 공원길 B 경로 지도' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '추천 코스로 산책 시작' }))
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ id: 'generated-jangchung-park-b', source: 'generated' }))
-
-    fireEvent.click(screen.getByRole('button', { name: /한강 노을 산책/ }))
-    fireEvent.click(screen.getByRole('button', { name: '그래도 이 코스로 걷기' }))
-    expect(onConfirm).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'saved-hangang-sunset', withinTargetTime: false }))
   })
 
   it('keeps the generated-route CTA consistent even when it exceeds the target time', () => {
@@ -67,6 +63,7 @@ describe('RouteCandidatesPage', () => {
     }))
 
     render(<RouteCandidatesPage map={{ adapter, scene }} candidates={candidates} />)
+    expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ mouseWheelZoom: false }))
     fireEvent.click(screen.getByRole('button', { name: /장충단 공원길 B/ }))
 
     expect(update).toHaveBeenLastCalledWith(expect.objectContaining({
