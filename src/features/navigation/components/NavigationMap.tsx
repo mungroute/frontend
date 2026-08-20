@@ -188,9 +188,12 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       const element = document.createElement('div')
       element.className = 'navigation-map__marker'
       element.innerHTML = '<span></span>'
-      markerRef.current = new maplibregl.Marker({ element, rotationAlignment: 'map', pitchAlignment: 'map' }).addTo(map)
+      markerRef.current = new maplibregl.Marker({ element, rotationAlignment: 'map', pitchAlignment: 'map' })
+        .setLngLat([position.coordinate.longitude, position.coordinate.latitude])
+        .addTo(map)
+    } else {
+      markerRef.current.setLngLat([position.coordinate.longitude, position.coordinate.latitude])
     }
-    markerRef.current.setLngLat([position.coordinate.longitude, position.coordinate.latitude])
     if (heading !== undefined) markerRef.current.setRotation(heading)
     if (!followMode || paused) return
     const now = Date.now()

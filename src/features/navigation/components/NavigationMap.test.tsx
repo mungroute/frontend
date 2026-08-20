@@ -13,9 +13,14 @@ const markerSpies = vi.hoisted(() => ({
 vi.mock('maplibre-gl', async () => {
   const actual = await vi.importActual<typeof import('maplibre-gl')>('maplibre-gl')
   class Marker {
-    addTo(map: unknown) { markerSpies.addTo(map); return this }
+    private hasLngLat = false
+    addTo(map: unknown) {
+      if (!this.hasLngLat) throw new Error('Marker must receive coordinates before addTo')
+      markerSpies.addTo(map)
+      return this
+    }
     remove() { markerSpies.remove(); return this }
-    setLngLat(value: unknown) { markerSpies.setLngLat(value); return this }
+    setLngLat(value: unknown) { this.hasLngLat = true; markerSpies.setLngLat(value); return this }
     setRotation(value: unknown) { markerSpies.setRotation(value); return this }
   }
   return { ...actual, Marker }
