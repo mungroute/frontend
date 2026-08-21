@@ -2,3 +2,13 @@
   position: relative;
   min-height: var(--app-viewport-height);
 }
+
+@media (min-width: 430px) and (min-height: 900px),
+       (min-width: 700px) and (min-height: 660px) {
+  #root {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    margin: -410px 0 0 -195px;
+  }
+}

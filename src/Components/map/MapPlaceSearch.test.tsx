@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MapPlaceSearch } from './MapPlaceSearch'
 import { placeApiStub } from '../../test/placeApiStub'
@@ -43,9 +43,11 @@ describe('MapPlaceSearch', () => {
     expect(screen.getByRole('region', { name: '메뉴 정보' })).toHaveTextContent('18,000원')
     expect(screen.getByRole('region', { name: '메뉴 정보' })).toHaveTextContent('매장 공개 메뉴')
     expect(onDetailOpenChange).toHaveBeenLastCalledWith(true)
+    expect(screen.queryByRole('button', { name: '장소 상세 닫기' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).getByRole('button', { name: '닫기' }))
     expect(screen.getByRole('article', { name: '도그라운지 성수 장소 요약' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '도그라운지 성수 요약 닫기' })).toBeInTheDocument()
     expect(onDetailOpenChange).toHaveBeenLastCalledWith(false)
 
     fireEvent.click(screen.getByRole('button', { name: '도그라운지 성수 요약 닫기' }))

@@ -36,14 +36,77 @@ export function navigationAnnouncementText(
   return `${spokenDistance(maneuver.distanceM)}미터 앞에서 ${direction}`
 }
 
-export function speakNavigation(text: string) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+export type NavigationSpeechCallbacks = {
+  onStart?: () => void
+  onEnd?: () => void
+  onError?: (reason: string) => void
+}
+
+let scheduledSpeech: number | undefined
+let pendingVoiceListener: (() => void) | undefined
+let pendingVoiceSynthesis: SpeechSynthesis | undefined
+let speechRequestId = 0
+
+const clearScheduledSpeech = () => {
+  if (scheduledSpeech !== undefined) window.clearTimeout(scheduledSpeech)
+  scheduledSpeech = undefined
+  if (pendingVoiceListener && pendingVoiceSynthesis) {
+    pendingVoiceSynthesis.removeEventListener('voiceschanged', pendingVoiceListener)
+  }
+  pendingVoiceListener = undefined
+  pendingVoiceSynthesis = undefined
+}
+
+export function cancelNavigationSpeech() {
+  speechRequestId += 1
+  if (typeof window === 'undefined') return
+  clearScheduledSpeech()
+  window.speechSynthesis?.cancel()
+}
+
+export function speakNavigation(text: string, callbacks: NavigationSpeechCallbacks = {}) {
+  const synthesis = typeof window === 'undefined' ? undefined : window.speechSynthesis
+  const Utterance = typeof window === 'undefined' ? undefined : window.SpeechSynthesisUtterance
+  if (!synthesis || typeof Utterance !== 'function') {
+    callbacks.onError?.('unsupported')
     return false
   }
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
+
+  cancelNavigationSpeech()
+  const requestId = speechRequestId
+  const utterance = new Utterance(text)
   utterance.lang = 'ko-KR'
   utterance.rate = 1
-  window.speechSynthesis.speak(utterance)
+  utterance.onstart = () => callbacks.onStart?.()
+  utterance.onend = () => callbacks.onEnd?.()
+  utterance.onerror = (event) => callbacks.onError?.(event.error)
+
+  const start = () => {
+    if (requestId !== speechRequestId) return
+    clearScheduledSpeech()
+    const voices = typeof synthesis.getVoices === 'function' ? synthesis.getVoices() : []
+    const koreanVoice = voices.find((voice) => voice.lang.toLowerCase() === 'ko-kr')
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('ko'))
+    if (koreanVoice) utterance.voice = koreanVoice
+    try {
+      synthesis.resume?.()
+      synthesis.speak(utterance)
+    } catch {
+      callbacks.onError?.('synthesis-failed')
+    }
+  }
+
+  const voices = typeof synthesis.getVoices === 'function' ? synthesis.getVoices() : undefined
+  if (voices?.length === 0 && typeof synthesis.addEventListener === 'function') {
+    pendingVoiceSynthesis = synthesis
+    pendingVoiceListener = start
+    synthesis.addEventListener('voiceschanged', start, { once: true })
+    scheduledSpeech = window.setTimeout(start, 350)
+  } else if (voices) {
+    // Chromium can discard speech queued in the same task immediately after cancel().
+    scheduledSpeech = window.setTimeout(start, 60)
+  } else {
+    start()
+  }
   return true
 }

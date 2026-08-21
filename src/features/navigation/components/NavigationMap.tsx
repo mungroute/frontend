@@ -3,15 +3,17 @@ import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MapLibreMap, MapOptions, Marker } from 'maplibre-gl'
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { LocateFixed, RotateCcw, Route as RouteIcon } from 'lucide-react'
-import { BaseMapViewport } from '../../../Components/map'
+import { BaseMapViewport, buildPlaceMarkerSceneOverlay } from '../../../Components/map'
 import type { BaseMapBinding, MapCoordinate, MapMarker } from '../../../Components/map'
 import { createProfileLocationMarkerElement } from '../../../Components/map/profileLocationMarker'
 import { buildThermalRoutes } from '../../../Components/courses/thermal-route'
 import { WalkRouteProgress } from '../../../Components/walk/WalkRouteProgress'
+import { distanceBetween } from '../../walk-record/useWalkTracker'
 import type { NavigationPositionFix, WalkNavigationRoute } from '../types'
 import type { RouteProgressGeometry } from '../utils/route-progress'
 import { chevronsAhead } from '../utils/route-progress'
 import type { PreparedRoute } from '../utils/route-progress'
+import { bearingBetween } from '../utils/bearing'
 import { resolveMapStyleUrl } from '../map-style'
 
 maplibregl.setWorkerUrl(mapLibreWorkerUrl)
@@ -94,7 +96,25 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
   const [viewMode, setViewMode] = useState<NavigationMapViewMode>('navigation')
   const useFallback = !styleUrl || (import.meta.env.MODE === 'test' && !mapFactory) || Boolean(loadError)
   const allPlaceMarkers = useMemo(() => meetMarker ? [meetMarker, ...placeMarkers] : placeMarkers, [meetMarker, placeMarkers])
+  const placeSceneOverlay = useMemo(() => buildPlaceMarkerSceneOverlay(placeMarkers), [placeMarkers])
   const fallbackFitCoordinates = useMemo(() => route?.coordinateParts.flat() ?? [], [route])
+  const routeStartBearing = useMemo(() => {
+    const coordinates = route?.navigationPolyline
+    return coordinates && coordinates.length >= 2
+      ? bearingBetween(coordinates[0], coordinates[1])
+      : 0
+  }, [route?.navigationPolyline])
+  const movementStartedRef = useRef(false)
+  const walkedDisplacementM = walkedCoordinates.length >= 2
+    ? distanceBetween(walkedCoordinates[0], walkedCoordinates[walkedCoordinates.length - 1])
+    : 0
+  const movementStarted = movementStartedRef.current || walkedDisplacementM >= 6
+  const lockToRouteStart = Boolean(route?.navigationPolyline) && !movementStarted
+  const navigationBearing = lockToRouteStart
+    ? routeStartBearing
+    : heading ?? progress?.segmentBearing ?? routeStartBearing
+  const navigationCenter = position?.coordinate ?? progress?.coordinate ?? route?.navigationPolyline?.[0]
+  const initialCameraRef = useRef({ center: navigationCenter, bearing: navigationBearing })
   const chevrons = useMemo(() => preparedRoute
     ? chevronsAhead(preparedRoute, progress?.progressM ?? 0, 48, 35).map((item, index) => ({
         type: 'Feature' as const,
@@ -104,7 +124,17 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       }))
     : [], [preparedRoute, progress])
   const fallbackScene = useMemo(() => ({
-    viewFit: fallbackFitCoordinates.length >= 2 ? {
+    center: viewMode === 'navigation'
+      ? navigationCenter
+      : placeMarkers.length ? placeSceneOverlay.center : undefined,
+    zoom: viewMode === 'navigation'
+      ? 18
+      : placeMarkers.length ? placeSceneOverlay.zoom : undefined,
+    bearing: viewMode === 'navigation' ? navigationBearing : 0,
+    focusAnchorY: viewMode === 'navigation' ? FOLLOW_ANCHOR_Y : 0.5,
+    focusBottomInset: 0,
+    focusOffsetY: 0,
+    viewFit: viewMode === 'overview' && !placeMarkers.length && fallbackFitCoordinates.length >= 2 ? {
       coordinates: fallbackFitCoordinates,
       padding: [72, 20, padding.bottom, 20] as [number, number, number, number],
       maxZoom: 17,
@@ -125,7 +155,11 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       })) ?? [],
       ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#c5c0ba', width: 6 }] : []),
     ],
-  }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, padding.bottom, position, route, walkedCoordinates])
+  }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, navigationBearing, navigationCenter, padding.bottom, placeMarkers.length, placeSceneOverlay.center, placeSceneOverlay.zoom, position, route, viewMode, walkedCoordinates])
+
+  useEffect(() => {
+    if (walkedDisplacementM >= 6) movementStartedRef.current = true
+  }, [walkedDisplacementM])
 
   useEffect(() => {
     onPlaceSelectRef.current = onPlaceSelect
@@ -153,12 +187,12 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       map = createMap({
         container: containerRef.current,
         style: styleUrl,
-        center: route?.navigationPolyline?.[0]
-          ? [route.navigationPolyline[0].longitude, route.navigationPolyline[0].latitude]
+        center: initialCameraRef.current.center
+          ? [initialCameraRef.current.center.longitude, initialCameraRef.current.center.latitude]
           : [126.978, 37.5665],
         zoom: 17.8,
         pitch: 54,
-        bearing: 0,
+        bearing: initialCameraRef.current.bearing,
         attributionControl: false,
       })
     } catch {
@@ -255,7 +289,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
     } else {
       markerRef.current.setLngLat([position.coordinate.longitude, position.coordinate.latitude])
     }
-    if (heading !== undefined) markerRef.current.setRotation(heading)
+    markerRef.current.setRotation(navigationBearing)
     if (!followMode || paused) return
     const now = Date.now()
     if (now - cameraAtRef.current < 350) return
@@ -264,13 +298,13 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       center: [position.coordinate.longitude, position.coordinate.latitude],
       zoom: 18,
       pitch: 54,
-      bearing: heading ?? map.getBearing(),
+      bearing: navigationBearing,
       padding,
       offset: followOffset(containerRef.current?.clientHeight),
       duration: prefersReducedMotion() ? 0 : 650,
       essential: true,
     })
-  }, [followMode, heading, padding, paused, position, ready])
+  }, [followMode, navigationBearing, padding, paused, position, ready])
 
   const restoreFollow = () => {
     setViewMode('navigation')
@@ -281,7 +315,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       center: [position.coordinate.longitude, position.coordinate.latitude],
       zoom: 18,
       pitch: 54,
-      bearing: heading ?? mapRef.current.getBearing(),
+      bearing: navigationBearing,
       padding: paddingRef.current,
       offset: followOffset(containerRef.current?.clientHeight),
       duration: prefersReducedMotion() ? 0 : 450,

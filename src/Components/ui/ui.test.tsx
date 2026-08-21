@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Button, DraggableSheet, SelectionCard, Switch, TimePicker } from '.'
 
@@ -69,6 +69,21 @@ describe('shared UI', () => {
     vi.useRealTimers()
   })
 
+  it('moves only one five-minute step for a single mouse-wheel notch', () => {
+    const { container } = render(<TimePicker value={35} onChange={vi.fn()} variant="compact" />)
+    const wheel = within(container).getByRole('spinbutton')
+    const scrollTo = vi.fn()
+    Object.defineProperties(wheel, {
+      scrollTop: { configurable: true, value: 180 },
+      scrollTo: { configurable: true, value: scrollTo },
+    })
+
+    fireEvent.wheel(wheel, { deltaY: 100, deltaMode: 0 })
+
+    expect(scrollTo).toHaveBeenCalledOnce()
+    expect(scrollTo).toHaveBeenCalledWith({ top: 216, behavior: 'smooth' })
+  })
+
   it('does not treat initial wheel positioning as a user selection', () => {
     vi.useFakeTimers()
     const onChange = vi.fn()
@@ -125,6 +140,56 @@ describe('shared UI', () => {
     for (let index = 0; index < 10; index += 1) fireEvent.keyDown(handle, { key: 'ArrowUp' })
 
     expect(sheet).toHaveStyle({ transform: 'translateY(-282px)' })
+  })
+
+  it('keeps map controls aligned while an outer sheet wrapper moves', async () => {
+    const { container } = render(
+      <main className="journey-page">
+        <div data-testid="sheet-motion">
+          <DraggableSheet>시트 내용</DraggableSheet>
+        </div>
+      </main>,
+    )
+    const viewport = container.querySelector('main') as HTMLElement
+    const wrapper = screen.getByTestId('sheet-motion')
+    const sheet = screen.getByText('시트 내용').closest('section') as HTMLElement
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: 0 }),
+    })
+    Object.defineProperty(sheet, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: 500 + Number(wrapper.style.transform.match(/-?\d+/)?.[0] ?? 0) }),
+    })
+
+    wrapper.style.transform = 'translateY(112px)'
+
+    await waitFor(() => expect(viewport.style.getPropertyValue('--map-sheet-top')).toBe('612px'))
+  })
+
+  it('normalizes map-control coordinates inside a uniformly scaled app frame', async () => {
+    const { container } = render(
+      <main className="journey-page">
+        <div data-testid="scaled-sheet-motion">
+          <DraggableSheet>시트 내용</DraggableSheet>
+        </div>
+      </main>,
+    )
+    const viewport = container.querySelector('main') as HTMLElement
+    const wrapper = screen.getByTestId('scaled-sheet-motion')
+    const sheet = screen.getByText('시트 내용').closest('section') as HTMLElement
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 820 },
+      getBoundingClientRect: { configurable: true, value: () => ({ top: 100, height: 656 }) },
+    })
+    Object.defineProperty(sheet, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: 500 }),
+    })
+
+    wrapper.style.transform = 'translateY(1px)'
+
+    await waitFor(() => expect(viewport.style.getPropertyValue('--map-sheet-top')).toBe('500px'))
   })
 
   it('keeps only the configured handle height visible when collapsed', () => {

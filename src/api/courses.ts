@@ -36,6 +36,7 @@ export type ConnectCourseResult = {
   segmentIds: number[]
   coordinates: DrawGeoPoint[]
   cumulative: CourseDrawMetrics
+  ignoredWaypointIndexes?: number[]
 }
 
 export type DrawWaypoint = {

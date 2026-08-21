@@ -146,6 +146,16 @@ describe('ActiveWalkPage', () => {
     expect(onNavigationVoiceEnabledChange).toHaveBeenCalledWith(false)
   })
 
+  it('explains when the development TTS test is unsupported instead of failing silently', () => {
+    vi.stubGlobal('speechSynthesis', undefined)
+    vi.stubGlobal('SpeechSynthesisUtterance', undefined)
+    render(<ActiveWalkPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: '음성 안내 테스트' }))
+
+    expect(screen.getByText('이 브라우저는 음성 안내를 지원하지 않아요.')).toHaveAttribute('role', 'status')
+  })
+
   it('exposes the active walk controls and distance mode', () => {
     const onPause = vi.fn()
     const onStop = vi.fn()
@@ -197,7 +207,7 @@ describe('ActiveWalkPage', () => {
     expect(distanceMode).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('fits the full planned course and overlays thermal colors with direction chevrons', () => {
+  it('focuses the route start in its travel direction and overlays thermal colors with direction chevrons', () => {
     const adapter: BaseMapAdapter = {
       mount: vi.fn(() => ({ ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() })),
     }
@@ -225,11 +235,15 @@ describe('ActiveWalkPage', () => {
     expect(screen.getByRole('button', { name: '패널 높이 조절' })).toBeInTheDocument()
 
     const mountedScene = vi.mocked(adapter.mount).mock.calls[0][1]
-    expect(mountedScene.viewFit).toEqual({
-      coordinates,
-      padding: [72, 20, expect.any(Number), 20],
-      maxZoom: 17,
-    })
+    expect(mountedScene).toEqual(expect.objectContaining({
+      center: coordinates[0],
+      zoom: 18,
+      bearing: expect.any(Number),
+      focusAnchorY: 0.68,
+      focusBottomInset: 0,
+      focusOffsetY: 0,
+      viewFit: undefined,
+    }))
     const thermalColors = new Set(mountedScene.routes
       ?.filter((route) => route.id.startsWith('planned-course-thermal-'))
       .map((route) => route.color))
@@ -270,9 +284,19 @@ describe('ActiveWalkPage', () => {
     expect(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).toBeInTheDocument()
     expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'open')
 
-    fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).getByRole('button', { name: '닫기' }))
     expect(screen.getByRole('article', { name: '도그라운지 성수 장소 요약' })).toBeInTheDocument()
     expect(container.querySelector('.active-walk-page__sheet-motion')).toHaveAttribute('data-place-detail', 'closed')
+  })
+
+  it('anchors the place preview to the draggable walk sheet position', () => {
+    render(<ActiveWalkPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
+
+    const searchRegion = screen.getByRole('region', { name: '지도 장소 검색' })
+    expect(searchRegion.style.getPropertyValue('--place-preview-bottom'))
+      .toContain('--map-sheet-top')
   })
 
   it('shows place search only in the 2D route overview and returns to navigation', () => {

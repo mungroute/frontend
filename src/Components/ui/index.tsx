@@ -57,6 +57,9 @@ export function TimePicker({ value, onChange, min = 10, max = 60, step = 5, vari
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const positionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const isPositioningRef = useRef(false)
+  const wheelAccumulatorRef = useRef(0)
+  const wheelLastEventAtRef = useRef(0)
+  const wheelLastStepAtRef = useRef(Number.NEGATIVE_INFINITY)
   const [isScrolling, setIsScrolling] = useState(false)
   const [scrollPreview, setScrollPreview] = useState(value)
   const rowHeight = variant === 'compact' ? 36 : 52
@@ -101,6 +104,37 @@ export function TimePicker({ value, onChange, min = 10, max = 60, step = 5, vari
       setIsScrolling(false)
     }, 120)
   }
+
+  useEffect(() => {
+    const wheel = wheelRef.current
+    if (!wheel) return
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      if (event.deltaY === 0) return
+
+      const now = performance.now()
+      if (now - wheelLastEventAtRef.current > 220 || Math.sign(wheelAccumulatorRef.current) !== Math.sign(event.deltaY)) {
+        wheelAccumulatorRef.current = 0
+      }
+      wheelLastEventAtRef.current = now
+      const normalizedDelta = event.deltaMode === 1
+        ? event.deltaY * 16
+        : event.deltaMode === 2 ? event.deltaY * wheel.clientHeight : event.deltaY
+      wheelAccumulatorRef.current += normalizedDelta
+
+      const wheelStepThreshold = 48
+      if (Math.abs(wheelAccumulatorRef.current) < wheelStepThreshold || now - wheelLastStepAtRef.current < 120) return
+
+      const direction = Math.sign(wheelAccumulatorRef.current)
+      const currentIndex = Math.round(wheel.scrollTop / rowHeight)
+      const nextIndex = Math.min(values.length - 1, Math.max(0, currentIndex + direction))
+      wheelAccumulatorRef.current = 0
+      wheelLastStepAtRef.current = now
+      wheel.scrollTo?.({ top: nextIndex * rowHeight, behavior: 'smooth' })
+    }
+    wheel.addEventListener('wheel', handleWheel, { passive: false })
+    return () => wheel.removeEventListener('wheel', handleWheel)
+  }, [rowHeight, values])
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'ArrowUp') {
@@ -170,6 +204,10 @@ type DraggableSheetProps = ComponentPropsWithoutRef<'section'> & {
   upwardDragBoundarySpacing?: number
 }
 
+const containerScaleY = (container: HTMLElement, rect = container.getBoundingClientRect()) => (
+  container.clientHeight > 0 && rect.height > 0 ? rect.height / container.clientHeight : 1
+)
+
 export function DraggableSheet({
   children,
   className = '',
@@ -189,19 +227,37 @@ export function DraggableSheet({
     const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
     const syncMapControl = () => {
       if (!sheet || !container) return
-      const sheetTop = sheet.getBoundingClientRect().top - container.getBoundingClientRect().top
+      const containerRect = container.getBoundingClientRect()
+      const sheetTop = (sheet.getBoundingClientRect().top - containerRect.top) / containerScaleY(container, containerRect)
       container.style.setProperty('--map-sheet-top', `${sheetTop}px`)
     }
-    const frame = requestAnimationFrame(syncMapControl)
+    let frame = 0
+    const scheduleMapControlSync = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        syncMapControl()
+      })
+    }
+    scheduleMapControlSync()
     const resizeObserver = typeof ResizeObserver === 'function'
-      ? new ResizeObserver(syncMapControl)
+      ? new ResizeObserver(scheduleMapControlSync)
       : undefined
     if (sheet) resizeObserver?.observe(sheet)
-    const handleResize = () => syncMapControl()
+    const positionObserver = typeof MutationObserver === 'function'
+      ? new MutationObserver(scheduleMapControlSync)
+      : undefined
+    let observedElement: HTMLElement | null | undefined = sheet
+    while (observedElement && observedElement !== container) {
+      positionObserver?.observe(observedElement, { attributes: true, attributeFilter: ['class', 'style'] })
+      observedElement = observedElement.parentElement
+    }
+    const handleResize = () => scheduleMapControlSync()
     window.addEventListener('resize', handleResize)
     return () => {
-      cancelAnimationFrame(frame)
+      if (frame) cancelAnimationFrame(frame)
       resizeObserver?.disconnect()
+      positionObserver?.disconnect()
       window.removeEventListener('resize', handleResize)
       container?.style.removeProperty('--map-sheet-top')
     }
@@ -211,13 +267,15 @@ export function DraggableSheet({
     const sheet = sheetRef.current
     const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
     if (!sheet || !container) return
-    const baseTop = sheet.getBoundingClientRect().top - offset - container.getBoundingClientRect().top
+    const containerRect = container.getBoundingClientRect()
+    const scaleY = containerScaleY(container, containerRect)
+    const baseTop = (sheet.getBoundingClientRect().top - containerRect.top) / scaleY - offset
     const topLimit = upwardDragTop - baseTop
     const boundary = upwardDragBoundarySelector
       ? sheet.querySelector<HTMLElement>(upwardDragBoundarySelector)
       : undefined
     const baseBoundaryBottom = boundary
-      ? boundary.getBoundingClientRect().bottom - offset - container.getBoundingClientRect().top
+      ? (boundary.getBoundingClientRect().bottom - containerRect.top) / scaleY - offset
       : undefined
     const contentLimit = upwardDragBoundarySelector
       ? (baseBoundaryBottom === undefined
@@ -240,7 +298,10 @@ export function DraggableSheet({
 
   const drag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (dragRef.current.pointerId !== event.pointerId) return
-    moveTo(dragRef.current.startOffset + event.clientY - dragRef.current.startY)
+    const sheet = sheetRef.current
+    const container = sheet?.closest<HTMLElement>('.journey-page, .representative-home-page, .no-course-home-page') ?? sheet?.parentElement
+    const scaleY = container ? containerScaleY(container) : 1
+    moveTo(dragRef.current.startOffset + (event.clientY - dragRef.current.startY) / scaleY)
   }
 
   const stopDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {

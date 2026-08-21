@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { NoCourseHomePage } from './NoCourseHomePage'
@@ -48,7 +48,7 @@ describe('NoCourseHomePage', () => {
     expect(container.querySelector('.no-course-home-page__actions-motion'))
       .toHaveAttribute('data-place-detail', 'open')
 
-    fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).getByRole('button', { name: '닫기' }))
     expect(container.querySelector('.no-course-home-page__actions-motion'))
       .toHaveAttribute('data-place-detail', 'closed')
   })

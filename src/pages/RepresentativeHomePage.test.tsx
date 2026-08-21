@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { RepresentativeHomePage } from './RepresentativeHomePage'
@@ -109,7 +109,7 @@ describe('RepresentativeHomePage', () => {
     expect(container.querySelector('.representative-home-page__sheet-motion'))
       .toHaveAttribute('data-place-detail', 'open')
 
-    fireEvent.click(screen.getByRole('button', { name: '장소 상세 닫기' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '도그라운지 성수 상세 정보' })).getByRole('button', { name: '닫기' }))
     expect(container.querySelector('.representative-home-page__sheet-motion'))
       .toHaveAttribute('data-place-detail', 'closed')
   })

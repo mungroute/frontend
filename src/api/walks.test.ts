@@ -50,6 +50,7 @@ describe('walkApi', () => {
       sessionId: 42,
       updatedAt: '2026-08-17T12:00:00+09:00',
       nextUpdateAfterSeconds: 4,
+      nearbyCount: 8,
       nearby: [{
         distanceBand: 'BAND_50_100',
         directionOctant: 7,

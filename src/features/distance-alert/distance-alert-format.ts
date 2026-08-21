@@ -31,7 +31,8 @@ export function distanceDirectionLabel(alert: NearbyPresence) {
 }
 
 export function distanceNotificationBody(alert: NearbyPresence) {
-  return `${distanceDirectionLabel(alert)} · ${distanceBandLabels[alert.distanceBand]} · ${distanceTrendLabels[alert.trend]}`
+  const crowd = alert.additionalCount ? ` · 주변 ${alert.additionalCount}명 추가` : ''
+  return `${distanceDirectionLabel(alert)} · ${distanceBandLabels[alert.distanceBand]} · ${distanceTrendLabels[alert.trend]}${crowd}`
 }
 
 export function distanceAlertEventKey(alert: NearbyPresence) {
@@ -40,5 +41,6 @@ export function distanceAlertEventKey(alert: NearbyPresence) {
     alert.directionReference ?? 'NONE',
     alert.directionOctant ?? 'NONE',
     alert.trend,
+    alert.additionalCount ?? 0,
   ].join(':')
 }

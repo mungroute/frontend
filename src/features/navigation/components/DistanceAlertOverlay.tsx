@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { LoaderCircle, X } from 'lucide-react'
 import type { NearbyPresence, SafeDetourResult } from '../../../api/walks'
 import { distanceBandLabels, distanceDirectionLabel, distanceTrendDescriptions } from '../../distance-alert/distance-alert-format'
@@ -22,12 +22,6 @@ export function DistanceAlertOverlay({ alert = defaultAlert, onRequestDetour, on
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<SafeDetourResult>()
   const [error, setError] = useState<string>()
-
-  useEffect(() => {
-    if (checking) return
-    const timer = window.setTimeout(() => setVisible(false), 5_000)
-    return () => window.clearTimeout(timer)
-  }, [checking, error, result])
 
   if (!visible) return null
 
@@ -64,6 +58,7 @@ export function DistanceAlertOverlay({ alert = defaultAlert, onRequestDetour, on
           : <>
               <strong>{distanceDirectionLabel(alert)} · {distanceBandLabels[alert.distanceBand]}</strong>
               <p>{checking ? '겹치지 않는 길을 확인하고 있어요.' : error ?? distanceTrendDescriptions[alert.trend]}</p>
+              {Boolean(alert.additionalCount) && <p className="navigation-distance-alert__crowd">주변에 {alert.additionalCount}명이 더 감지됐어요.</p>}
             </>}
         {onRequestDetour && !result && (
           <button
@@ -86,7 +81,6 @@ export function DistanceAlertOverlay({ alert = defaultAlert, onRequestDetour, on
             onClick={(event) => {
               event.stopPropagation()
               onApplyDetour?.(result)
-              setVisible(false)
             }}
           >이 경로로 이동</button>
         )}
