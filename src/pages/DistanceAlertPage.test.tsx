@@ -29,7 +29,7 @@ describe('DistanceAlertPage', () => {
     expect(screen.getByText('비슷한 거리를 유지하고 있어요.')).toBeInTheDocument()
   })
 
-  it('dismisses the in-app alert after five seconds and shows a meaningful new event', () => {
+  it('keeps the demo alert visible indefinitely until it is closed explicitly', () => {
     vi.useFakeTimers()
     const alert = {
       distanceBand: 'BAND_30_50' as const,
@@ -38,14 +38,9 @@ describe('DistanceAlertPage', () => {
       directionReference: 'HEADING' as const,
       trend: 'STEADY' as const,
     }
-    const view = render(<DistanceAlertPage alert={alert} />)
+    render(<DistanceAlertPage alert={alert} />)
 
-    act(() => vi.advanceTimersByTime(4_999))
-    expect(screen.getByRole('heading', { name: '주변 접근 알림' })).toBeInTheDocument()
-    act(() => vi.advanceTimersByTime(1))
-    expect(screen.queryByRole('heading', { name: '주변 접근 알림' })).not.toBeInTheDocument()
-
-    view.rerender(<DistanceAlertPage alert={{ ...alert, trend: 'APPROACHING' }} />)
+    act(() => vi.advanceTimersByTime(5 * 60_000))
     expect(screen.getByRole('heading', { name: '주변 접근 알림' })).toBeInTheDocument()
   })
 

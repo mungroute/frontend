@@ -33,6 +33,8 @@ describe('GroupRoomPage', () => {
     expect(await screen.findByRole('heading', { name: '남산 댕댕이 산책단' })).toBeInTheDocument()
     expect(screen.getByText('멤버의 실시간 위치는 표시하지 않아요.')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '그룹 공유 코스 지도' })).toBeInTheDocument()
+    const bottomNavigation = screen.getByRole('navigation', { name: '주요 메뉴' })
+    expect(within(bottomNavigation).getByRole('link', { name: '그룹' })).toHaveAttribute('aria-current', 'page')
 
     fireEvent.click(screen.getByRole('button', { name: '남산 코스 보기' }))
     expect(onOpenSharedCourse).toHaveBeenCalledWith(31)

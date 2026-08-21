@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { MapCoordinate } from '../../../Components/map'
 import type { NavigationPositionFix } from '../types'
-import { bearingBetween } from '../utils/bearing'
-import { smoothHeading } from '../utils/heading-smoothing'
+import { bearingBetween, normalizeHeading } from '../utils/bearing'
 
 export function useNavigationHeading(
   position: NavigationPositionFix | undefined,
@@ -13,12 +12,12 @@ export function useNavigationHeading(
   const recentBearing = walkedCoordinates.length >= 2
     ? bearingBetween(walkedCoordinates[walkedCoordinates.length - 2], walkedCoordinates[walkedCoordinates.length - 1])
     : undefined
-  const target = position?.heading ?? recentBearing ?? snappedRouteBearing
+  const target = snappedRouteBearing ?? position?.heading ?? recentBearing
 
   useEffect(() => {
     if (target === undefined) return
     const frame = requestAnimationFrame(() => {
-      setHeading((current) => smoothHeading(current, target))
+      setHeading(normalizeHeading(target))
     })
     return () => cancelAnimationFrame(frame)
   }, [target])

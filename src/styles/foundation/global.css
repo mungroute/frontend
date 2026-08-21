@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
 
-:root { --app-viewport-height: 100dvh; }
+:root { --app-viewport-height: 100dvh; --app-frame-scale: 1; }
 * { box-sizing: border-box; }
 html { background: var(--color-bg-base); color: var(--color-text-primary); }
 body { margin: 0; min-width: 320px; min-height: 100vh; font-family: 'Noto Sans KR', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -14,16 +14,21 @@ button { -webkit-tap-highlight-color: transparent; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-@media (min-width: 430px) and (min-height: 900px) {
-  :root { --app-viewport-height: 850px; }
+@media (min-width: 430px) and (min-height: 900px),
+       (min-width: 700px) and (min-height: 660px) {
+  :root { --app-viewport-height: 820px; }
   body {
+    height: 100dvh;
     min-height: 100dvh;
     display: grid;
     place-items: center;
+    overflow: hidden;
   }
   #root {
     width: 390px;
     height: var(--app-viewport-height);
     min-height: var(--app-viewport-height);
+    transform: scale(var(--app-frame-scale));
+    transform-origin: center;
   }
 }

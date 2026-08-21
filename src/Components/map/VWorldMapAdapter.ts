@@ -266,14 +266,42 @@ const updateChevronFlow = (flow: ChevronFlow, resolution: number, timestamp: num
   flow.feature.setStyle([...flow.baseStyles, ...visibleGlyphs.map((glyph) => glyph.style)])
 }
 
+const anchoredCenter = (
+  coordinate: number[],
+  size: number[],
+  anchorY: number,
+  resolution: number,
+  rotation: number,
+) => {
+  const position = [size[0] / 2, size[1] * anchorY]
+  const cosAngle = Math.cos(-rotation)
+  let sinAngle = Math.sin(-rotation)
+  let rotatedX = coordinate[0] * cosAngle - coordinate[1] * sinAngle
+  let rotatedY = coordinate[1] * cosAngle + coordinate[0] * sinAngle
+  rotatedX += (size[0] / 2 - position[0]) * resolution
+  rotatedY += (position[1] - size[1] / 2) * resolution
+  sinAngle = -sinAngle
+  return [
+    rotatedX * cosAngle - rotatedY * sinAngle,
+    rotatedY * cosAngle + rotatedX * sinAngle,
+  ]
+}
+
 function applySceneView(map: Map, scene: BaseMapScene, duration = 0) {
   const fitCoordinates = scene.viewFit?.coordinates.filter((coordinate) => (
     Number.isFinite(coordinate.latitude) && Number.isFinite(coordinate.longitude)
   )) ?? []
   const view = map.getView()
+  const requestedRotation = Number.isFinite(scene.bearing) ? (scene.bearing ?? 0) * Math.PI / 180 : 0
+  const currentRotation = view.getRotation()
+  const rotation = currentRotation + Math.atan2(
+    Math.sin(requestedRotation - currentRotation),
+    Math.cos(requestedRotation - currentRotation),
+  )
 
   if (fitCoordinates.length > 0) {
     map.updateSize()
+    view.setRotation(rotation)
     const projected = fitCoordinates.map((coordinate) => fromLonLat([
       coordinate.longitude,
       coordinate.latitude,
@@ -295,16 +323,27 @@ function applySceneView(map: Map, scene: BaseMapScene, duration = 0) {
     return
   }
 
+  map.updateSize()
+  const coordinate = fromLonLat([scene.center.longitude, scene.center.latitude])
+  const size = map.getSize() ?? [1, 1]
+  const resolution = view.getResolutionForZoom(scene.zoom)
+  const bottomInset = Math.min(size[1] * 0.8, Math.max(0, scene.focusBottomInset ?? 0))
+  const anchorY = scene.focusAnchorY === undefined
+    ? ((size[1] - bottomInset) / 2 + (scene.focusOffsetY ?? 0)) / Math.max(1, size[1])
+    : Math.min(0.9, Math.max(0.1, scene.focusAnchorY))
+  const center = anchoredCenter(coordinate, size, anchorY, resolution, rotation)
   if (duration > 0) {
     view.animate({
-      center: fromLonLat([scene.center.longitude, scene.center.latitude]),
+      center,
       zoom: scene.zoom,
+      rotation,
       duration,
     })
     return
   }
-  view.setCenter(fromLonLat([scene.center.longitude, scene.center.latitude]))
+  view.setCenter(center)
   view.setZoom(scene.zoom)
+  view.setRotation(rotation)
 }
 
 function applyScene(
@@ -527,6 +566,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
         view: new View({
           center: fromLonLat([initialScene.center.longitude, initialScene.center.latitude]),
           zoom: initialScene.zoom,
+          rotation: Number.isFinite(initialScene.bearing) ? (initialScene.bearing ?? 0) * Math.PI / 180 : 0,
           minZoom: 7,
           maxZoom: 19,
         }),
@@ -711,6 +751,10 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           const viewChanged = nextScene.center.latitude !== currentScene.center.latitude
             || nextScene.center.longitude !== currentScene.center.longitude
             || nextScene.zoom !== currentScene.zoom
+            || nextScene.bearing !== currentScene.bearing
+            || nextScene.focusAnchorY !== currentScene.focusAnchorY
+            || nextScene.focusBottomInset !== currentScene.focusBottomInset
+            || nextScene.focusOffsetY !== currentScene.focusOffsetY
             || nextScene.viewFit !== currentScene.viewFit
           const animateView = viewChanged && !reduceMotion
           applyScene(

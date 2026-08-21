@@ -3,7 +3,7 @@ import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding } from '../Components/map'
 import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { SharedRouteRow } from '../Components/groups/GroupCards'
-import { Button, ManagementPageHeader } from '../Components/ui'
+import { Button, HomeBottomNavigation, ManagementPageHeader } from '../Components/ui'
 import { CourseShareSheet, GroupExitConfirmDialog, GroupInfoSaveConfirmDialog, RemoveGroupMemberDialog } from '../Components/system'
 import { courseCatalogApi } from '../api/courses'
 import type { CourseCatalogApi, CourseSummary } from '../api/courses'
@@ -235,6 +235,7 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
           <p>{error || '그룹 정보를 불러오는 중이에요…'}</p>
           {error && <button type="button" onClick={load}>다시 시도</button>}
         </div>
+        <HomeBottomNavigation active="groups" />
       </main>
     )
   }
@@ -279,6 +280,7 @@ export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = course
       {saveConfirmOpen && <GroupInfoSaveConfirmDialog busy={actionBusy} onClose={() => { if (!actionBusy) setSaveConfirmOpen(false) }} onConfirm={saveGroupInfo} />}
       {exitConfirmOpen && <GroupExitConfirmDialog owner={group.myRole === 'OWNER'} busy={actionBusy} onClose={() => { if (!actionBusy) setExitConfirmOpen(false) }} onConfirm={closeGroup} />}
       {memberToRemove && <RemoveGroupMemberDialog nickname={memberToRemove.nickname} busy={actionBusy} onClose={() => { if (!actionBusy) setMemberToRemove(undefined) }} onConfirm={removeMember} />}
+      <HomeBottomNavigation active="groups" />
     </main>
   )
 }

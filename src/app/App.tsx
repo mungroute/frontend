@@ -210,12 +210,15 @@ export function App() {
   const isWalkTracking = location.pathname === '/walk/active' || location.pathname === '/walk/distance-alert'
   const applyPresenceResponse = useCallback((response: PresenceUpdateResult) => {
     const nearest = response.nearby[0]
-    setNearbyPresence(nearest)
+    const representative = nearest
+      ? { ...nearest, additionalCount: Math.max(0, (response.nearbyCount ?? response.nearby.length) - 1) }
+      : undefined
+    setNearbyPresence(representative)
     const currentPath = window.location.pathname
-    if (nearest && currentPath === '/walk/active') {
+    if (representative && currentPath === '/walk/active') {
       window.history.replaceState({}, '', `/walk/distance-alert${window.location.search}`)
       setLocation(readLocation())
-    } else if (!nearest && currentPath === '/walk/distance-alert') {
+    } else if (!representative && currentPath === '/walk/distance-alert') {
       window.history.replaceState({}, '', `/walk/active${window.location.search}`)
       setLocation(readLocation())
     }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { NavigationManeuver } from '../utils/maneuver'
-import { navigationAnnouncementStage, navigationAnnouncementText, speakNavigation } from './navigation-voice'
+import { cancelNavigationSpeech, navigationAnnouncementStage, navigationAnnouncementText, speakNavigation } from './navigation-voice'
 import type { NavigationAnnouncementStage } from './navigation-voice'
 
 export function useNavigationVoice({
@@ -26,7 +26,7 @@ export function useNavigationVoice({
 
   useEffect(() => {
     if (!enabled || paused) {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+      cancelNavigationSpeech()
       return
     }
     if (offRoute) {
@@ -46,4 +46,6 @@ export function useNavigationVoice({
     announcedRef.current.set(maneuver.id, announced)
     speakNavigation(navigationAnnouncementText(maneuver, stage))
   }, [enabled, maneuver, offRoute, paused])
+
+  useEffect(() => () => cancelNavigationSpeech(), [])
 }

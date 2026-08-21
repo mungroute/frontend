@@ -115,6 +115,41 @@ describe('DrawCoursePage', () => {
     expect(screen.getByText('1/20개 지점')).toBeInTheDocument()
   })
 
+  it('removes a fallback waypoint when the server detects a backtracking spur', async () => {
+    const api = createApi()
+    vi.mocked(api.snap)
+      .mockResolvedValueOnce(snap(1))
+      .mockResolvedValueOnce(snap(2, true))
+      .mockResolvedValueOnce(snap(3))
+    vi.mocked(api.connect)
+      .mockResolvedValueOnce({
+        addedSegmentIds: [901],
+        segmentIds: [901],
+        coordinates: [{ lat: 37.56, lon: 126.97 }, { lat: 37.561, lon: 126.971 }],
+        cumulative: metrics(100),
+        ignoredWaypointIndexes: [],
+      })
+      .mockResolvedValueOnce({
+        addedSegmentIds: [902],
+        segmentIds: [901, 902],
+        coordinates: [{ lat: 37.56, lon: 126.97 }, { lat: 37.562, lon: 126.972 }],
+        cumulative: metrics(180),
+        ignoredWaypointIndexes: [1],
+      })
+    render(<DrawCoursePage api={api} />)
+
+    const addPoint = screen.getByRole('button', { name: '지도에 지점 추가' })
+    fireEvent.click(addPoint)
+    await waitFor(() => expect(screen.getByText('1/20개 지점')).toBeInTheDocument())
+    fireEvent.click(addPoint)
+    await waitFor(() => expect(screen.getByText('2/20개 지점')).toBeInTheDocument())
+    fireEvent.click(addPoint)
+
+    expect(await screen.findByText('되돌아가는 자동 연결 구간을 제외하고 자연스럽게 이어졌어요.')).toBeInTheDocument()
+    expect(screen.getByText('2/20개 지점')).toBeInTheDocument()
+    expect(screen.getByText('0.18km')).toBeInTheDocument()
+  })
+
   it('does not show a shade percentage after sunset', async () => {
     const api = createApi()
     vi.mocked(api.connect).mockResolvedValueOnce({

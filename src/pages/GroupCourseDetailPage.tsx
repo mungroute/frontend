@@ -9,16 +9,6 @@ import type { GroupApi, GroupDetail, GroupSharedCourse } from '../api/groups'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/profile-group-pages.css'
 
-const viewport = (coordinates: { latitude: number; longitude: number }[]) => {
-  if (!coordinates.length) return undefined
-  const west = Math.min(...coordinates.map((point) => point.longitude))
-  const east = Math.max(...coordinates.map((point) => point.longitude))
-  const south = Math.min(...coordinates.map((point) => point.latitude))
-  const north = Math.max(...coordinates.map((point) => point.latitude))
-  const span = Math.max(east - west, north - south, 0.0002)
-  return { center: { latitude: (south + north) / 2, longitude: (west + east) / 2 }, zoom: Math.max(11, Math.min(18, Math.log2(360 / span) - 8)) }
-}
-
 export function GroupCourseDetailPage({ groupId, sharedCourseId, currentUserId, map, api = groupApi, onBack, onSaved, onUnshared }: {
   groupId: number
   sharedCourseId: number
@@ -61,7 +51,11 @@ export function GroupCourseDetailPage({ groupId, sharedCourseId, currentUserId, 
   const scene = useMemo(() => {
     const coordinates = courseRouteCoordinates(shared?.course.route)
     return {
-      ...viewport(coordinates),
+      viewFit: coordinates.length > 1 ? {
+        coordinates,
+        padding: [36, 24, 36, 24] as [number, number, number, number],
+        maxZoom: 17,
+      } : undefined,
       markers: coordinates.length > 1 ? [
         { id: 'group-course-start', position: coordinates[0], kind: 'start' as const, label: '출발' },
         { id: 'group-course-finish', position: coordinates.at(-1)!, kind: 'finish' as const, label: '도착' },

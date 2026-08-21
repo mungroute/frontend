@@ -164,6 +164,7 @@ export function ActiveWalkPage({
   const [sheetHeight, setSheetHeight] = useState(338)
   const [selectedMeetProfile, setSelectedMeetProfile] = useState<MeetProfileSelection>()
   const [notificationPermissionDismissed, setNotificationPermissionDismissed] = useState(false)
+  const [voiceTestMessage, setVoiceTestMessage] = useState<string>()
   const { currentLocationMarker } = useMapLocation()
   const placeSearchRef = useRef<MapPlaceSearchHandle>(null)
   const sheetMotionRef = useRef<HTMLDivElement>(null)
@@ -320,7 +321,7 @@ export function ActiveWalkPage({
         <MapPlaceSearch
           ref={placeSearchRef}
           isWalking
-          previewBottom={`${sheetHeight + 24}px`}
+          previewBottom={`calc(100% - var(--map-sheet-top, calc(100% - ${sheetHeight}px)) + 24px)`}
           renderStaticMarkers={!isMapReady}
           api={placeApi}
           origin={currentPosition?.coordinate ?? map?.scene.center}
@@ -382,7 +383,16 @@ export function ActiveWalkPage({
       )}
       {import.meta.env.DEV && (
         <aside className="active-walk-page__dev-tools" aria-label="개발 테스트 도구">
-          <button type="button" onClick={() => speakNavigation('80미터 앞에서 오른쪽으로 이동하세요.')}>음성 안내 테스트</button>
+          <button type="button" onClick={() => {
+            setVoiceTestMessage('음성 엔진을 준비하고 있어요.')
+            speakNavigation('80미터 앞에서 오른쪽으로 이동하세요.', {
+              onStart: () => setVoiceTestMessage('테스트 음성을 재생하고 있어요.'),
+              onEnd: () => setVoiceTestMessage('테스트 음성이 정상적으로 재생됐어요.'),
+              onError: (reason) => setVoiceTestMessage(reason === 'unsupported'
+                ? '이 브라우저는 음성 안내를 지원하지 않아요.'
+                : `음성 재생에 실패했어요. (${reason})`),
+            })
+          }}>음성 안내 테스트</button>
           <button type="button" onClick={async () => {
             const permission = await requestExternalNotificationPermission()
             if (permission === 'granted') {
@@ -390,6 +400,7 @@ export function ActiveWalkPage({
             }
           }}>거리두기 워치 알림 테스트</button>
           <button type="button" onClick={() => onNavigationVoiceEnabledChange?.(!navigationVoiceEnabled)}>{navigationVoiceEnabled ? '음성 안내 끄기' : '음성 안내 켜기'}</button>
+          {voiceTestMessage && <span className="active-walk-page__voice-test-status" role="status">{voiceTestMessage}</span>}
         </aside>
       )}
     </main>

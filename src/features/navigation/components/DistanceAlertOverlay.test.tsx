@@ -4,6 +4,20 @@ import type { SafeDetourResult } from '../../../api/walks'
 import { DistanceAlertOverlay } from './DistanceAlertOverlay'
 
 describe('DistanceAlertOverlay safe detour', () => {
+  it('shows one representative risk and aggregates the remaining nearby walkers', () => {
+    render(<DistanceAlertOverlay alert={{
+      distanceBand: 'BAND_30_50',
+      directionOctant: 6,
+      directionSpread: 45,
+      directionReference: 'MAP',
+      trend: 'APPROACHING',
+      additionalCount: 7,
+    }} />)
+
+    expect(screen.getByText('지도 왼쪽 · 약 30~50m')).toBeInTheDocument()
+    expect(screen.getByText('주변에 7명이 더 감지됐어요.')).toBeInTheDocument()
+  })
+
   it('previews a road-validated detour and applies it only after confirmation', async () => {
     const result: SafeDetourResult = {
       requestId: 'detour-1',
@@ -28,5 +42,9 @@ describe('DistanceAlertOverlay safe detour', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '이 경로로 이동' }))
     expect(onApplyDetour).toHaveBeenCalledWith(result)
+    expect(screen.getByRole('heading', { name: '안전 경로 안내' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '거리두기 알림 닫기' }))
+    expect(screen.queryByRole('heading', { name: '안전 경로 안내' })).not.toBeInTheDocument()
   })
 })

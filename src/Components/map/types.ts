@@ -47,6 +47,10 @@ export type MapViewFit = {
 export type BaseMapScene = {
   center: MapCoordinate
   zoom: number
+  bearing?: number
+  focusAnchorY?: number
+  focusBottomInset?: number
+  focusOffsetY?: number
   mouseWheelZoom?: boolean
   markers?: MapMarker[]
   routes?: MapRoute[]

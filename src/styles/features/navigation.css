@@ -54,6 +54,7 @@
 .navigation-distance-alert h1 { margin: 0 0 2px; font-size: 16px; }
 .navigation-distance-alert strong { display: block; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .navigation-distance-alert p { margin: 3px 0 0; color: #8b6c5c; font-size: 11px; }
+.navigation-distance-alert .navigation-distance-alert__crowd { color: #a25737; font-weight: 750; }
 .navigation-distance-alert__result { line-height: 1.45; }
 .navigation-distance-alert__action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; margin-top: 8px; padding: 6px 12px; border: 1px solid rgba(244, 122, 58, .35); border-radius: 999px; color: #fff; background: #f47a3a; font-size: 12px; font-weight: 800; cursor: pointer; }
 .navigation-distance-alert__action:disabled { cursor: wait; opacity: .72; }

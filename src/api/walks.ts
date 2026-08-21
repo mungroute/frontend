@@ -12,6 +12,7 @@ export type NearbyPresence = {
   directionSpread: number | null
   directionReference: 'HEADING' | 'MAP' | null
   trend: PresenceTrend
+  additionalCount?: number
 }
 
 export type PresenceUpdateResult = {
@@ -19,6 +20,7 @@ export type PresenceUpdateResult = {
   updatedAt: string
   nextUpdateAfterSeconds: number
   nearby: NearbyPresence[]
+  nearbyCount?: number
 }
 
 export type PresenceUpdatePayload = {

@@ -19,6 +19,8 @@ afterEach(() => {
 describe('distance system notification transitions', () => {
   it('formats only anonymous approximate direction, distance and trend', () => {
     expect(distanceNotificationBody(approaching)).toBe('오른쪽 · 약 50~100m · 접근 중')
+    expect(distanceNotificationBody({ ...approaching, additionalCount: 7 }))
+      .toBe('오른쪽 · 약 50~100m · 접근 중 · 주변 7명 추가')
   })
 
   it('deduplicates repeated location updates but allows meaningful state changes', () => {

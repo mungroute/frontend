@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MapMarker } from '../../../Components/map'
 import { normalizeWalkRoute } from '../route-normalizer'
+import { bearingBetween } from '../utils/bearing'
 import { NavigationMap } from './NavigationMap'
 
 const markerSpies = vi.hoisted(() => ({
@@ -104,8 +106,12 @@ describe('NavigationMap', () => {
     await waitFor(() => expect(markerSpies.setLngLat).toHaveBeenCalledWith([126.98, 37.56]))
     await waitFor(() => expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
       center: [126.98, 37.56],
+      bearing: bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
       offset: [0, 126],
     })))
+    expect(markerSpies.setRotation).toHaveBeenLastCalledWith(
+      bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
+    )
 
     view.rerender(
       <NavigationMap
@@ -138,6 +144,7 @@ describe('NavigationMap', () => {
     fireEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
     expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
       center: [126.98, 37.56],
+      bearing: bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
       offset: [0, 126],
     }))
   })
@@ -225,11 +232,108 @@ describe('NavigationMap', () => {
       center: [126.98, 37.56],
       zoom: 18,
       pitch: 54,
+      bearing: bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
       offset: [0, 126],
     }))
     expect(screen.getByRole('button', { name: '전체 경로 2D로 보기' })).toBeInTheDocument()
     expect(vworldInstance.destroy).toHaveBeenCalledOnce()
     await waitFor(() => expect(onViewModeChange).toHaveBeenLastCalledWith('navigation'))
+  })
+
+  it('focuses the 2D overview on place results and restores the route fit when they are cleared', async () => {
+    const fake = createFakeMap()
+    const vworldInstance = { ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }
+    const vworldAdapter = { mount: vi.fn(() => vworldInstance) }
+    const position = { coordinate: route.coordinateParts[0][0], accuracy: 5, observedAt: 1, heading: 45, speed: 1 }
+    const renderMap = (placeMarkers: MapMarker[]) => (
+      <NavigationMap
+        route={route}
+        position={position}
+        placeMarkers={placeMarkers}
+        fallbackMap={{ adapter: vworldAdapter, scene: { center: position.coordinate, zoom: 17 } }}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+      />
+    )
+    const view = render(renderMap([]))
+    await waitFor(() => expect(fake.map.addLayer).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: '전체 경로 2D로 보기' }))
+    await waitFor(() => expect(vworldAdapter.mount).toHaveBeenCalled())
+
+    const places: MapMarker[] = [
+      { id: 'place:west', position: { latitude: 37.55, longitude: 126.96 }, category: 'pharmacy', kind: 'default' },
+      { id: 'place:east', position: { latitude: 37.59, longitude: 127.02 }, category: 'pharmacy', kind: 'default' },
+    ]
+    vworldInstance.update.mockClear()
+    view.rerender(renderMap(places))
+
+    await waitFor(() => expect(vworldInstance.update).toHaveBeenCalled())
+    expect(vworldInstance.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: { latitude: 37.57, longitude: 126.99 },
+      zoom: expect.any(Number),
+      viewFit: undefined,
+      markers: expect.arrayContaining(places),
+    }))
+
+    vworldInstance.update.mockClear()
+    view.rerender(renderMap([]))
+
+    await waitFor(() => expect(vworldInstance.update).toHaveBeenCalled())
+    expect(vworldInstance.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      viewFit: expect.objectContaining({
+        coordinates: route.coordinateParts.flat(),
+        padding: [72, 20, 180, 20],
+        maxZoom: 17,
+      }),
+    }))
+  })
+
+  it('keeps the VWorld fallback camera on the user and rotates with the route heading', async () => {
+    const instance = { ready: Promise.resolve(), update: vi.fn(), destroy: vi.fn() }
+    const adapter = { mount: vi.fn(() => instance) }
+    const firstPosition = { coordinate: route.coordinateParts[0][0], accuracy: 5, observedAt: 1, heading: 20, speed: 1 }
+    const view = render(
+      <NavigationMap
+        route={route}
+        position={firstPosition}
+        heading={35}
+        fallbackMap={{ adapter, scene: { center: route.coordinateParts[0][1], zoom: 16 } }}
+        styleUrl=""
+      />,
+    )
+
+    await waitFor(() => expect(adapter.mount).toHaveBeenCalled())
+    expect(adapter.mount).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      center: firstPosition.coordinate,
+      zoom: 18,
+      bearing: bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
+      focusAnchorY: 0.68,
+      focusBottomInset: 0,
+      focusOffsetY: 0,
+      viewFit: undefined,
+    }))
+
+    const nextPosition = { coordinate: { latitude: 37.561, longitude: 126.981 }, accuracy: 5, observedAt: 2, heading: 90, speed: 1 }
+    view.rerender(
+      <NavigationMap
+        route={route}
+        position={nextPosition}
+        heading={90}
+        walkedCoordinates={[route.coordinateParts[0][0], nextPosition.coordinate]}
+        fallbackMap={{ adapter, scene: { center: route.coordinateParts[0][1], zoom: 16 } }}
+        styleUrl=""
+      />,
+    )
+
+    await waitFor(() => expect(instance.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: nextPosition.coordinate,
+      zoom: 18,
+      bearing: 90,
+      focusAnchorY: 0.68,
+      focusBottomInset: 0,
+      focusOffsetY: 0,
+      viewFit: undefined,
+    })))
   })
 
   it('shows the existing-map fallback and a retry action when MapLibre cannot start', async () => {

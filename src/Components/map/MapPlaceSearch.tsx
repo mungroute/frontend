@@ -433,8 +433,6 @@ export function PlaceDetailSheet({ place, onRoute, onClose, loading = false, err
         aria-label="아래로 밀어 상세 정보 닫기"
         onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => dragControls.start(event)}
       ><span /></button>
-      <button type="button" className="map-place-card__close" aria-label="장소 상세 닫기" onClick={onClose}><X size={20} /></button>
-
       <motion.div
         className="map-place-card__detail-scroll"
         initial="hidden"
