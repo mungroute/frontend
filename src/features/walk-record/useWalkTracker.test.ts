@@ -66,6 +66,38 @@ describe('walk tracker calculations', () => {
     expect(clearWatch).toHaveBeenCalledWith(7)
   })
 
+  it('updates the navigation camera fix and heading before movement is large enough to record', () => {
+    vi.useFakeTimers()
+    let reportPosition: PositionCallback = () => undefined
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: {
+        watchPosition: (success: PositionCallback) => { reportPosition = success; return 19 },
+        clearWatch: vi.fn(),
+      },
+    })
+    const { result, unmount } = renderHook(() => useWalkTracker(true))
+
+    act(() => {
+      reportPosition({
+        timestamp: 1_000,
+        coords: { latitude: 37.5665, longitude: 126.978, accuracy: 5, heading: 0, speed: 1 },
+      } as GeolocationPosition)
+      reportPosition({
+        timestamp: 2_000,
+        coords: { latitude: 37.5665, longitude: 126.97801, accuracy: 5, heading: 90, speed: 1 },
+      } as GeolocationPosition)
+    })
+
+    expect(result.current.walkedCoordinates).toHaveLength(1)
+    expect(result.current.currentPosition).toEqual(expect.objectContaining({
+      coordinate: { latitude: 37.5665, longitude: 126.97801 },
+      heading: 90,
+      observedAt: 2_000,
+    }))
+    unmount()
+  })
+
   it('restores server elapsed time and distance after a page refresh', () => {
     vi.useFakeTimers()
     vi.stubGlobal('navigator', {

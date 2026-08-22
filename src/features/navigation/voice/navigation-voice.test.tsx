@@ -23,8 +23,8 @@ afterEach(() => {
 describe('navigation voice', () => {
   it('creates short Korean walking directions without invented road names', () => {
     const maneuver: NavigationManeuver = { id: 'turn-1', kind: 'RIGHT', distanceM: 82 }
-    expect(navigationAnnouncementText(maneuver, 'far')).toBe('80미터 앞에서 오른쪽으로 이동하세요')
-    expect(navigationAnnouncementText({ ...maneuver, distanceM: 9 }, 'immediate')).toBe('곧 오른쪽으로 이동하세요')
+    expect(navigationAnnouncementText(maneuver, 'far')).toBe('80미터 앞에서 우회전하세요')
+    expect(navigationAnnouncementText({ ...maneuver, distanceM: 9 }, 'immediate')).toBe('곧 우회전하세요')
   })
 
   it('announces each stage once and announces a new maneuver separately', () => {

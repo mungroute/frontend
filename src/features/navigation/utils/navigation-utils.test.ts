@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { smoothHeading } from './heading-smoothing'
 import { bearingBetween } from './bearing'
-import { classifyManeuver } from './maneuver'
+import { classifyManeuver, nextManeuver } from './maneuver'
 import { buildRouteProgress, chevronsAhead, prepareRoute, projectOnRoute } from './route-progress'
 
 describe('navigation calculations', () => {
@@ -25,6 +25,30 @@ describe('navigation calculations', () => {
     expect(classifyManeuver(-70)).toBe('LEFT')
     expect(classifyManeuver(30)).toBe('SLIGHT_RIGHT')
     expect(classifyManeuver(150)).toBe('SHARP_RIGHT')
+  })
+
+  it('skips dense straight vertices and keeps the next meaningful right turn', () => {
+    const prepared = prepareRoute([
+      { latitude: 37.56, longitude: 126.98 },
+      { latitude: 37.5602, longitude: 126.98 },
+      { latitude: 37.5604, longitude: 126.98 },
+      { latitude: 37.5606, longitude: 126.98 },
+      { latitude: 37.5606, longitude: 126.98025 },
+      { latitude: 37.5606, longitude: 126.9805 },
+    ])!
+
+    expect(nextManeuver(prepared, 0)).toEqual(expect.objectContaining({ kind: 'RIGHT' }))
+  })
+
+  it('does not announce every straight polyline vertex as a maneuver', () => {
+    const prepared = prepareRoute([
+      { latitude: 37.56, longitude: 126.98 },
+      { latitude: 37.5602, longitude: 126.98 },
+      { latitude: 37.5604, longitude: 126.98 },
+      { latitude: 37.5606, longitude: 126.98 },
+    ])!
+
+    expect(nextManeuver(prepared, 0)).toBeUndefined()
   })
 
   it('prefers the beginning of a closed loop for initial progress', () => {

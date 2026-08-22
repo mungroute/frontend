@@ -6,12 +6,14 @@ import type { BaseMapBinding, MapMarker, MapPlaceSearchHandle } from '../Compone
 import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { buildDiagnosticCourseRoutes } from '../Components/courses/diagnostic-course-route'
 import { DraggableSheet, HomeBottomNavigation, HomeWalkStartAction } from '../Components/ui'
+import { WalkStartChoiceDialog } from '../Components/system'
 import type { CourseDetail, CourseDiagnostics } from '../api/courses'
 import type { PlaceApi } from '../api/places'
 import '../styles/pages/representative-home-page.css'
 
 type RepresentativeHomePageProps = {
-  onStartWalk?: () => void
+  onStartFreeWalk?: () => void
+  onStartRepresentativeWalk?: () => void
   onCompareCourse?: () => void
   onRecommendCourse?: () => void
   onOpenCourse?: () => void
@@ -23,11 +25,12 @@ type RepresentativeHomePageProps = {
 
 const asset = (name: string) => `/assets/s01/${name}`
 
-export function RepresentativeHomePage({ onStartWalk = () => undefined, onCompareCourse = () => undefined, onRecommendCourse = () => undefined, onOpenCourse = () => undefined, course, diagnostics, map, placeApi }: RepresentativeHomePageProps) {
+export function RepresentativeHomePage({ onStartFreeWalk = () => undefined, onStartRepresentativeWalk = () => undefined, onCompareCourse = () => undefined, onRecommendCourse = () => undefined, onOpenCourse = () => undefined, course, diagnostics, map, placeApi }: RepresentativeHomePageProps) {
   const [placeMarkers, setPlaceMarkers] = useState<MapMarker[]>([])
   const [isPlaceSearchOpen, setIsPlaceSearchOpen] = useState(false)
   const [isPlaceDetailOpen, setIsPlaceDetailOpen] = useState(false)
   const [isMapReady, setIsMapReady] = useState(false)
+  const [isWalkChoiceOpen, setIsWalkChoiceOpen] = useState(false)
   const placeSearchRef = useRef<MapPlaceSearchHandle>(null)
   const placeSceneOverlay = useMemo(() => buildPlaceMarkerSceneOverlay(placeMarkers), [placeMarkers])
   const routeCoordinates = useMemo(() => courseRouteCoordinates(course?.route), [course?.route])
@@ -78,13 +81,13 @@ export function RepresentativeHomePage({ onStartWalk = () => undefined, onCompar
     <main className="representative-home-page">
       <BaseMapViewport
         className="representative-home-page__map"
-        ariaLabel={course ? `${course.courseName} 경로 지도` : '대표 코스 지도'}
+        ariaLabel={course ? `${course.courseName} 경로 지도` : '현재 위치 지도'}
         map={map}
         sceneOverlay={mapSceneOverlay}
         showLocationControl
         onProviderReadyChange={setIsMapReady}
         onMapClick={({ featureId }) => { if (featureId) placeSearchRef.current?.selectFeature(featureId) }}
-        fallback={{ src: asset('map-representative-route.png') }}
+        fallback={{ src: course ? asset('map-representative-route.png') : '/assets/s02/map-current-location.png' }}
       />
 
       <MapPlaceSearch
@@ -108,27 +111,46 @@ export function RepresentativeHomePage({ onStartWalk = () => undefined, onCompar
         data-place-search={isPlaceSearchOpen ? 'open' : 'closed'}
       >
         <DraggableSheet className="representative-home-page__sheet" aria-label="대표 산책 코스">
-          <button className="representative-home-page__course-card" type="button" onClick={onOpenCourse}>
-            <span className="representative-home-page__course-copy">
-              <h1>{course?.courseName ?? '대표 코스를 선택해 주세요'}</h1>
-              <span className="representative-home-page__course-meta">
-                {course?.metrics ? `${course.metrics.durationMin}분 · ${(course.metrics.lengthM / 1000).toFixed(2)}km` : '내 코스에서 대표 코스를 지정할 수 있어요'}
+          {course ? (
+            <button className="representative-home-page__course-card" type="button" onClick={onOpenCourse}>
+              <span className="representative-home-page__course-copy">
+                <h1>{course.courseName}</h1>
+                <span className="representative-home-page__course-meta">
+                  {course.metrics ? `${course.metrics.durationMin}분 · ${(course.metrics.lengthM / 1000).toFixed(2)}km` : '코스 상세 정보를 확인해 보세요'}
+                </span>
+                {course.metrics?.shadeApplicable && <span className="representative-home-page__shade-chip">그늘 {Math.round((course.metrics.shadeRatio ?? 0) * 100)}%</span>}
+                {course.metrics && !course.metrics.shadeApplicable && <span className="representative-home-page__shade-chip">야간 그늘 미산출</span>}
               </span>
-              {course?.metrics?.shadeApplicable && <span className="representative-home-page__shade-chip">그늘 {Math.round((course.metrics.shadeRatio ?? 0) * 100)}%</span>}
-              {course?.metrics && !course.metrics.shadeApplicable && <span className="representative-home-page__shade-chip">야간 그늘 미산출</span>}
-            </span>
-            <span className="representative-home-page__chevron" aria-hidden="true">›</span>
-          </button>
+              <span className="representative-home-page__chevron" aria-hidden="true">›</span>
+            </button>
+          ) : (
+            <div className="representative-home-page__course-card representative-home-page__course-card--empty">
+              <span className="representative-home-page__course-copy">
+                <h1>현재 대표 코스가 없습니다.</h1>
+              </span>
+            </div>
+          )}
 
           <div className="representative-home-page__actions">
-            <HomeWalkStartAction className="representative-home-page__start" onClick={onStartWalk} />
-            <button type="button" onClick={onCompareCourse}>오늘의 추천 대안 보기</button>
+            <HomeWalkStartAction className="representative-home-page__start" onClick={() => setIsWalkChoiceOpen(true)} />
+            <button type="button" onClick={onCompareCourse}>{course ? '오늘의 추천 대안 보기' : '지도에서 코스 그리기'}</button>
             <button type="button" onClick={onRecommendCourse}>새 코스 추천받기</button>
           </div>
         </DraggableSheet>
       </motion.div>
 
       <HomeBottomNavigation />
+      {isWalkChoiceOpen && (
+        <WalkStartChoiceDialog
+          representativeCourse={course ? {
+            name: course.courseName,
+            detail: course.metrics ? `${course.metrics.durationMin}분 · ${(course.metrics.lengthM / 1000).toFixed(2)}km` : undefined,
+          } : undefined}
+          onClose={() => setIsWalkChoiceOpen(false)}
+          onStartFreeWalk={() => { setIsWalkChoiceOpen(false); onStartFreeWalk() }}
+          onStartRepresentativeWalk={() => { setIsWalkChoiceOpen(false); onStartRepresentativeWalk() }}
+        />
+      )}
     </main>
   )
 }

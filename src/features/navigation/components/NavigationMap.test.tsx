@@ -149,6 +149,43 @@ describe('NavigationMap', () => {
     }))
   })
 
+  it('moves and rotates the follow camera when the live fix changes', async () => {
+    const fake = createFakeMap()
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000)
+    const firstPosition = { coordinate: route.coordinateParts[0][0], accuracy: 5, observedAt: 1, heading: 20, speed: 1 }
+    const view = render(
+      <NavigationMap
+        route={route}
+        position={firstPosition}
+        heading={20}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+      />,
+    )
+    await waitFor(() => expect(fake.map.easeTo).toHaveBeenCalled())
+
+    fake.map.easeTo.mockClear()
+    now.mockReturnValue(1_400)
+    const nextPosition = { coordinate: { latitude: 37.561, longitude: 126.981 }, accuracy: 5, observedAt: 2, heading: 95, speed: 1 }
+    view.rerender(
+      <NavigationMap
+        route={route}
+        position={nextPosition}
+        heading={95}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+      />,
+    )
+
+    await waitFor(() => expect(fake.map.easeTo).toHaveBeenLastCalledWith(expect.objectContaining({
+      center: [126.981, 37.561],
+      bearing: 95,
+      pitch: 54,
+    })))
+    expect(markerSpies.setRotation).toHaveBeenLastCalledWith(95)
+    now.mockRestore()
+  })
+
   it('opens the accepted meet profile instead of treating its marker as a place', async () => {
     const fake = createFakeMap()
     const onMeetSelect = vi.fn()
@@ -306,7 +343,7 @@ describe('NavigationMap', () => {
     expect(adapter.mount).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       center: firstPosition.coordinate,
       zoom: 18,
-      bearing: bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
+      bearing: 35,
       focusAnchorY: 0.68,
       focusBottomInset: 0,
       focusOffsetY: 0,

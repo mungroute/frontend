@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, Copy, Link2, MapPin, ShieldCheck, Square, Users, WifiOff } from 'lucide-react'
+import { AlertTriangle, Check, ChevronRight, Copy, Footprints, Link2, MapPin, Route, ShieldCheck, Square, Users, WifiOff } from 'lucide-react'
 import type { LockedWalkPresenceMode } from '../../api/walks'
 import type { CourseShareOption } from '../courses/course-data'
 import { BaseMapViewport } from '../map'
@@ -84,12 +84,58 @@ export function WalkBackExitDialog({ onClose, onConfirm }: CloseableProps & { on
   )
 }
 
-export function RepresentativeUnavailableDialog({ onClose }: CloseableProps) {
+export function WalkStartChoiceDialog({
+  representativeCourse,
+  onClose,
+  onStartFreeWalk,
+  onStartRepresentativeWalk,
+}: CloseableProps & {
+  representativeCourse?: { name: string; detail?: string }
+  onStartFreeWalk: () => void
+  onStartRepresentativeWalk: () => void
+}) {
+  return (
+    <Overlay label="산책 방식 선택" className="system-surface--walk-choice" onClose={onClose}>
+      <h2>어떻게 산책할까요?</h2>
+      <p>오늘 걷고 싶은 방식을 선택해 주세요.</p>
+      <div className="system-walk-choice-list">
+        <button type="button" onClick={onStartFreeWalk}>
+          <span className="system-walk-choice-list__icon" aria-hidden="true"><Footprints size={24} /></span>
+          <span className="system-walk-choice-list__copy">
+            <strong>자유 산책</strong>
+            <small>정해진 경로 없이 자유롭게 걸어요.</small>
+          </span>
+          <ChevronRight className="system-walk-choice-list__chevron" size={20} aria-hidden="true" />
+        </button>
+        <button type="button" disabled={!representativeCourse} onClick={onStartRepresentativeWalk}>
+          <span className="system-walk-choice-list__icon system-walk-choice-list__icon--route" aria-hidden="true"><Route size={24} /></span>
+          <span className="system-walk-choice-list__copy">
+            <strong>대표 코스 산책</strong>
+            <small>{representativeCourse
+              ? `${representativeCourse.name}${representativeCourse.detail ? ` · ${representativeCourse.detail}` : ''}`
+              : '현재 대표 코스가 없습니다.'}</small>
+          </span>
+          <ChevronRight className="system-walk-choice-list__chevron" size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <Button variant="ghost" onClick={onClose}>닫기</Button>
+    </Overlay>
+  )
+}
+
+export function RepresentativeUnavailableDialog({ reason = 'insufficient-gps', onClose }: CloseableProps & {
+  reason?: 'insufficient-gps' | 'incomplete-route' | 'unmatched-route'
+}) {
+  const copy = reason === 'incomplete-route'
+    ? { title: '대표 코스로 설정할 수 없어요', description: <>출발 지점까지 돌아오지 않은 산책이에요.<br />일반 산책 기록으로는 저장할 수 있어요.</> }
+    : reason === 'unmatched-route'
+      ? { title: '대표 코스로 설정할 수 없어요', description: <>걸은 길을 도로 경로와 연결하지 못했어요.<br />일반 산책 기록으로는 저장할 수 있어요.</> }
+      : { title: '대표 코스로 설정할 수 없어요', description: <>정확한 GPS 지점이 두 개 이상 필요해요.<br />일반 산책 기록으로는 저장할 수 있어요.</> }
   return (
     <Overlay label="대표 코스 설정 불가" className="system-surface--compact" onClose={onClose}>
       <div className="system-icon system-icon--warning"><AlertTriangle size={25} /></div>
-      <h2>대표 코스로 설정할 수 없어요</h2>
-      <p>GPS 지점이 부족해요.<br />이 코스는 일반 코스로 저장할 수 있어요.</p>
+      <h2>{copy.title}</h2>
+      <p>{copy.description}</p>
       <Button onClick={onClose}>확인</Button>
     </Overlay>
   )

@@ -10,12 +10,12 @@ export const NAVIGATION_VOICE_THRESHOLDS_M = {
 
 const directionPhrases: Record<NavigationManeuver['kind'], string> = {
   STRAIGHT: '직진하세요',
-  SLIGHT_LEFT: '왼쪽 완만한 방향으로 이동하세요',
-  LEFT: '왼쪽으로 이동하세요',
-  SHARP_LEFT: '왼쪽으로 크게 돌아 이동하세요',
-  SLIGHT_RIGHT: '오른쪽 완만한 방향으로 이동하세요',
-  RIGHT: '오른쪽으로 이동하세요',
-  SHARP_RIGHT: '오른쪽으로 크게 돌아 이동하세요',
+  SLIGHT_LEFT: '완만하게 좌회전하세요',
+  LEFT: '좌회전하세요',
+  SHARP_LEFT: '급좌회전하세요',
+  SLIGHT_RIGHT: '완만하게 우회전하세요',
+  RIGHT: '우회전하세요',
+  SHARP_RIGHT: '급우회전하세요',
 }
 
 export function navigationAnnouncementStage(distanceM: number): NavigationAnnouncementStage | undefined {

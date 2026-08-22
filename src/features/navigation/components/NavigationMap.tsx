@@ -8,7 +8,6 @@ import type { BaseMapBinding, MapCoordinate, MapMarker } from '../../../Componen
 import { createProfileLocationMarkerElement } from '../../../Components/map/profileLocationMarker'
 import { buildThermalRoutes } from '../../../Components/courses/thermal-route'
 import { WalkRouteProgress } from '../../../Components/walk/WalkRouteProgress'
-import { distanceBetween } from '../../walk-record/useWalkTracker'
 import type { NavigationPositionFix, WalkNavigationRoute } from '../types'
 import type { RouteProgressGeometry } from '../utils/route-progress'
 import { chevronsAhead } from '../utils/route-progress'
@@ -104,15 +103,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       ? bearingBetween(coordinates[0], coordinates[1])
       : 0
   }, [route?.navigationPolyline])
-  const movementStartedRef = useRef(false)
-  const walkedDisplacementM = walkedCoordinates.length >= 2
-    ? distanceBetween(walkedCoordinates[0], walkedCoordinates[walkedCoordinates.length - 1])
-    : 0
-  const movementStarted = movementStartedRef.current || walkedDisplacementM >= 6
-  const lockToRouteStart = Boolean(route?.navigationPolyline) && !movementStarted
-  const navigationBearing = lockToRouteStart
-    ? routeStartBearing
-    : heading ?? progress?.segmentBearing ?? routeStartBearing
+  const navigationBearing = heading ?? progress?.segmentBearing ?? routeStartBearing
   const navigationCenter = position?.coordinate ?? progress?.coordinate ?? route?.navigationPolyline?.[0]
   const initialCameraRef = useRef({ center: navigationCenter, bearing: navigationBearing })
   const chevrons = useMemo(() => preparedRoute
@@ -156,10 +147,6 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#c5c0ba', width: 6 }] : []),
     ],
   }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, navigationBearing, navigationCenter, padding.bottom, placeMarkers.length, placeSceneOverlay.center, placeSceneOverlay.zoom, position, route, viewMode, walkedCoordinates])
-
-  useEffect(() => {
-    if (walkedDisplacementM >= 6) movementStartedRef.current = true
-  }, [walkedDisplacementM])
 
   useEffect(() => {
     onPlaceSelectRef.current = onPlaceSelect
