@@ -22,7 +22,7 @@ export type CourseDrawMetrics = {
   shadeRatio: number | null
   estimatedSurfaceTempC: number
   referenceHour: number
-  weatherSource: 'SCENARIO' | 'SCENARIO_REFERENCE' | 'NOWCAST' | 'CACHED'
+  weatherSource: 'SCENARIO' | 'SCENARIO_REFERENCE' | 'NOWCAST' | 'CACHED' | 'OBSERVED' | 'FORECAST'
   basisDate: string
   confidence: 'LOW' | 'MEDIUM' | 'HIGH'
   calculatedAt: string
@@ -150,7 +150,7 @@ export type CourseDiagnostics = {
   courseId: number
   courseName: string
   referenceHour: 9 | 12 | 15 | 18
-  temperatureLayerBasis: 'SELECTED_REFERENCE' | 'H18_REFERENCE'
+  temperatureLayerBasis: 'SELECTED_REFERENCE' | 'H18_REFERENCE' | 'NOWCAST_FIXED_SHADE' | 'CACHED_FIXED_SHADE' | 'OBSERVED_FIXED_SHADE' | 'FORECAST_FIXED_SHADE'
   solarState: 'DAYLIGHT' | 'NIGHT'
   shadeApplicable: boolean
   shadeMessage: string | null

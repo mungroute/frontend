@@ -65,6 +65,20 @@ const formatLegDistance = (lengthM: number) => lengthM >= 1000
   ? `${(lengthM / 1000).toFixed(1)}km`
   : `${Math.round(lengthM)}m`
 
+const weatherSourceLabel = (
+  weatherSource: NonNullable<CourseDetail['metrics']>['weatherSource'],
+  basisDate: string,
+) => {
+  switch (weatherSource) {
+    case 'NOWCAST': return '실시간 ASOS'
+    case 'CACHED': return '최근 ASOS 캐시'
+    case 'OBSERVED': return '오늘 ASOS 관측'
+    case 'FORECAST': return '오늘 기상 예보'
+    case 'SCENARIO':
+    case 'SCENARIO_REFERENCE': return `${basisDate} 기준 시나리오`
+  }
+}
+
 export function CourseDetailPage({
   source,
   courseId,
@@ -244,11 +258,12 @@ export function CourseDetailPage({
     setDiagnosticsVisible(true)
   }
   const metrics = course?.metrics
+  const weatherLabel = metrics ? weatherSourceLabel(metrics.weatherSource, metrics.basisDate) : undefined
   const metricItems = [
     { label: '거리', value: metrics ? `${(metrics.lengthM / 1000).toFixed(2)}km` : '-' },
     { label: '예상 시간', value: metrics ? `${metrics.durationMin}분` : '-' },
     {
-      label: metrics?.shadeApplicable ? `그늘 · ${metrics.referenceHour}시 기준` : '그늘',
+      label: metrics?.shadeApplicable ? `나무·건물 그늘 · ${metrics.referenceHour}시` : '나무·건물 그늘',
       value: metrics?.shadeApplicable ? `${Math.round((metrics.shadeRatio ?? 0) * 100)}%` : '야간·미산출',
     },
   ]
@@ -325,8 +340,7 @@ export function CourseDetailPage({
               <div className="course-detail-page__segment-heading">
                 <div>
                   <span>
-                    {metrics?.weatherSource === 'NOWCAST' && '실시간 ASOS · '}
-                    {metrics?.weatherSource === 'CACHED' && '최근 ASOS 캐시 · '}
+                    {weatherLabel && `${weatherLabel} · `}
                     {String(diagnostics.referenceHour).padStart(2, '0')}시 기준
                   </span>
                   <strong>{selectedLeg.sequence}구간 · {selectedLegDescription}</strong>

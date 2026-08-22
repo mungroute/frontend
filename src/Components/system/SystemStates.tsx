@@ -72,6 +72,18 @@ export function WalkEndDialog({ onClose, onConfirm }: CloseableProps & { onConfi
   )
 }
 
+export function WalkBackExitDialog({ onClose, onConfirm }: CloseableProps & { onConfirm: () => void }) {
+  return (
+    <Overlay label="산책 이탈 확인" onClose={onClose}>
+      <div className="system-icon system-icon--soft"><Square size={22} fill="currentColor" /></div>
+      <h2>산책을 종료하겠습니까?</h2>
+      <p>뒤로 가면 현재 산책을 종료하고<br />완료 화면으로 이동해요.</p>
+      <Button aria-label="산책 종료 후 나가기" onClick={onConfirm}>확인</Button>
+      <Button variant="ghost" onClick={onClose}>돌아가기</Button>
+    </Overlay>
+  )
+}
+
 export function RepresentativeUnavailableDialog({ onClose }: CloseableProps) {
   return (
     <Overlay label="대표 코스 설정 불가" className="system-surface--compact" onClose={onClose}>

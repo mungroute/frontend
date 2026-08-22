@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BaseMapViewport } from '../Components/map'
 import type { BaseMapBinding, MapClickEvent, MapCoordinate } from '../Components/map'
 import { EditableCourseOverlay } from '../Components/courses/CourseVisuals'
@@ -60,6 +60,15 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
   const points = steps.map((step) => step.overlayPoint)
   const coordinates = latest?.routeCoordinates
 
+  useEffect(() => {
+    if (!notice && !error) return
+    const timeout = window.setTimeout(() => {
+      setNotice(undefined)
+      setError(undefined)
+    }, 3_500)
+    return () => window.clearTimeout(timeout)
+  }, [error, notice])
+
   const applySnap = async (snap: SnapCoursePointResult, overlayPoint: CoursePoint) => {
     const previous = steps.at(-1)
     const waypoint = toWaypoint(snap)
@@ -79,7 +88,7 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
     })
     const ignoredIndexes = new Set(connected.ignoredWaypointIndexes ?? [])
     setSteps((current) => [
-      ...current.filter((_, index) => !ignoredIndexes.has(index)),
+      ...current,
       createConnectedStep(waypoint, overlayPoint, connected, false),
     ])
     if (ignoredIndexes.size > 0) {
@@ -131,7 +140,7 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
       })
       const ignoredIndexes = new Set(connected.ignoredWaypointIndexes ?? [])
       setSteps((current) => [
-        ...current.filter((_, index) => !ignoredIndexes.has(index)),
+        ...current,
         createConnectedStep(first.waypoint, first.overlayPoint, connected, true),
       ])
       setNotice(ignoredIndexes.size > 0
@@ -192,7 +201,7 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
         <EditableCourseOverlay points={points} />
         <div className="draw-course-page__edit-actions">
           <button type="button" disabled={!steps.length || busy} onClick={removeLastPoint}>마지막 지점 취소</button>
-          <button type="button" disabled={steps.length < MIN_COURSE_POINTS || steps.length >= MAX_COURSE_POINTS || Boolean(latest?.loop) || busy} onClick={() => void closeLoop()}>출발점으로 닫기</button>
+          <button type="button" disabled={steps.length < MIN_COURSE_POINTS || steps.length >= MAX_COURSE_POINTS || Boolean(latest?.loop) || busy} onClick={() => void closeLoop()}>출발점으로 돌아오기</button>
         </div>
       </BaseMapViewport>
       <p className={isAtLimit ? 'draw-course-page__tip draw-course-page__tip--limit' : 'draw-course-page__tip'} role="status">
@@ -239,6 +248,10 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
                   ? `실시간 ASOS 날씨 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
                   : latest.metrics.weatherSource === 'CACHED'
                     ? `최근 ASOS 캐시 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
+                    : latest.metrics.weatherSource === 'OBSERVED'
+                      ? `오늘 ASOS 관측 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
+                      : latest.metrics.weatherSource === 'FORECAST'
+                        ? `오늘 기상 예보 · ${latest.metrics.referenceHour}시 고정 그늘 기준 추정값이에요.`
                     : latest.metrics.shadeApplicable
                       ? `${latest.metrics.referenceHour}시 기준 추정값이에요.`
                       : `${latest.metrics.referenceHour}시 온도 참고값 · 일몰 후에는 그늘 비율을 표시하지 않아요.`}

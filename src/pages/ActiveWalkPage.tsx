@@ -40,6 +40,9 @@ import '../styles/components/walk-session-glass.css'
 
 export type WalkSessionViewState = 'active' | 'distance-alert' | 'paused'
 
+const showActiveWalkDevTools = import.meta.env.DEV
+  && import.meta.env.VITE_SHOW_ACTIVE_WALK_DEV_TOOLS === 'true'
+
 export type ActiveWalkPageProps = {
   map?: BaseMapBinding
   route?: WalkNavigationRoute | null
@@ -381,7 +384,7 @@ export function ActiveWalkPage({
           }}
         />
       )}
-      {import.meta.env.DEV && (
+      {showActiveWalkDevTools && (
         <aside className="active-walk-page__dev-tools" aria-label="개발 테스트 도구">
           <button type="button" onClick={() => {
             setVoiceTestMessage('음성 엔진을 준비하고 있어요.')

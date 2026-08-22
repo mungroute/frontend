@@ -23,7 +23,7 @@ export type CourseRecommendationCandidate = {
   withinTargetTime: boolean
   shadeApplicable: boolean
   referenceHour: number
-  weatherSource: 'SCENARIO' | 'SCENARIO_REFERENCE' | 'NOWCAST' | 'CACHED'
+  weatherSource: 'SCENARIO' | 'SCENARIO_REFERENCE' | 'NOWCAST' | 'CACHED' | 'OBSERVED' | 'FORECAST'
   route: CourseRouteGeoJson | null
   segmentIds: number[]
   thermalSegments?: CourseRecommendationThermalSegment[]

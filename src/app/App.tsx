@@ -41,7 +41,7 @@ import { ServerErrorPage } from '../pages/ServerErrorPage'
 import { LoginPage } from '../pages/LoginPage'
 import { SignupPage } from '../pages/SignupPage'
 import { PasswordResetPage } from '../pages/PasswordResetPage'
-import { GpsErrorDialog, LocationPermissionSheet, isSystemStateCase } from '../Components/system'
+import { GpsErrorDialog, LocationPermissionSheet, WalkBackExitDialog, isSystemStateCase } from '../Components/system'
 import { useMapLocation } from '../Components/map'
 import type { MapCoordinate } from '../Components/map'
 import { formatWalkDistance, formatWalkTime, useWalkTracker } from '../features/walk-record/useWalkTracker'
@@ -74,6 +74,7 @@ import type { WalkNavigationRoute, WalkRouteSelection } from '../features/naviga
 import { useWalkExperiencePreferences } from '../features/walk-experience/preferences'
 
 const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail', '/courses/shade'])
+const activeWalkPaths = new Set(['/walk/active', '/walk/distance-alert', '/walk/paused'])
 
 const resolveHomePath = async () => {
   const [courses, records] = await Promise.all([
@@ -178,6 +179,7 @@ export function App() {
   const [walkStarting, setWalkStarting] = useState(false)
   const [walkEndResult, setWalkEndResult] = useState<WalkEndResult>()
   const [walkApiError, setWalkApiError] = useState<string>()
+  const [walkBackExitOpen, setWalkBackExitOpen] = useState(false)
   const [nearbyPresence, setNearbyPresence] = useState<NearbyPresence>()
   const [meetCandidates, setMeetCandidates] = useState<MeetCandidate[]>([])
   const [meetSearchPending, setMeetSearchPending] = useState(false)
@@ -198,6 +200,7 @@ export function App() {
   const walkStartPromiseRef = useRef<Promise<number> | undefined>(undefined)
   const walkEndPromiseRef = useRef<Promise<WalkEndResult> | undefined>(undefined)
   const walkStartingRef = useRef(false)
+  const skipNextHistoryPopRef = useRef(false)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
   const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
   const meetSearchTimeoutRef = useRef<number | undefined>(undefined)
@@ -515,10 +518,33 @@ export function App() {
   }, [dogs, selectedDogIds, setCurrentLocationMarker])
 
   useEffect(() => {
-    const syncLocation = () => setLocation(readLocation())
+    const syncLocation = () => {
+      if (skipNextHistoryPopRef.current) {
+        skipNextHistoryPopRef.current = false
+        setLocation(readLocation())
+        return
+      }
+      if (backendWalkStarted && activeWalkPaths.has(location.pathname)) {
+        skipNextHistoryPopRef.current = true
+        setWalkBackExitOpen(true)
+        window.history.forward()
+        return
+      }
+      setLocation(readLocation())
+    }
     window.addEventListener('popstate', syncLocation)
     return () => window.removeEventListener('popstate', syncLocation)
-  }, [])
+  }, [backendWalkStarted, location.pathname])
+
+  useEffect(() => {
+    if (!backendWalkStarted || !activeWalkPaths.has(location.pathname)) return
+    const confirmDocumentExit = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', confirmDocumentExit)
+    return () => window.removeEventListener('beforeunload', confirmDocumentExit)
+  }, [backendWalkStarted, location.pathname])
 
   useEffect(() => {
     if (!recommendationRequestId || courseRecommendation?.requestId === recommendationRequestId) return
@@ -790,70 +816,83 @@ export function App() {
     }
   }
 
+  const changeDistanceRadius = useCallback((value: number) => {
+    distanceRadiusRef.current = value
+    setDistanceRadius(value)
+    if (walkPresenceMode === 'meet') {
+      setMeetCandidates([])
+      setMeetSearchPending(true)
+      if (meetSearchTimeoutRef.current !== undefined) window.clearTimeout(meetSearchTimeoutRef.current)
+      meetSearchTimeoutRef.current = window.setTimeout(() => {
+        meetSearchTimeoutRef.current = undefined
+        setMeetSearchPending(false)
+      }, 5_000)
+    }
+    const position = walkTracker.currentPosition
+    if (!position || !presenceEnabled || !walkPresenceMode) return
+    void sendPresenceFix({
+      latitude: position.coordinate.latitude,
+      longitude: position.coordinate.longitude,
+      recordedAt: new Date().toISOString(),
+      accuracy: position.accuracy,
+      heading: position.heading ?? null,
+      stationary: position.speed === null || position.speed === undefined || position.speed < 0.5,
+    }, value)
+  }, [presenceEnabled, sendPresenceFix, walkPresenceMode, walkTracker.currentPosition])
+
   const renderWalkSession = (sessionState: 'active' | 'distance-alert' | 'paused') => (
-    <ActiveWalkPage
-      sessionState={sessionState}
-      route={activeWalkRoute}
-      currentPosition={walkTracker.currentPosition}
-      alert={nearbyPresence}
-      time={walkTracker.formattedTime}
-      distance={walkTracker.formattedDistance}
-      walkedCoordinates={walkTracker.walkedCoordinates}
-      gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal}
-      presenceMode={walkPresenceMode}
-      presenceEnabled={presenceEnabled}
-      onPresenceEnabledChange={(enabled) => {
-        changePresenceEnabled(enabled)
-        if (sessionState === 'distance-alert' && !enabled) navigate('/walk/active')
-      }}
-      distanceRadius={distanceRadius}
-      onDistanceRadiusChange={(value) => {
-        distanceRadiusRef.current = value
-        setDistanceRadius(value)
-        if (walkPresenceMode === 'meet') {
-          setMeetCandidates([])
-          setMeetSearchPending(true)
-          if (meetSearchTimeoutRef.current !== undefined) window.clearTimeout(meetSearchTimeoutRef.current)
-          meetSearchTimeoutRef.current = window.setTimeout(() => {
-            meetSearchTimeoutRef.current = undefined
-            setMeetSearchPending(false)
-          }, 5_000)
-        }
-        const position = walkTracker.currentPosition
-        if (!position || !presenceEnabled || !walkPresenceMode) return
-        void sendPresenceFix({
-          latitude: position.coordinate.latitude,
-          longitude: position.coordinate.longitude,
-          recordedAt: new Date().toISOString(),
-          accuracy: position.accuracy,
-          heading: position.heading ?? null,
-          stationary: position.speed === null || position.speed === undefined || position.speed < 0.5,
-        }, value)
-      }}
-      meetCandidates={meetCandidates}
-      meetSearchPending={meetSearchPending}
-      meetRequests={meetRequests}
-      meetConnection={meetConnection}
-      onMeetRequest={requestMeet}
-      onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))}
-      onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))}
-      onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))}
-      onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }}
-      onMeetBlock={(id) => {
-        void meetApi.block(id)
-          .then(() => { setMeetConnection(undefined); setMeetRequests([]) })
-          .catch((error: Error) => setWalkApiError(error.message))
-      }}
-      onPause={() => pauseWalk('/walk/paused')}
-      onResume={() => resumeWalk('/walk/active')}
-      onStop={endWalk}
-      navigationVoiceEnabled={walkExperiencePreferences.navigationVoiceEnabled}
-      onNavigationVoiceEnabledChange={(enabled) => updateWalkExperiencePreference('navigationVoiceEnabled', enabled)}
-      watchSystemNotificationEnabled={walkExperiencePreferences.watchSystemNotificationEnabled}
-      onWatchSystemNotificationEnabledChange={(enabled) => updateWalkExperiencePreference('watchSystemNotificationEnabled', enabled)}
-      onSafeDetourRequest={requestSafeDetour}
-      onSafeDetourApply={applySafeDetour}
-    />
+    <>
+      <ActiveWalkPage
+        sessionState={sessionState}
+        route={activeWalkRoute}
+        currentPosition={walkTracker.currentPosition}
+        alert={nearbyPresence}
+        time={walkTracker.formattedTime}
+        distance={walkTracker.formattedDistance}
+        walkedCoordinates={walkTracker.walkedCoordinates}
+        gpsSignal={walkApiError ? 'error' : walkTracker.gpsSignal}
+        presenceMode={walkPresenceMode}
+        presenceEnabled={presenceEnabled}
+        onPresenceEnabledChange={(enabled) => {
+          changePresenceEnabled(enabled)
+          if (sessionState === 'distance-alert' && !enabled) navigate('/walk/active')
+        }}
+        distanceRadius={distanceRadius}
+        onDistanceRadiusChange={changeDistanceRadius}
+        meetCandidates={meetCandidates}
+        meetSearchPending={meetSearchPending}
+        meetRequests={meetRequests}
+        meetConnection={meetConnection}
+        onMeetRequest={requestMeet}
+        onMeetAccept={(id) => runMeetAction(() => meetApi.accept(id))}
+        onMeetReject={(id) => runMeetAction(() => meetApi.reject(id))}
+        onMeetCancel={(id) => runMeetAction(() => meetApi.cancel(id))}
+        onMeetEnd={(id) => { runMeetAction(() => meetApi.end(id)); setMeetConnection(undefined) }}
+        onMeetBlock={(id) => {
+          void meetApi.block(id)
+            .then(() => { setMeetConnection(undefined); setMeetRequests([]) })
+            .catch((error: Error) => setWalkApiError(error.message))
+        }}
+        onPause={() => pauseWalk('/walk/paused')}
+        onResume={() => resumeWalk('/walk/active')}
+        onStop={endWalk}
+        navigationVoiceEnabled={walkExperiencePreferences.navigationVoiceEnabled}
+        onNavigationVoiceEnabledChange={(enabled) => updateWalkExperiencePreference('navigationVoiceEnabled', enabled)}
+        watchSystemNotificationEnabled={walkExperiencePreferences.watchSystemNotificationEnabled}
+        onWatchSystemNotificationEnabledChange={(enabled) => updateWalkExperiencePreference('watchSystemNotificationEnabled', enabled)}
+        onSafeDetourRequest={requestSafeDetour}
+        onSafeDetourApply={applySafeDetour}
+      />
+      {walkBackExitOpen && (
+        <WalkBackExitDialog
+          onClose={() => setWalkBackExitOpen(false)}
+          onConfirm={() => {
+            setWalkBackExitOpen(false)
+            endWalk()
+          }}
+        />
+      )}
+    </>
   )
 
   if (location.pathname === '/preview/system-states') {

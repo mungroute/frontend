@@ -127,6 +127,30 @@ describe('CourseDetailPage', () => {
     expect(screen.getByText(/실시간 ASOS · 15시 기준/)).toBeInTheDocument()
   })
 
+  it.each([
+    ['OBSERVED', '오늘 ASOS 관측 · 15시 기준'],
+    ['FORECAST', '오늘 기상 예보 · 15시 기준'],
+  ] as const)('identifies %s temperatures for today', async (weatherSource, label) => {
+    const todayCourse = {
+      ...dayCourse,
+      metrics: { ...dayCourse.metrics!, weatherSource, basisDate: '2026-08-21' },
+    }
+    render(<CourseDetailPage source="custom" courseId={42} api={apiFor(todayCourse, diagnostics)} />)
+    await screen.findByText('주말 산책길')
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+
+    expect(screen.getByText(new RegExp(label))).toBeInTheDocument()
+  })
+
+  it('discloses the reference date when live weather is unavailable', async () => {
+    render(<CourseDetailPage source="custom" courseId={42} api={apiFor()} />)
+    await screen.findByText('주말 산책길')
+    fireEvent.click(screen.getByRole('button', { name: '구간 정보' }))
+
+    expect(screen.getByText(/2026-08-11 기준 시나리오 · 15시 기준/)).toBeInTheDocument()
+    expect(screen.getByText(/나무·건물 그늘 · 15시/)).toBeInTheDocument()
+  })
+
   it('groups multiple road links into the waypoint-to-waypoint connection shown to users', async () => {
     const groupedDiagnostics: CourseDiagnostics = {
       ...diagnostics,

@@ -115,7 +115,7 @@ describe('DrawCoursePage', () => {
     expect(screen.getByText('1/20개 지점')).toBeInTheDocument()
   })
 
-  it('removes a fallback waypoint when the server detects a backtracking spur', async () => {
+  it('keeps every selected waypoint when the server detects a backtracking spur', async () => {
     const api = createApi()
     vi.mocked(api.snap)
       .mockResolvedValueOnce(snap(1))
@@ -146,7 +146,7 @@ describe('DrawCoursePage', () => {
     fireEvent.click(addPoint)
 
     expect(await screen.findByText('되돌아가는 자동 연결 구간을 제외하고 자연스럽게 이어졌어요.')).toBeInTheDocument()
-    expect(screen.getByText('2/20개 지점')).toBeInTheDocument()
+    expect(screen.getByText('3/20개 지점')).toBeInTheDocument()
     expect(screen.getByText('0.18km')).toBeInTheDocument()
   })
 
