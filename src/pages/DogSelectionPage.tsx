@@ -7,6 +7,7 @@ import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
 import type { DogProfileSummary } from '../Components/profile/DogProfileCard'
 import type { WalkPresenceMode } from '../api/walks'
 import { PresenceModeConfirmDialog } from '../Components/system'
+import { requestNavigationOrientationPermission } from '../features/navigation/hooks/useNavigationHeading'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/dog-selection-page.css'
 
@@ -40,6 +41,7 @@ export function DogSelectionPage({ dogs = defaultDogs, map, onBack = () => windo
   }
 
   const confirmSelection = () => {
+    void requestNavigationOrientationPermission()
     if (mode === 'off') {
       onConfirm({ dogIds: selectedDogIds, mode })
       return

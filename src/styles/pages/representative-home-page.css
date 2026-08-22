@@ -65,6 +65,15 @@
   background: var(--color-surface);
 }
 
+.representative-home-page__course-card--empty {
+  justify-content: flex-start;
+  cursor: default;
+}
+
+.representative-home-page__course-card--empty .representative-home-page__course-copy {
+  justify-content: center;
+}
+
 .representative-home-page__course-copy {
   height: 100%;
   display: flex;

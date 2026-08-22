@@ -63,13 +63,27 @@ describe('RepresentativeHomePage', () => {
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('starts a walk without exposing a home-level mode toggle', () => {
-    const onStartWalk = vi.fn()
-    render(<RepresentativeHomePage course={course} onStartWalk={onStartWalk} />)
+  it('lets the user choose between a free walk and the representative course', () => {
+    const onStartFreeWalk = vi.fn()
+    const onStartRepresentativeWalk = vi.fn()
+    render(<RepresentativeHomePage
+      course={course}
+      onStartFreeWalk={onStartFreeWalk}
+      onStartRepresentativeWalk={onStartRepresentativeWalk}
+    />)
 
     expect(screen.queryByRole('switch', { name: '거리두기 모드' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
-    expect(onStartWalk).toHaveBeenCalledOnce()
+    expect(screen.getByRole('dialog', { name: '산책 방식 선택' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /대표 코스 산책.*저녁 남산길.*29분.*1.80km/ })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /자유 산책/ }))
+    expect(onStartFreeWalk).toHaveBeenCalledOnce()
+    expect(onStartRepresentativeWalk).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: /대표 코스 산책/ }))
+    expect(onStartRepresentativeWalk).toHaveBeenCalledOnce()
   })
 
   it('separates representative start, alternative comparison, and new recommendations', () => {
@@ -77,6 +91,20 @@ describe('RepresentativeHomePage', () => {
     expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '오늘의 추천 대안 보기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '새 코스 추천받기' })).toBeInTheDocument()
+  })
+
+  it('shows the unified empty home state without a representative course', () => {
+    render(<RepresentativeHomePage />)
+
+    expect(screen.getByRole('heading', { name: '현재 대표 코스가 없습니다.' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '현재 위치 지도' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지도에서 코스 그리기' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /현재 대표 코스가 없습니다/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+    expect(screen.getByRole('button', { name: /자유 산책/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /대표 코스 산책.*현재 대표 코스가 없습니다/ })).toBeDisabled()
   })
 
   it('anchors the place preview to the draggable home sheet position', () => {

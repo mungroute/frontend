@@ -1,14 +1,14 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { useNavigationHeading } from './useNavigationHeading'
 
 describe('useNavigationHeading', () => {
-  it('uses the route direction and reaches the full turn bearing', async () => {
+  it('uses the route direction as a fallback and reaches the full turn bearing', async () => {
     const position = {
       coordinate: { latitude: 37.56, longitude: 126.98 },
       accuracy: 5,
       observedAt: 1,
-      heading: 270,
+      heading: null,
       speed: 1,
     }
     const view = renderHook(
@@ -18,6 +18,27 @@ describe('useNavigationHeading', () => {
 
     await waitFor(() => expect(view.result.current).toBe(0))
     view.rerender({ routeBearing: 90 })
+
+    await waitFor(() => expect(view.result.current).toBe(90))
+  })
+
+  it('prefers the absolute device direction over GPS and route bearings', async () => {
+    const position = {
+      coordinate: { latitude: 37.56, longitude: 126.98 },
+      accuracy: 5,
+      observedAt: 1,
+      heading: 180,
+      speed: 1,
+    }
+    const view = renderHook(() => useNavigationHeading(position, [], 270))
+    await waitFor(() => expect(view.result.current).toBe(180))
+
+    const event = new Event('deviceorientationabsolute')
+    Object.defineProperties(event, {
+      absolute: { value: true },
+      alpha: { value: 270 },
+    })
+    act(() => window.dispatchEvent(event))
 
     await waitFor(() => expect(view.result.current).toBe(90))
   })

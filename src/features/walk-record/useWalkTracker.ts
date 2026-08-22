@@ -156,6 +156,12 @@ export function useWalkTracker(
         const segmentMeters = distanceBetween(previous.coordinate, coordinate)
         const elapsedSeconds = Math.max((observedAt - previous.observedAt) / 1000, 0.25)
         const speedMetersPerSecond = segmentMeters / elapsedSeconds
+        const plausibleNavigationFix = segmentMeters <= MAX_SINGLE_SEGMENT_METERS
+          && speedMetersPerSecond <= MAX_WALKING_SPEED_METERS_PER_SECOND
+        setCurrentPosition({
+          ...navigationFix,
+          coordinate: plausibleNavigationFix ? coordinate : previous.coordinate,
+        })
         const minimumMovementMeters = Math.max(
           3,
           Math.min(10, Math.max(previous.accuracy, accuracy) * 0.25),

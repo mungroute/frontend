@@ -2,12 +2,12 @@ import type { NavigationManeuver } from '../utils/maneuver'
 
 const maneuverLabels: Record<NavigationManeuver['kind'], { icon: string; label: string }> = {
   STRAIGHT: { icon: '↑', label: '직진' },
-  SLIGHT_LEFT: { icon: '↖', label: '왼쪽 완만한 방향' },
-  LEFT: { icon: '←', label: '왼쪽' },
-  SHARP_LEFT: { icon: '↰', label: '왼쪽 급회전' },
-  SLIGHT_RIGHT: { icon: '↗', label: '오른쪽 완만한 방향' },
-  RIGHT: { icon: '→', label: '오른쪽' },
-  SHARP_RIGHT: { icon: '↱', label: '오른쪽 급회전' },
+  SLIGHT_LEFT: { icon: '↖', label: '완만한 좌회전' },
+  LEFT: { icon: '←', label: '좌회전' },
+  SHARP_LEFT: { icon: '↰', label: '급좌회전' },
+  SLIGHT_RIGHT: { icon: '↗', label: '완만한 우회전' },
+  RIGHT: { icon: '→', label: '우회전' },
+  SHARP_RIGHT: { icon: '↱', label: '급우회전' },
 }
 
 const distanceLabel = (distanceM: number) => distanceM >= 1_000

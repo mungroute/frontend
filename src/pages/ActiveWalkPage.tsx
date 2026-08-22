@@ -388,7 +388,7 @@ export function ActiveWalkPage({
         <aside className="active-walk-page__dev-tools" aria-label="개발 테스트 도구">
           <button type="button" onClick={() => {
             setVoiceTestMessage('음성 엔진을 준비하고 있어요.')
-            speakNavigation('80미터 앞에서 오른쪽으로 이동하세요.', {
+            speakNavigation('80미터 앞에서 우회전하세요.', {
               onStart: () => setVoiceTestMessage('테스트 음성을 재생하고 있어요.'),
               onEnd: () => setVoiceTestMessage('테스트 음성이 정상적으로 재생됐어요.'),
               onError: (reason) => setVoiceTestMessage(reason === 'unsupported'

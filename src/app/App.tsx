@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { SplashPage } from '../pages/SplashPage'
 import { LocationPermissionPage } from '../pages/LocationPermissionPage'
 import { RepresentativeHomePage } from '../pages/RepresentativeHomePage'
-import { NoCourseHomePage } from '../pages/NoCourseHomePage'
 import { RouteCandidatesPage } from '../pages/RouteCandidatesPage'
 import { RouteGeneratingPage } from '../pages/RouteGeneratingPage'
 import { WalkDurationPage } from '../pages/WalkDurationPage'
@@ -73,29 +72,19 @@ import { clearActiveWalkRoute, clearPendingWalkRoute, clearWalkRoutes, readActiv
 import type { WalkNavigationRoute, WalkRouteSelection } from '../features/navigation/types'
 import { useWalkExperiencePreferences } from '../features/walk-experience/preferences'
 
-const allowedWalkReturnPaths = new Set(['/home', '/home/no-course', '/courses/compare', '/courses/candidates', '/courses/detail', '/courses/shade'])
+const allowedWalkReturnPaths = new Set(['/home', '/courses/compare', '/courses/candidates', '/courses/detail', '/courses/shade'])
 const activeWalkPaths = new Set(['/walk/active', '/walk/distance-alert', '/walk/paused'])
-
-const resolveHomePath = async () => {
-  const [courses, records] = await Promise.all([
-    courseCatalogApi.list({ page: 0, size: 100, requestedAt: new Date().toISOString() }),
-    walkApi.list(0, 1),
-  ])
-  const hasRepresentativeCourse = courses.some((course) => course.representative)
-  const hasWalkRecord = records.length > 0
-  return hasRepresentativeCourse && hasWalkRecord ? '/home' : '/home/no-course'
-}
 
 const readWalkReturnTo = (search: string) => {
   const requested = new URLSearchParams(search).get('returnTo')
-  if (!requested) return '/home/no-course'
+  if (!requested) return '/home'
   try {
     const url = new URL(requested, window.location.origin)
     return url.origin === window.location.origin && allowedWalkReturnPaths.has(url.pathname)
       ? `${url.pathname}${url.search}`
-      : '/home/no-course'
+      : '/home'
   } catch {
-    return '/home/no-course'
+    return '/home'
   }
 }
 
@@ -105,7 +94,13 @@ const walkSelectionUrl = (returnTo: string, context: Record<string, string | num
   return `/walk/dogs?${params.toString()}`
 }
 
-const readLocation = () => ({ pathname: window.location.pathname, search: window.location.search })
+const readLocation = () => {
+  const search = window.location.search
+  if (window.location.pathname === '/home/no-course') {
+    window.history.replaceState(window.history.state, '', `/home${search}`)
+  }
+  return { pathname: window.location.pathname, search }
+}
 
 type NavigationOptions = {
   replace?: boolean
@@ -199,7 +194,9 @@ export function App() {
   const walkStartedAtRef = useRef<string | undefined>(restoredActiveSnapshot?.startedAt)
   const walkStartPromiseRef = useRef<Promise<number> | undefined>(undefined)
   const walkEndPromiseRef = useRef<Promise<WalkEndResult> | undefined>(undefined)
+  const walkPointUploadChainRef = useRef<Promise<void>>(Promise.resolve())
   const walkStartingRef = useRef(false)
+  const walkEndingRef = useRef(false)
   const skipNextHistoryPopRef = useRef(false)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
   const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
@@ -309,12 +306,15 @@ export function App() {
   const walkTracker = useWalkTracker(
     isWalkTracking,
     (point) => {
+      if (walkEndingRef.current) return
       const sessionPromise = walkSessionIdRef.current
         ? Promise.resolve(walkSessionIdRef.current)
         : walkStartPromiseRef.current
       if (!sessionPromise) return
-      void sessionPromise
-        .then((sessionId) => walkApi.addPoint(sessionId, {
+      const upload = walkPointUploadChainRef.current
+        .then(async () => {
+          const sessionId = await sessionPromise
+          await walkApi.addPoint(sessionId, {
           recordedAt: walkStartedAtRef.current
             && Date.parse(point.recordedAt) < Date.parse(walkStartedAtRef.current)
             ? walkStartedAtRef.current
@@ -322,8 +322,10 @@ export function App() {
           lon: point.longitude,
           lat: point.latitude,
           accuracy: point.accuracy,
-        }))
+          })
+        })
         .catch((error: Error) => setWalkApiError(error.message))
+      walkPointUploadChainRef.current = upload
     },
     sendPresenceFix,
     devLocationOverride,
@@ -598,6 +600,8 @@ export function App() {
     if (walkStartingRef.current) return
     walkStartingRef.current = true
     walkTracker.reset()
+    walkPointUploadChainRef.current = Promise.resolve()
+    walkEndingRef.current = false
     setWalkEndResult(undefined)
     setWalkApiError(undefined)
     setNearbyPresence(undefined)
@@ -731,6 +735,8 @@ export function App() {
   }
 
   const endWalk = () => {
+    if (walkEndingRef.current) return
+    walkEndingRef.current = true
     navigate('/walk/complete')
     clearWalkRoutes()
     setActiveWalkRoute(null)
@@ -739,7 +745,10 @@ export function App() {
       ? Promise.resolve(walkSessionIdRef.current)
       : walkStartPromiseRef.current
     if (!sessionPromise) return
-    const pending = sessionPromise.then((sessionId) => walkApi.end(sessionId))
+    const pending = sessionPromise.then(async (sessionId) => {
+      await walkPointUploadChainRef.current
+      return walkApi.end(sessionId)
+    })
     walkEndPromiseRef.current = pending
     void pending
       .then(setWalkEndResult)
@@ -749,13 +758,7 @@ export function App() {
   const requestLocationPermission = () => {
     setLocationError(false)
     void requestCurrentLocation()
-      .then(async () => {
-        try {
-          navigate(await resolveHomePath())
-        } catch {
-          navigate('/home/no-course')
-        }
-      })
+      .then(() => navigate('/home'))
       .catch(() => setLocationError(true))
   }
 
@@ -1010,7 +1013,7 @@ export function App() {
 
   if (location.pathname === '/onboarding/dog') {
     const finishOnboarding = () => {
-      navigate('/home/no-course')
+      navigate('/home')
       setShowSignupLocationPermission(true)
     }
     return <DogOnboardingPage onSkip={finishOnboarding} onSave={async (value) => {
@@ -1242,11 +1245,22 @@ export function App() {
       && walkEndResult.isLoop
       && walkEndResult.matchedSegmentIds.length > 0,
     )
+    const representativeUnavailableReason = !walkEndResult || walkEndResult.usablePointCount < 2
+      ? 'insufficient-gps' as const
+      : !walkEndResult.isLoop
+        ? 'incomplete-route' as const
+        : 'unmatched-route' as const
+    const completedTrack = walkEndResult?.trackGeoJson ?? (walkTracker.walkedCoordinates.length >= 2 ? {
+      type: 'LineString' as const,
+      coordinates: walkTracker.walkedCoordinates.map(({ longitude, latitude }) => [longitude, latitude] as [number, number]),
+    } : null)
     return <WalkCompletePage
       time={walkEndResult ? formatWalkTime(walkEndResult.durationSec) : walkTracker.formattedTime}
       distance={walkEndResult ? formatWalkDistance(walkEndResult.distanceM) : walkTracker.formattedDistance}
       representativeEligible={backendWalkStarted ? representativeEligible : true}
+      representativeUnavailableReason={representativeUnavailableReason}
       matchStatus={walkEndResult?.matchStatus}
+      trackGeoJson={completedTrack}
       errorMessage={walkApiError}
       onExitWithoutSaving={() => {
         setBackendWalkStarted(false)
@@ -1255,6 +1269,8 @@ export function App() {
         walkSessionIdRef.current = undefined
         walkStartPromiseRef.current = undefined
         walkEndPromiseRef.current = undefined
+        walkPointUploadChainRef.current = Promise.resolve()
+        walkEndingRef.current = false
         clearWalkRoutes()
         setActiveWalkRoute(null)
         navigate('/home')
@@ -1410,43 +1426,38 @@ export function App() {
     />
   }
 
-  if (location.pathname === '/home/no-course') {
+  if (location.pathname === '/home') {
     return <>
-      <NoCourseHomePage onStartWalk={() => selectFreeWalk(walkSelectionUrl('/home/no-course', { entry: 'direct' }))} onDrawCourse={() => navigate('/courses/draw')} onRecommendCourse={() => navigate('/walk/time')} />
+      <RepresentativeHomePage
+        course={representativeCourse}
+        diagnostics={representativeCourseDiagnostics}
+        onStartFreeWalk={() => selectFreeWalk(walkSelectionUrl('/home', { entry: 'direct' }))}
+        onStartRepresentativeWalk={() => representativeCourse && selectRequiredRoute(() => normalizeWalkRoute({
+          routeKey: `home-representative:${representativeCourse.courseSource}:${representativeCourse.courseId}`,
+          backendId: `${representativeCourse.courseSource}:${representativeCourse.courseId}`,
+          origin: 'REPRESENTATIVE_COURSE',
+          name: representativeCourse.courseName,
+          geometry: representativeCourse.route,
+          distanceM: representativeCourse.metrics?.lengthM,
+          durationSec: representativeCourse.metrics ? representativeCourse.metrics.durationMin * 60 : undefined,
+          estimatedSurfaceTempC: representativeCourse.metrics?.estimatedSurfaceTempC,
+          shadeRatio: representativeCourse.metrics?.shadeRatio,
+        }), walkSelectionUrl('/home', { entry: 'representative-course', duration: representativeCourse.metrics?.durationMin ?? 30 }))}
+        onCompareCourse={() => representativeCourse
+          ? navigate(`/courses/compare?returnTo=%2Fhome&source=${representativeCourse.courseSource}&id=${representativeCourse.courseId}`)
+          : navigate('/courses/draw')}
+        onRecommendCourse={() => navigate('/walk/time')}
+        onOpenCourse={() => representativeCourse
+          ? navigate(`/courses/detail?source=${representativeCourse.courseSource}&id=${representativeCourse.courseId}`)
+          : undefined}
+      />
       {showSignupLocationPermission && <LocationPermissionSheet onClose={() => setShowSignupLocationPermission(false)} onAllow={requestSignupLocation} />}
       {locationError && <GpsErrorDialog onClose={() => setLocationError(false)} onRetry={requestSignupLocation} />}
     </>
   }
 
-  if (location.pathname === '/home') {
-    return <RepresentativeHomePage
-      course={representativeCourse}
-      diagnostics={representativeCourseDiagnostics}
-      onStartWalk={() => representativeCourse
-        ? selectRequiredRoute(() => normalizeWalkRoute({
-            routeKey: `representative:${representativeCourse.courseSource}:${representativeCourse.courseId}`,
-            backendId: `${representativeCourse.courseSource}:${representativeCourse.courseId}`,
-            origin: 'REPRESENTATIVE_COURSE',
-            name: representativeCourse.courseName,
-            geometry: representativeCourse.route,
-            distanceM: representativeCourse.metrics?.lengthM,
-            durationSec: representativeCourse.metrics ? representativeCourse.metrics.durationMin * 60 : undefined,
-            estimatedSurfaceTempC: representativeCourse.metrics?.estimatedSurfaceTempC,
-            shadeRatio: representativeCourse.metrics?.shadeRatio,
-          }), walkSelectionUrl('/home', { entry: 'representative-home', duration: representativeCourse.metrics?.durationMin ?? 30 }))
-        : selectFreeWalk(walkSelectionUrl('/home', { entry: 'direct' }))}
-      onCompareCourse={() => representativeCourse
-        ? navigate(`/courses/compare?returnTo=%2Fhome&source=${representativeCourse.courseSource}&id=${representativeCourse.courseId}`)
-        : navigate('/courses')}
-      onRecommendCourse={() => navigate('/walk/time')}
-      onOpenCourse={() => representativeCourse
-        ? navigate(`/courses/detail?source=${representativeCourse.courseSource}&id=${representativeCourse.courseId}`)
-        : navigate('/courses')}
-    />
-  }
-
   if (location.pathname === '/location-permission') {
-    return <><LocationPermissionPage onRequestPermission={requestLocationPermission} />{locationError && <GpsErrorDialog onClose={() => { setLocationError(false); navigate('/home/no-course') }} onRetry={requestLocationPermission} />}</>
+    return <><LocationPermissionPage onRequestPermission={requestLocationPermission} />{locationError && <GpsErrorDialog onClose={() => { setLocationError(false); navigate('/home') }} onRetry={requestLocationPermission} />}</>
   }
 
   if (location.pathname === '/') {

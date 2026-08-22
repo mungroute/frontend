@@ -239,7 +239,7 @@ describe('App location permission route', () => {
     await waitFor(() => expect(window.location.pathname).toBe('/onboarding/dog'))
     expect(screen.getByRole('heading', { name: '반려견 등록' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '나중에 등록할게요' }))
-    expect(window.location.pathname).toBe('/home/no-course')
+    expect(window.location.pathname).toBe('/home')
     expect(screen.getByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '위치 사용 허용' })).toBeInTheDocument()
   })
@@ -282,7 +282,7 @@ describe('App location permission route', () => {
   it.each([
     { caseName: '대표 코스가 없으면', courses: [catalogCourse].map((course) => ({ ...course, representative: false })), records: [savedWalkRecord] },
     { caseName: '산책 기록이 없으면', courses: [catalogCourse], records: [] },
-  ])('$caseName no-course 홈으로 이동한다', async ({ courses, records }) => {
+  ])('$caseName 통합 홈으로 이동한다', async ({ courses, records }) => {
     vi.mocked(courseCatalogApi.list).mockResolvedValue(courses)
     vi.mocked(walkApi.list).mockResolvedValue(records)
     const getCurrentPosition = vi.fn()
@@ -296,8 +296,13 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '위치 권한 확인' }))
     act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.5, longitude: 127 } }))
 
-    await waitFor(() => expect(window.location.pathname).toBe('/home/no-course'))
+    await waitFor(() => expect(window.location.pathname).toBe('/home'))
     expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    if (courses.some((course) => course.representative)) {
+      expect(await screen.findByRole('heading', { name: '저녁 남산길' })).toBeInTheDocument()
+    } else {
+      expect(await screen.findByRole('heading', { name: '현재 대표 코스가 없습니다.' })).toBeInTheDocument()
+    }
   })
 
   it('shows the GPS error dialog when location lookup fails', async () => {
@@ -314,7 +319,7 @@ describe('App location permission route', () => {
 
     expect(await screen.findByRole('dialog', { name: 'GPS 오류' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '홈으로 돌아가기' }))
-    expect(window.location.pathname).toBe('/home/no-course')
+    expect(window.location.pathname).toBe('/home')
   })
 
   it('renders the representative route home screen at /home', async () => {
@@ -334,20 +339,22 @@ describe('App location permission route', () => {
     expect(diagnosticsRequestedAt).toBe(detailRequestedAt)
   })
 
-  it('renders the no-course home state at /home/no-course', () => {
+  it('canonicalizes the legacy no-course URL to the unified home', () => {
     window.history.replaceState({}, '', '/home/no-course')
 
     render(<App />)
 
+    expect(window.location.pathname).toBe('/home')
     expect(screen.getByRole('region', { name: '현재 위치 지도' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: '저녁 남산길' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '현재 대표 코스가 없습니다.' })).toBeInTheDocument()
   })
 
-  it.each(['/home', '/home/no-course'])('starts a direct walk from %s', (path) => {
+  it.each(['/home', '/home/no-course'])('starts a free walk from the choice dialog on %s', (path) => {
     window.history.replaceState({}, '', path)
 
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: /자유 산책/ }))
 
     expect(window.location.pathname).toBe('/walk/dogs')
     expect(screen.getByRole('heading', { name: '함께 산책할 반려견 선택' })).toBeInTheDocument()
@@ -364,12 +371,13 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '코스 상세' })).toBeInTheDocument()
   })
 
-  it('carries the representative home course route into the active walk', async () => {
+  it('starts a free walk from home even when a representative course exists', async () => {
     window.history.replaceState({}, '', '/home')
     render(<App />)
 
     await screen.findByRole('heading', { name: '저녁 남산길' })
     fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: /자유 산책/ }))
 
     expect(window.location.search).not.toContain('courseSource')
     expect(window.location.search).not.toContain('courseId')
@@ -377,8 +385,29 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    expect(screen.queryByTestId('walk-route-progress')).not.toBeInTheDocument()
+    expect(readActiveWalkRoute()?.route).toBeNull()
+  })
+
+  it('starts navigation with the representative course selected from the home dialog', async () => {
+    window.history.replaceState({}, '', '/home')
+    render(<App />)
+
+    await screen.findByRole('heading', { name: '저녁 남산길' })
+    fireEvent.click(screen.getByRole('button', { name: '산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: /대표 코스 산책.*저녁 남산길/ }))
+
+    expect(window.location.pathname).toBe('/walk/dogs')
+    fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
+
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    expect(readActiveWalkRoute()?.route).toEqual(expect.objectContaining({
+      origin: 'REPRESENTATIVE_COURSE',
+      name: '저녁 남산길',
+      backendId: 'custom:42',
+    }))
     expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
-    expect(screen.getByText('저녁 남산길')).toBeInTheDocument()
   })
 
   it.each([
@@ -435,17 +464,17 @@ describe('App location permission route', () => {
     expect(window.location.pathname).toBe('/walk/time')
     view.unmount()
 
-    window.history.replaceState({}, '', '/home/no-course')
+    window.history.replaceState({}, '', '/home')
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /지도에서 코스 그리기/ }))
     expect(window.location.pathname).toBe('/courses/draw')
   })
 
   it('returns from time-based course recommendations to /home', () => {
-    window.history.replaceState({}, '', '/home/no-course')
+    window.history.replaceState({}, '', '/home')
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: /시간 맞춤 코스 추천받기/ }))
+    fireEvent.click(screen.getByRole('button', { name: '새 코스 추천받기' }))
     expect(window.location.pathname).toBe('/walk/time')
 
     fireEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
@@ -457,7 +486,7 @@ describe('App location permission route', () => {
     ['/walk/dogs?returnTo=%2Fcourses%2Fcompare', '/courses/compare'],
     ['/walk/dogs?returnTo=%2Fcourses%2Fcandidates', '/courses/candidates'],
     ['/walk/dogs?returnTo=%2Fcourses%2Fdetail', '/courses/detail'],
-    ['/walk/dogs?returnTo=https%3A%2F%2Fevil.example', '/home/no-course'],
+    ['/walk/dogs?returnTo=https%3A%2F%2Fevil.example', '/home'],
   ])('returns safely from %s to %s', (path, expected) => {
     window.history.replaceState({}, '', path)
     render(<App />)
@@ -957,6 +986,54 @@ describe('App location permission route', () => {
     fireEvent.click(within(secondDialog).getByRole('button', { name: '산책 종료 후 나가기' }))
 
     await waitFor(() => expect(walkApi.end).toHaveBeenCalledWith(42))
+    expect(window.location.pathname).toBe('/walk/complete')
+  })
+
+  it('waits for pending GPS point uploads before finalizing the walk', async () => {
+    let reportPosition: PositionCallback = () => undefined
+    const watchPosition = vi.fn((success: PositionCallback) => { reportPosition = success; return 7 })
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      geolocation: { watchPosition, clearWatch: vi.fn() },
+    })
+    let finishPointUpload: () => void = () => undefined
+    const pendingPointUpload = new Promise<void>((resolve) => { finishPointUpload = resolve })
+    vi.spyOn(walkApi, 'addPoint').mockReturnValueOnce(pendingPointUpload)
+    const end = vi.spyOn(walkApi, 'end').mockResolvedValue({
+      sessionId: 42,
+      endedAt: '2026-08-21T17:30:00+09:00',
+      distanceM: 15,
+      durationSec: 10,
+      pointCount: 2,
+      usablePointCount: 2,
+      matchStatus: 'MATCHED',
+      matchFailureReason: null,
+      matchedSegmentIds: [11],
+      isLoop: false,
+      trackGeoJson: { type: 'LineString', coordinates: [[126.98, 37.56], [126.9801, 37.5601]] },
+    })
+    writeActiveWalkRoute({ sessionId: 42, route: null, presenceMode: null, presenceEnabled: false })
+    window.history.replaceState({}, '', '/walk/active')
+    render(<App />)
+
+    act(() => reportPosition({
+      timestamp: Date.now(),
+      coords: {
+        latitude: 37.56, longitude: 126.98, accuracy: 5,
+        altitude: null, altitudeAccuracy: null, heading: null, speed: 1,
+        toJSON: () => ({}),
+      },
+      toJSON: () => ({}),
+    }))
+    await waitFor(() => expect(walkApi.addPoint).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '산책 종료 확인' })).getByRole('button', { name: '산책 종료 확정' }))
+    await Promise.resolve()
+    expect(end).not.toHaveBeenCalled()
+
+    finishPointUpload()
+    await waitFor(() => expect(end).toHaveBeenCalledWith(42))
     expect(window.location.pathname).toBe('/walk/complete')
   })
 

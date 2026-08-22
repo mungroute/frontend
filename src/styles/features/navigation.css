@@ -17,11 +17,11 @@
 .navigation-map__error button { display: flex; align-items: center; gap: 4px; border: 0; color: #d95f2e; background: transparent; font: inherit; font-weight: 700; white-space: nowrap; }
 .navigation-map__error svg { width: 15px; }
 
-.navigation-hud { position: absolute; z-index: 4; right: auto; bottom: calc(100% - var(--map-sheet-top, calc(100% - var(--navigation-sheet-height, 338px))) + 18px); left: 82px; width: min(calc(100% - 184px), 220px); min-height: 54px; display: flex; align-items: center; gap: 9px; padding: 8px 12px; border: 1px solid rgba(121, 91, 69, .12); border-radius: 14px; color: #4f3c30; background: var(--active-walk-surface, rgba(248, 246, 240, .96)); box-shadow: 0 5px 16px rgba(72, 43, 27, .16); }
+.navigation-hud { position: absolute; z-index: 4; right: 82px; bottom: calc(100% - var(--map-sheet-top, calc(100% - var(--navigation-sheet-height, 338px))) + 18px); left: 78px; width: auto; min-height: 58px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid rgba(121, 91, 69, .12); border-radius: 14px; color: #4f3c30; background: var(--active-walk-surface, rgba(248, 246, 240, .96)); box-shadow: 0 5px 16px rgba(72, 43, 27, .16); }
 .navigation-hud--off-route { color: #8b3e2d; background: rgba(255, 243, 235, .97); }
 .navigation-hud__icon { flex: 0 0 30px; display: grid; place-items: center; font-size: 26px; font-weight: 800; color: #f47a3a; }
 .navigation-hud div { min-width: 0; display: grid; gap: 1px; }
-.navigation-hud strong { overflow: hidden; font-size: 14px; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.navigation-hud strong { display: block; overflow: visible; font-size: 14px; line-height: 19px; word-break: keep-all; white-space: normal; }
 .navigation-hud div span { overflow: hidden; color: #8b786b; font-size: 10px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
 
 .walk-navigation-sheet { --navigation-sheet-height: 158px; position: absolute; z-index: 8; right: 0; bottom: 0; left: 0; height: var(--navigation-sheet-height); padding: 23px 18px max(14px, env(safe-area-inset-bottom)); border: 1px solid rgba(255,255,255,.7); border-radius: 28px 28px 0 0; background: rgba(255, 250, 244, .97); box-shadow: 0 -8px 28px rgba(72, 43, 27, .14); transition: height 300ms cubic-bezier(.22,1,.36,1); }
