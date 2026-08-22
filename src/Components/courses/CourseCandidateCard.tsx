@@ -22,6 +22,8 @@ export function CourseCandidateCard({ candidate, selected, targetMinutes, onSele
         <em>{candidate.source === 'saved' ? '내 코스' : '새 추천'}</em>
         {candidate.weatherSource === 'NOWCAST' && <em>실시간 날씨</em>}
         {candidate.weatherSource === 'CACHED' && <em>최근 날씨 캐시</em>}
+        {candidate.weatherSource === 'OBSERVED' && <em>오늘 관측 날씨</em>}
+        {candidate.weatherSource === 'FORECAST' && <em>오늘 예보 날씨</em>}
       </span>
       <strong>{candidate.name}</strong>
       <span>{candidate.durationMinutes}분 · {candidate.distanceKm.toFixed(1)}km</span>

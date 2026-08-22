@@ -32,11 +32,11 @@ export function RouteCandidatesPage({
     : defaultCandidate?.id ?? ''
   const selectedCandidate = generatedCandidates.find((candidate) => candidate.id === resolvedSelectedRouteId) ?? defaultCandidate
   const sceneOverlay = useMemo(() => {
-    if (!selectedCandidate?.routeCoordinates.length) return { mouseWheelZoom: false }
+    if (!selectedCandidate?.routeCoordinates.length) return { mouseWheelZoom: true }
     const latitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.latitude)
     const longitudes = selectedCandidate.routeCoordinates.map((coordinate) => coordinate.longitude)
     return {
-      mouseWheelZoom: false,
+      mouseWheelZoom: true,
       center: {
         latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
         longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,

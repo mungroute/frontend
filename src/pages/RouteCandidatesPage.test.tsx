@@ -63,7 +63,7 @@ describe('RouteCandidatesPage', () => {
     }))
 
     render(<RouteCandidatesPage map={{ adapter, scene }} candidates={candidates} />)
-    expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ mouseWheelZoom: false }))
+    expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ mouseWheelZoom: true }))
     fireEvent.click(screen.getByRole('button', { name: /장충단 공원길 B/ }))
 
     expect(update).toHaveBeenLastCalledWith(expect.objectContaining({

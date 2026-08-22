@@ -925,6 +925,41 @@ describe('App location permission route', () => {
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
+  it('guards browser back navigation during an active walk and ends only after confirmation', async () => {
+    writeActiveWalkRoute({ sessionId: 42, route: null, presenceMode: null, presenceEnabled: false })
+    vi.spyOn(walkApi, 'end').mockResolvedValue({
+      sessionId: 42,
+      endedAt: '2026-08-21T17:30:00+09:00',
+      distanceM: 0,
+      durationSec: 10,
+      pointCount: 0,
+      usablePointCount: 0,
+      matchStatus: 'INSUFFICIENT_POINTS',
+      matchFailureReason: null,
+      matchedSegmentIds: [],
+      isLoop: false,
+      trackGeoJson: null,
+    })
+    window.history.replaceState({}, '', '/home')
+    window.history.pushState({}, '', '/walk/active')
+    render(<App />)
+
+    act(() => window.history.back())
+    const firstDialog = await screen.findByRole('dialog', { name: '산책 이탈 확인' })
+    expect(within(firstDialog).getByRole('heading', { name: '산책을 종료하겠습니까?' })).toBeInTheDocument()
+    fireEvent.click(within(firstDialog).getByRole('button', { name: '돌아가기' }))
+
+    await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    expect(walkApi.end).not.toHaveBeenCalled()
+
+    act(() => window.history.back())
+    const secondDialog = await screen.findByRole('dialog', { name: '산책 이탈 확인' })
+    fireEvent.click(within(secondDialog).getByRole('button', { name: '산책 종료 후 나가기' }))
+
+    await waitFor(() => expect(walkApi.end).toHaveBeenCalledWith(42))
+    expect(window.location.pathname).toBe('/walk/complete')
+  })
+
   it('restores elapsed time and distance from the active server session after refresh', async () => {
     const route = normalizeWalkRoute({
       routeKey: 'restored-active-route',

@@ -146,14 +146,12 @@ describe('ActiveWalkPage', () => {
     expect(onNavigationVoiceEnabledChange).toHaveBeenCalledWith(false)
   })
 
-  it('explains when the development TTS test is unsupported instead of failing silently', () => {
-    vi.stubGlobal('speechSynthesis', undefined)
-    vi.stubGlobal('SpeechSynthesisUtterance', undefined)
+  it('hides active-walk development test controls by default', () => {
     render(<ActiveWalkPage />)
 
-    fireEvent.click(screen.getByRole('button', { name: '음성 안내 테스트' }))
-
-    expect(screen.getByText('이 브라우저는 음성 안내를 지원하지 않아요.')).toHaveAttribute('role', 'status')
+    expect(screen.queryByRole('button', { name: '음성 안내 테스트' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '거리두기 워치 알림 테스트' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '음성 안내 끄기' })).not.toBeInTheDocument()
   })
 
   it('exposes the active walk controls and distance mode', () => {
