@@ -6,6 +6,7 @@ type CalendarMode = 'flat' | 'skyline'
 
 type WalkContributionCalendarProps = {
   contributions: WalkContributions
+  focusMonth?: number
   onOpenRecord: (sessionId: number) => void
 }
 
@@ -58,7 +59,7 @@ const buildCalendar = (year: number, days: WalkContributionDay[]) => {
 
 const monthMarkers = (cells: CalendarCell[]) => cells.filter((cell) => cell.dayOfMonth === 1)
 
-export function WalkContributionCalendar({ contributions, onOpenRecord }: WalkContributionCalendarProps) {
+export function WalkContributionCalendar({ contributions, focusMonth, onOpenRecord }: WalkContributionCalendarProps) {
   const [mode, setMode] = useState<CalendarMode>('flat')
   const [morphProgress, setMorphProgress] = useState(0)
   const [isMorphing, setIsMorphing] = useState(false)
@@ -93,6 +94,20 @@ export function WalkContributionCalendar({ contributions, onOpenRecord }: WalkCo
   useEffect(() => () => {
     if (morphFrameRef.current !== undefined) cancelAnimationFrame(morphFrameRef.current)
   }, [])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport || mode !== 'flat' || !focusMonth || viewport.clientWidth <= 0) return
+    const marker = markers.find((cell) => cell.month === focusMonth)
+    if (!marker) return
+    const sceneWidth = viewport.scrollWidth || 900
+    const left = Math.max(0, Math.min(
+      sceneWidth - viewport.clientWidth,
+      marker.week * 17 - viewport.clientWidth * 0.35,
+    ))
+    if (typeof viewport.scrollTo === 'function') viewport.scrollTo({ left, behavior: 'smooth' })
+    else viewport.scrollLeft = left
+  }, [focusMonth, markers, mode])
 
   useEffect(() => {
     const viewport = viewportRef.current

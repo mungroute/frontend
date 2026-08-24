@@ -14,7 +14,10 @@ describe('SystemStatesPreviewPage', () => {
     const onSelect = vi.fn()
     render(<SystemStatesPreviewPage selectedCase="m05" onSelect={onSelect} />)
 
-    expect(screen.getByRole('dialog', { name: '산책 종료 확인' })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: '산책 종료 확인' })
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('완료 화면에서 기록으로 저장할 수 있어요.')
+    expect(dialog).not.toHaveTextContent('기록에 저장돼요.')
     fireEvent.click(screen.getByRole('button', { name: '미리보기 목록' }))
     expect(onSelect).toHaveBeenCalledWith(undefined)
   })

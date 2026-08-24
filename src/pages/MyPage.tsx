@@ -1,10 +1,14 @@
+import { useEffect, useState } from 'react'
 import { DogProfileCard } from '../Components/profile/DogProfileCard'
 import type { DogProfileSummary } from '../Components/profile/DogProfileCard'
 import { DetailRow, HomeBottomNavigation } from '../Components/ui'
+import { groupApi } from '../api/groups'
+import type { GroupApi } from '../api/groups'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/profile-group-pages.css'
 
 type MyPageProps = {
+  api?: Pick<GroupApi, 'list'>
   profileImageSrc?: string
   userNickname?: string
   onOpenProfile?: () => void
@@ -23,8 +27,37 @@ type MyPageProps = {
 
 const previewDog: DogProfileSummary = { id: 'mango', name: '망고', detail: '골든 리트리버 · 4살' }
 
-export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenAccount, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo, onLogout, dog, dogCount = 2, notificationDescription = '거리두기 · 만나기 · 그룹 활동', walkStatisticsDescription = '산책 기록을 확인해 보세요' }: MyPageProps) {
+export function MyPage({ api = groupApi, profileImageSrc, userNickname, onOpenProfile, onOpenAccount, onOpenStats, onOpenDogs, onOpenGroups, onOpenNotifications, onOpenServiceInfo, onLogout, dog, dogCount = 2, notificationDescription = '거리두기 · 만나기 · 그룹 활동', walkStatisticsDescription = '산책 기록을 확인해 보세요' }: MyPageProps) {
+  const [groupCount, setGroupCount] = useState<number>()
+  const [groupCountFailed, setGroupCountFailed] = useState(false)
   const shownDog = dog === undefined ? { ...previewDog, profileImageSrc } : dog
+
+  useEffect(() => {
+    let active = true
+    void api.list()
+      .then((groups) => {
+        if (active) {
+          setGroupCount(groups.length)
+          setGroupCountFailed(false)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setGroupCount(undefined)
+          setGroupCountFailed(true)
+        }
+      })
+    return () => { active = false }
+  }, [api])
+
+  const groupDescription = groupCountFailed
+    ? '그룹 수를 불러오지 못했어요'
+    : groupCount === undefined
+      ? '참여 중인 그룹 확인 중'
+      : groupCount === 0
+        ? '참여 중인 그룹 없음'
+        : `참여 중인 그룹 ${groupCount}개`
+
   return (
     <main className="journey-page profile-group-page my-page">
       <header className="my-page__header">
@@ -44,7 +77,7 @@ export function MyPage({ profileImageSrc, userNickname, onOpenProfile, onOpenAcc
       </div>
       <div className="my-page__stats"><DetailRow title="산책 통계" description={walkStatisticsDescription} onClick={onOpenStats} /></div>
       <div className="my-page__dogs"><DetailRow title="반려견 관리" description={`${dogCount}마리 등록`} onClick={onOpenDogs} /></div>
-      <div className="my-page__groups"><DetailRow title="그룹 관리" description="참여 중인 그룹 2개" onClick={onOpenGroups} /></div>
+      <div className="my-page__groups"><DetailRow title="그룹 관리" description={groupDescription} onClick={onOpenGroups} /></div>
       <div className="my-page__notifications"><DetailRow title="알림 설정" description={notificationDescription} onClick={onOpenNotifications} /></div>
       <div className="my-page__service"><DetailRow title="서비스 정보" description="버전 및 오픈소스" onClick={onOpenServiceInfo} /></div>
       <HomeBottomNavigation active="profile" />

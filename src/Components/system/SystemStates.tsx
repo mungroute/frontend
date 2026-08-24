@@ -65,7 +65,7 @@ export function WalkEndDialog({ onClose, onConfirm }: CloseableProps & { onConfi
     <Overlay label="산책 종료 확인" onClose={onClose}>
       <div className="system-icon system-icon--soft"><Square size={22} fill="currentColor" /></div>
       <h2>산책을 종료할까요?</h2>
-      <p>지금까지의 경로와 시간은<br />기록에 저장돼요.</p>
+      <p>지금까지의 경로와 시간은<br />완료 화면에서 기록으로 저장할 수 있어요.</p>
       <Button aria-label="산책 종료 확정" onClick={onConfirm}>산책 종료</Button>
       <Button variant="ghost" onClick={onClose}>계속 걷기</Button>
     </Overlay>

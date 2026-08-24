@@ -21,7 +21,7 @@ type WalkCompletePageProps = {
   onExitWithoutSaving?: () => void
 }
 
-export function WalkCompletePage({ map, dogName = '망고', distance = '2.1km', time = '31분', representativeEligible = true, representativeUnavailableReason = 'insufficient-gps', matchStatus, trackGeoJson, errorMessage, onSave, onExitWithoutSaving }: WalkCompletePageProps) {
+export function WalkCompletePage({ map, dogName = '반려견', distance = '2.1km', time = '31분', representativeEligible = true, representativeUnavailableReason = 'insufficient-gps', matchStatus, trackGeoJson, errorMessage, onSave, onExitWithoutSaving }: WalkCompletePageProps) {
   const [courseName, setCourseName] = useState('저녁 남산길')
   const [representative, setRepresentative] = useState(true)
   const [isRepresentativeAlertRequested, setIsRepresentativeAlertRequested] = useState(false)

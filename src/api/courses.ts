@@ -97,8 +97,12 @@ export type CourseDetail = {
 
 export type SwappedCourseSection = {
   sectionIndex: number
+  fromSegmentIndex: number
+  toSegmentIndexExclusive: number
   originalSegmentIds: number[]
   alternativeSegmentIds: number[]
+  originalRoute: CourseRouteGeoJson | null
+  alternativeRoute: CourseRouteGeoJson | null
   temperatureImprovementC: number
   addedLengthM: number
 }

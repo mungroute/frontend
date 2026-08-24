@@ -86,14 +86,10 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
       waypoints: [...steps.map((step) => step.waypoint), waypoint],
       requestedAt: new Date().toISOString(),
     })
-    const ignoredIndexes = new Set(connected.ignoredWaypointIndexes ?? [])
     setSteps((current) => [
       ...current,
       createConnectedStep(waypoint, overlayPoint, connected, false),
     ])
-    if (ignoredIndexes.size > 0) {
-      setNotice('되돌아가는 자동 연결 구간을 제외하고 자연스럽게 이어졌어요.')
-    }
   }
 
   const addPoint = async ({ coordinate, xPercent, yPercent }: MapClickEvent) => {
@@ -138,14 +134,19 @@ export function DrawCoursePage({ map, api = courseDrawApi, onBack, onSave }: Dra
         waypoints: [...steps.map((step) => step.waypoint), first.waypoint],
         requestedAt: new Date().toISOString(),
       })
-      const ignoredIndexes = new Set(connected.ignoredWaypointIndexes ?? [])
+      const previousSegments = new Set(previous.segmentIds)
+      const repeatedClosingSegments = connected.addedSegmentIds.filter((segmentId) => previousSegments.has(segmentId))
+      const fullyBacktracked = connected.addedSegmentIds.length > 0
+        && repeatedClosingSegments.length === connected.addedSegmentIds.length
       setSteps((current) => [
         ...current,
         createConnectedStep(first.waypoint, first.overlayPoint, connected, true),
       ])
-      setNotice(ignoredIndexes.size > 0
-        ? '되돌아가는 자동 연결 구간을 제외하고 출발점으로 이어졌어요.'
-        : '출발점으로 연결해 한 바퀴 코스를 완성했어요.')
+      setNotice(fullyBacktracked
+        ? '가장 빠른 길이어서 지나온 길을 따라 출발점으로 돌아왔어요.'
+        : repeatedClosingSegments.length > 0
+          ? '일부 지나온 길을 포함해 출발점으로 돌아오는 코스를 완성했어요.'
+          : '출발점으로 연결해 한 바퀴 코스를 완성했어요.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '출발점으로 연결하지 못했어요.')
     } finally {

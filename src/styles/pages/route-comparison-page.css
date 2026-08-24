@@ -1,21 +1,34 @@
 .route-comparison-page__map { position: absolute; top: -1px; right: -1px; left: -1px; height: calc(var(--map-sheet-top, 220px) + 1px); }
-.route-comparison-page__back { position: absolute; z-index: 3; top: 14px; left: 12px; min-width: 126px; min-height: 44px; padding: 0 14px; border: 1px solid rgba(255,255,255,.72); border-radius: 16px; color: var(--color-text-primary); background: rgba(248,246,240,.92); box-shadow: 0 6px 18px rgba(55,43,34,.14); -webkit-backdrop-filter: blur(12px) saturate(105%); backdrop-filter: blur(12px) saturate(105%); text-align: left; font-size: 18px; line-height: 24px; font-weight: 700; cursor: pointer; }
+.route-comparison-page__back { position: absolute; z-index: 3; top: 14px; left: 12px; min-width: 126px; min-height: 44px; padding: 0 14px; border: 1px solid rgba(232,222,212,.88); border-radius: 16px; color: var(--color-text-primary); background: #fffdf9; box-shadow: 0 5px 14px rgba(55,43,34,.12); text-align: left; font-size: 18px; line-height: 24px; font-weight: 700; cursor: pointer; }
 .route-comparison-page__back span { margin-right: 7px; font-family: Arial, sans-serif; font-size: 25px; font-weight: 400; }
+.route-comparison-page__legend { position: absolute; left: 12px; bottom: 10px; display: flex; align-items: center; gap: 10px; padding: 6px 9px; border: 1px solid rgba(232,222,212,.86); border-radius: var(--radius-full); background: #fffdf9; box-shadow: 0 2px 8px rgba(55,43,34,.1); }
+.route-comparison-page__legend span { display: flex; align-items: center; gap: 5px; color: var(--color-text-secondary); font-size: 9px; line-height: 13px; font-weight: 700; white-space: nowrap; }
+.route-comparison-page__legend-line { width: 18px; height: 3px; display: block; border-radius: 999px; }
+.route-comparison-page__legend-line--usual { background: linear-gradient(90deg, #20bfa9 0%, #f2a14b 46%, #f47a50 72%, #de5a4f 100%); }
+.route-comparison-page__legend-line--replacement { background: #20bfa9; }
 .route-comparison-page__sheet { position: absolute; z-index: 2; right: -1px; bottom: -1px; left: -1px; padding: 36px 24px calc(32px + env(safe-area-inset-bottom)); overflow: visible; border-radius: var(--radius-28) var(--radius-28) 0 0; background: var(--color-bg-base); }
 .route-comparison-page__sheet h1 { margin: 0; font-size: 21px; line-height: 30px; letter-spacing: -.04em; }
 .route-comparison-page__intro { margin: 7px 0 0; color: var(--color-text-secondary); font-size: 13px; line-height: 20px; }
 .route-comparison-page__recommendation { display: flex; align-items: center; gap: 7px; margin-top: 20px; color: var(--color-primary-pressed); font-size: 13px; line-height: 20px; font-weight: 700; }
 .route-comparison-page__recommendation img { width: 10px; height: 10px; }
-.route-comparison-page__cards { display: grid; gap: 12px; margin-top: 9px; }
-.route-comparison-page__card { position: relative; height: 116px; padding: 15px 18px; border: 1px solid var(--color-border); border-radius: var(--radius-16); color: var(--color-text-primary); background: var(--color-surface); text-align: left; cursor: pointer; }
-.route-comparison-page__card[aria-pressed='true'] { padding: 14px; border: 2px solid var(--color-primary); box-shadow: 0 4px 14px rgba(244, 122, 58, .12); }
-.route-comparison-page__card strong, .route-comparison-page__card span, .route-comparison-page__card small { display: block; }
-.route-comparison-page__card strong { font-size: 15px; line-height: 22px; letter-spacing: -.035em; }
-.route-comparison-page__card span { margin-top: 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 19px; }
-.route-comparison-page__card small { width: fit-content; margin-top: 7px; padding: 2px 8px; border-radius: var(--radius-full); color: var(--color-primary); background: var(--color-primary-soft); font-size: 11px; line-height: 17px; }
-.route-comparison-page__card b { position: absolute; top: 38px; right: 19px; color: var(--color-text-secondary); font-family: Arial, sans-serif; font-size: 26px; font-weight: 400; }
-.route-comparison-page__card[aria-pressed='true'] b { color: var(--color-primary); }
-.route-comparison-page__difference { margin: 13px 0 0; color: var(--color-nature); font-size: 12px; line-height: 18px; }
+.route-comparison-page__impact { margin-top: 8px; padding: 11px 13px; border: 1px solid rgba(232,222,212,.82); border-radius: var(--radius-14); background: var(--color-surface); }
+.route-comparison-page__impact > strong { display: block; color: var(--color-primary-pressed); font-size: 11px; line-height: 16px; }
+.route-comparison-page__impact p { margin: 3px 0 0; display: flex; align-items: center; gap: 6px; color: var(--color-text-primary); font-size: 13px; line-height: 19px; font-weight: 700; }
+.route-comparison-page__impact p > span { color: var(--color-text-disabled); }
+.route-comparison-page__impact em { padding: 1px 7px; border-radius: var(--radius-full); color: #168f7e; background: rgba(32,191,169,.1); font-size: 11px; line-height: 17px; font-style: normal; }
+.route-comparison-page__impact small { margin: 4px 8px 0 0; display: inline-block; color: var(--color-text-secondary); font-size: 10px; line-height: 15px; }
+.route-comparison-page__sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 7px; margin-top: 8px; }
+.route-comparison-page__sections button { min-width: 0; min-height: 54px; display: grid; align-content: center; gap: 1px; border: 1px solid rgba(32,191,169,.2); border-radius: var(--radius-12); padding: 7px 9px; color: var(--color-text-primary); background: rgba(255,253,249,.9); text-align: left; cursor: pointer; }
+.route-comparison-page__sections button[aria-pressed='true'] { border-color: #20bfa9; background: rgba(32,191,169,.08); box-shadow: 0 3px 10px rgba(32,168,143,.12); }
+.route-comparison-page__sections span { display: flex; align-items: center; gap: 5px; color: var(--color-text-secondary); font-size: 9px; line-height: 13px; }
+.route-comparison-page__sections span i { width: 6px; height: 6px; border-radius: 50%; background: #20bfa9; }
+.route-comparison-page__sections strong { font-size: 12px; line-height: 17px; }
+.route-comparison-page__sections small { color: var(--color-text-secondary); font-size: 9px; line-height: 13px; }
+.route-comparison-page__route-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; padding: 3px; border-radius: var(--radius-12); background: var(--color-bg-subtle); }
+.route-comparison-page__route-toggle button { min-width: 0; min-height: 48px; display: grid; align-content: center; gap: 1px; border: 0; border-radius: 10px; padding: 6px 8px; color: var(--color-text-secondary); background: transparent; text-align: left; cursor: pointer; }
+.route-comparison-page__route-toggle button[aria-pressed='true'] { color: var(--color-text-primary); background: var(--color-surface); box-shadow: 0 2px 7px rgba(55,43,34,.09); }
+.route-comparison-page__route-toggle strong { overflow: hidden; font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.route-comparison-page__route-toggle span { font-size: 9px; line-height: 13px; }
 .route-comparison-page__diagnostic { margin-top: 9px; padding: 9px 11px; border-radius: 12px; background: #fff3e9; }
 .route-comparison-page__diagnostic strong { color: var(--color-primary-pressed); font-size: 11px; line-height: 16px; }
 .route-comparison-page__diagnostic p { margin: 2px 0 0; display: -webkit-box; overflow: hidden; color: var(--color-text-primary); font-size: 10px; line-height: 15px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -26,10 +39,9 @@
   .route-comparison-page__sheet { padding-top: 28px; }
   .route-comparison-page__intro { margin-top: 2px; }
   .route-comparison-page__recommendation { margin-top: 6px; }
-  .route-comparison-page__cards { gap: 7px; margin-top: 5px; }
-  .route-comparison-page__card { height: 98px; }
-  .route-comparison-page__card b { top: 29px; }
-  .route-comparison-page__difference { margin-top: 5px; }
+  .route-comparison-page__impact { padding-block: 8px; }
+  .route-comparison-page__sections button { min-height: 46px; padding-block: 5px; }
+  .route-comparison-page__route-toggle button { min-height: 42px; }
   .route-comparison-page__diagnostic { margin-top: 5px; padding-block: 6px; }
   .route-comparison-page__diagnostic p { -webkit-line-clamp: 1; }
   .route-comparison-page__actions { margin-top: 10px; }

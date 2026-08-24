@@ -31,14 +31,15 @@ export function buildVWorldTileUrl(apiKey: string, layer = 'Base') {
 
 function markerStyle(marker: MapMarker) {
   const current = marker.kind === 'current-location'
+  const junction = marker.kind === 'detour-junction'
   const place = Boolean(marker.category || marker.categoryCode)
   const selected = place && marker.selected
 
   return new Style({
     image: new CircleStyle({
-      radius: current ? 8 : selected ? 20 : place ? 17 : 7,
-      fill: new Fill({ color: selected || !place ? '#f47a3a' : '#fde7d8' }),
-      stroke: new Stroke({ color: selected ? '#ffffff' : place ? '#f47a3a' : '#ffffff', width: 3 }),
+      radius: junction ? (marker.selected ? 6 : 5) : current ? 8 : selected ? 20 : place ? 17 : 7,
+      fill: new Fill({ color: junction ? '#20bfa9' : selected || !place ? '#f47a3a' : '#fde7d8' }),
+      stroke: new Stroke({ color: junction ? '#ffffff' : selected ? '#ffffff' : place ? '#f47a3a' : '#ffffff', width: junction ? 2 : 3 }),
     }),
     text: place ? new Text({
       text: marker.categoryCode,
@@ -180,6 +181,23 @@ function createEndpointElement(marker: MapMarker) {
   return element
 }
 
+function createRouteCalloutElement(marker: MapMarker) {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'map-route-callout'
+  element.dataset.interactionId = marker.interactionId ?? marker.id
+  element.dataset.latitude = String(marker.position.latitude)
+  element.dataset.longitude = String(marker.position.longitude)
+  element.dataset.selected = marker.selected ? 'true' : 'false'
+  element.setAttribute('aria-label', `${marker.label ?? '추천 이유'} 변경 구간 선택`)
+  const dot = document.createElement('span')
+  dot.setAttribute('aria-hidden', 'true')
+  const label = document.createElement('strong')
+  label.textContent = marker.label ?? ''
+  element.append(dot, label)
+  return element
+}
+
 type ChevronGlyph = {
   point: Point
   text: Text
@@ -193,6 +211,13 @@ type ChevronFlow = {
   baseStyles: Style[]
   glyphs: ChevronGlyph[]
   waitForDraw: boolean
+}
+
+type PendingDrawFeature = {
+  feature: Feature<Geometry>
+  styles: Style[]
+  threshold: number
+  durationMs: number
 }
 
 const pointAndBearingAtDistance = (coordinates: number[][], cumulative: number[], target: number) => {
@@ -354,7 +379,7 @@ function applyScene(
   pulsingStrokes: Array<{ stroke: Stroke; baseWidth: number }>,
   chevronFlows: ChevronFlow[],
   drawnRouteGroups: Set<string>,
-  pendingDrawFeatures: Array<{ feature: Feature<Geometry>; styles: Style[]; threshold: number }>,
+  pendingDrawFeatures: PendingDrawFeature[],
   pendingDrawMarkers: Array<{ element: HTMLElement; threshold: number }>,
   reduceMotion: boolean,
   scene: BaseMapScene,
@@ -395,6 +420,7 @@ function applyScene(
           width: route.outlineWidth ?? routeWidth + 4,
           lineCap,
           lineJoin: 'round',
+          lineDash: route.lineDash,
         }),
       })] : []),
       new Style({
@@ -404,6 +430,7 @@ function applyScene(
           width: routeWidth,
           lineCap,
           lineJoin: 'round',
+          lineDash: route.lineDash,
         }),
       }),
     ]
@@ -450,7 +477,12 @@ function applyScene(
     const shouldDraw = !reduceMotion && route.drawGroupId && freshDrawGroups.has(route.drawGroupId)
     if (shouldDraw) {
       feature.setStyle([])
-      pendingDrawFeatures.push({ feature, styles: routeStyles, threshold: route.drawOrder ?? 1 })
+      pendingDrawFeatures.push({
+        feature,
+        styles: routeStyles,
+        threshold: route.drawOrder ?? 1,
+        durationMs: route.drawDurationMs ?? 900,
+      })
     } else {
       feature.setStyle(routeStyles)
     }
@@ -527,6 +559,19 @@ function applyScene(
       map.addOverlay(overlay)
       return
     }
+    if (marker.kind === 'route-callout') {
+      const element = createRouteCalloutElement(marker)
+      const overlay = new Overlay({
+        element,
+        position: fromLonLat([marker.position.longitude, marker.position.latitude]),
+        positioning: 'bottom-center',
+        offset: [0, -12],
+        stopEvent: true,
+      })
+      markerOverlays.push(overlay)
+      map.addOverlay(overlay)
+      return
+    }
     const feature = new Feature({
       geometry: new Point(fromLonLat([marker.position.longitude, marker.position.latitude])),
     })
@@ -554,7 +599,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
       const pulsingStrokes: Array<{ stroke: Stroke; baseWidth: number }> = []
       const chevronFlows: ChevronFlow[] = []
       const drawnRouteGroups = new Set<string>()
-      const pendingDrawFeatures: Array<{ feature: Feature<Geometry>; styles: Style[]; threshold: number }> = []
+      const pendingDrawFeatures: PendingDrawFeature[] = []
       const pendingDrawMarkers: Array<{ element: HTMLElement; threshold: number }> = []
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
       const map = new Map({
@@ -599,15 +644,22 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
           stroke.setColor(`rgba(255, 255, 255, ${0.12 + pulseProgress * 0.28})`)
         })
         if (drawStartedAt !== undefined) {
-          const linearProgress = Math.min(1, (timestamp - drawStartedAt) / 900)
-          const easedProgress = 1 - Math.pow(1 - linearProgress, 3)
-          pendingDrawFeatures.forEach(({ feature, styles, threshold }) => {
+          const elapsed = timestamp - drawStartedAt
+          pendingDrawFeatures.forEach(({ feature, styles, threshold, durationMs }) => {
+            const linearProgress = Math.min(1, elapsed / durationMs)
+            const easedProgress = 1 - Math.pow(1 - linearProgress, 3)
             if (easedProgress >= threshold && feature.getStyle() !== styles) feature.setStyle(styles)
           })
+          const longestDuration = Math.max(
+            pendingDrawMarkers.length ? 900 : 1,
+            ...pendingDrawFeatures.map((item) => item.durationMs),
+          )
+          const markerProgress = Math.min(1, elapsed / longestDuration)
+          const easedMarkerProgress = 1 - Math.pow(1 - markerProgress, 3)
           pendingDrawMarkers.forEach(({ element, threshold }) => {
-            if (easedProgress >= threshold) element.classList.remove('map-route-endpoint--pending')
+            if (easedMarkerProgress >= threshold) element.classList.remove('map-route-endpoint--pending')
           })
-          if (linearProgress >= 1) {
+          if (elapsed >= longestDuration) {
             pendingDrawFeatures.length = 0
             pendingDrawMarkers.length = 0
             drawStartedAt = undefined
@@ -636,7 +688,7 @@ export function createVWorldMapAdapter({ apiKey, layer = 'Base' }: VWorldMapAdap
       let clickHandler: ((event: MapClickEvent) => void) | undefined
       const handlePlaceMarkerClick = (event: MouseEvent) => {
         const target = event.target instanceof Element
-          ? event.target.closest<HTMLElement>('.map-provider-place-marker, .map-provider-place-cluster, .map-dog-location-marker--interactive')
+          ? event.target.closest<HTMLElement>('.map-provider-place-marker, .map-provider-place-cluster, .map-dog-location-marker--interactive, .map-route-callout')
           : null
         if (!target) return
         event.preventDefault()

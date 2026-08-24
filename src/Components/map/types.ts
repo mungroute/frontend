@@ -8,7 +8,7 @@ export type MapMarkerCategory = 'restaurant' | 'hospital' | 'pharmacy' | 'cafe' 
 export type MapMarker = {
   id: string
   position: MapCoordinate
-  kind?: 'current-location' | 'profile-location' | 'start' | 'finish' | 'default'
+  kind?: 'current-location' | 'profile-location' | 'start' | 'finish' | 'detour-junction' | 'route-callout' | 'default'
   label?: string
   profileImageSrc?: string
   revealAfterDraw?: string
@@ -27,6 +27,7 @@ export type MapRoute = {
   outlineColor?: string
   outlineWidth?: number
   lineCap?: 'butt' | 'round' | 'square'
+  lineDash?: number[]
   animated?: boolean
   pulse?: boolean
   interactive?: boolean
@@ -35,6 +36,7 @@ export type MapRoute = {
   drawOnLoad?: boolean
   drawGroupId?: string
   drawOrder?: number
+  drawDurationMs?: number
   chevrons?: boolean
 }
 

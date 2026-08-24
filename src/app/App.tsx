@@ -167,7 +167,9 @@ export function App() {
   const [distanceRadius, setDistanceRadius] = useState(100)
   const distanceRadiusRef = useRef(100)
   const [dogs, setDogs] = useState<AppDog[]>(initialDogs)
-  const [selectedDogIds, setSelectedDogIds] = useState<string[]>(initialDogs[0] ? [initialDogs[0].id] : [])
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>(
+    restoredActiveSnapshot?.dogIds?.length ? restoredActiveSnapshot.dogIds : initialDogs[0] ? [initialDogs[0].id] : [],
+  )
   const [notificationSettings, setNotificationSettings] = useState(defaultNotifications)
   const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser>()
   const [backendWalkStarted, setBackendWalkStarted] = useState(Boolean(restoredActiveSnapshot))
@@ -296,12 +298,13 @@ export function App() {
         if (sessionId) writeActiveWalkRoute({
           sessionId,
           startedAt: walkStartedAtRef.current,
+          dogIds: selectedDogIds,
           route: activeWalkRoute,
           presenceMode: walkPresenceMode,
           presenceEnabled: false,
         })
       })
-  }, [activeWalkRoute, applyMeetResponse, applyPresenceResponse, finishMeetSearch, presenceEnabled, walkPresenceMode])
+  }, [activeWalkRoute, applyMeetResponse, applyPresenceResponse, finishMeetSearch, presenceEnabled, selectedDogIds, walkPresenceMode])
 
   const walkTracker = useWalkTracker(
     isWalkTracking,
@@ -618,9 +621,6 @@ export function App() {
     let startedPresenceEnabled = false
     const persistedDogIds = dogIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
     const pending = walkApi.start(mode, persistedDogIds).then(async ({ sessionId, startedAt, mode: activeMode, lockedMode }) => {
-      if (mode !== 'off' && (activeMode !== mode || lockedMode !== mode)) {
-        throw new Error('선택한 산책 모드가 적용되지 않았어요. 다시 시작해 주세요.')
-      }
       walkSessionIdRef.current = sessionId
       walkStartedAtRef.current = startedAt
       const resolvedLockedMode = lockedMode ?? (activeMode === 'off' ? null : activeMode)
@@ -663,6 +663,7 @@ export function App() {
       writeActiveWalkRoute({
         sessionId,
         startedAt: walkStartedAtRef.current,
+        dogIds,
         route,
         presenceMode: startedPresenceMode,
         presenceEnabled: startedPresenceEnabled,
@@ -708,6 +709,7 @@ export function App() {
           writeActiveWalkRoute({
             sessionId,
             startedAt: walkStartedAtRef.current,
+            dogIds: selectedDogIds,
             route: activeWalkRoute,
             presenceMode: resolvedMode,
             presenceEnabled: resolvedEnabled,
@@ -809,6 +811,7 @@ export function App() {
         writeActiveWalkRoute({
           sessionId,
           startedAt: walkStartedAtRef.current,
+          dogIds: selectedDogIds,
           route: detourRoute,
           presenceMode: walkPresenceMode,
           presenceEnabled,
@@ -1239,6 +1242,10 @@ export function App() {
   }
 
   if (location.pathname === '/walk/complete') {
+    const completedDogName = dogs
+      .filter((dog) => selectedDogIds.includes(dog.id))
+      .map((dog) => dog.name)
+      .join(', ') || '반려견'
     const representativeEligible = Boolean(
       walkEndResult
       && (walkEndResult.matchStatus === 'MATCHED' || walkEndResult.matchStatus === 'PARTIAL')
@@ -1255,6 +1262,7 @@ export function App() {
       coordinates: walkTracker.walkedCoordinates.map(({ longitude, latitude }) => [longitude, latitude] as [number, number]),
     } : null)
     return <WalkCompletePage
+      dogName={completedDogName}
       time={walkEndResult ? formatWalkTime(walkEndResult.durationSec) : walkTracker.formattedTime}
       distance={walkEndResult ? formatWalkDistance(walkEndResult.distanceM) : walkTracker.formattedDistance}
       representativeEligible={backendWalkStarted ? representativeEligible : true}
