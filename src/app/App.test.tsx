@@ -29,7 +29,17 @@ const catalogComparison: CourseComparison = {
   usualRoute: catalogDetail.route,
   alternativeRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [126.985, 37.565], [126.992, 37.568]] },
   temperatureImprovementC: 3, distanceDifferenceM: 100,
-  swappedSections: [{ sectionIndex: 0, originalSegmentIds: [1], alternativeSegmentIds: [2], temperatureImprovementC: 3, addedLengthM: 100 }],
+  swappedSections: [{
+    sectionIndex: 0,
+    fromSegmentIndex: 0,
+    toSegmentIndexExclusive: 1,
+    originalSegmentIds: [1],
+    alternativeSegmentIds: [2],
+    originalRoute: catalogDetail.route,
+    alternativeRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [127, 37.57]] },
+    temperatureImprovementC: 3,
+    addedLengthM: 100,
+  }],
   unavailableReason: null,
 }
 const catalogDiagnostics: CourseDiagnostics = {
@@ -589,6 +599,20 @@ describe('App location permission route', () => {
     expect(window.location.search).toBe('?id=10')
   })
 
+  it('loads the signed-in members actual group count on the my page', async () => {
+    vi.mocked(groupApi.list).mockResolvedValue([
+      groupDetail,
+      { ...groupDetail, groupId: 11, name: '동네 산책 친구', myRole: 'MEMBER' },
+    ])
+    window.history.replaceState({}, '', '/profile')
+
+    render(<App />)
+
+    expect(screen.getByText('참여 중인 그룹 확인 중')).toBeInTheDocument()
+    expect(await screen.findByText('참여 중인 그룹 2개')).toBeInTheDocument()
+    expect(groupApi.list).toHaveBeenCalled()
+  })
+
   it('opens group invitation and notification settings from their existing entry points', () => {
     window.history.replaceState({}, '', '/groups')
     const { unmount } = render(<App />)
@@ -894,7 +918,7 @@ describe('App location permission route', () => {
     expect(walkApi.start).toHaveBeenCalledWith('distance', [])
   })
 
-  it('does not enter the active screen when the API returns a different mode', async () => {
+  it('recovers the server active session when its mode differs from the new local selection', async () => {
     vi.mocked(walkApi.start).mockResolvedValueOnce({
       sessionId: 27,
       startedAt: '2026-08-14T14:15:00+09:00',
@@ -907,8 +931,39 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('선택한 산책 모드가 적용되지 않았어요')
-    expect(window.location.pathname).toBe('/walk/dogs')
+    expect(await screen.findByRole('heading', { name: '산책 중' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/walk/active')
+    expect(screen.getByText('일반 산책')).toBeInTheDocument()
+  })
+
+  it('shows the selected dog name on the walk completion screen', async () => {
+    vi.spyOn(walkApi, 'end').mockResolvedValue({
+      sessionId: 42,
+      endedAt: '2026-08-21T17:30:00+09:00',
+      distanceM: 15,
+      durationSec: 10,
+      pointCount: 2,
+      usablePointCount: 2,
+      matchStatus: 'MATCHED',
+      matchFailureReason: null,
+      matchedSegmentIds: [11],
+      isLoop: false,
+      trackGeoJson: { type: 'LineString', coordinates: [[126.98, 37.56], [126.9801, 37.5601]] },
+    })
+    window.history.replaceState({}, '', '/walk/dogs')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '쿠키 선택' }))
+    fireEvent.click(screen.getByRole('button', { name: '망고 선택' }))
+    fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
+    fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
+    await screen.findByRole('heading', { name: '산책 중' })
+
+    fireEvent.click(screen.getByRole('button', { name: '산책 종료' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: '산책 종료 확인' })).getByRole('button', { name: '산책 종료 확정' }))
+
+    expect(await screen.findByText('쿠키와 함께한 오늘의 길을 저장해요.')).toBeInTheDocument()
+    expect(screen.queryByText(/망고와 함께한 오늘의 길/)).not.toBeInTheDocument()
   })
 
   it('keeps the distance mode choice during a walk and changes it only after confirmation', async () => {

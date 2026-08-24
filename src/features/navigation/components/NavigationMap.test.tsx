@@ -42,6 +42,8 @@ const route = normalizeWalkRoute({
 const createFakeMap = () => {
   const handlers = new Map<string, (event: { originalEvent?: unknown }) => void>()
   const sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>()
+  const images = new Map<string, unknown>()
+  let missingStyleImageResolver: ((id: string) => void | Promise<void>) | undefined
   const map = {
     on: vi.fn((event: string, layerOrHandler: string | ((value: { originalEvent?: unknown }) => void), handler?: (value: { originalEvent?: unknown }) => void) => {
       handlers.set(event, typeof layerOrHandler === 'function' ? layerOrHandler : handler!)
@@ -63,9 +65,15 @@ const createFakeMap = () => {
     fitBounds: vi.fn(() => map),
     easeTo: vi.fn(() => map),
     getBearing: vi.fn(() => 0),
+    hasImage: vi.fn((id: string) => images.has(id)),
+    addImage: vi.fn((id: string, image: unknown) => { images.set(id, image); return map }),
+    setMissingStyleImageResolver: vi.fn((resolver: (id: string) => void | Promise<void>) => {
+      missingStyleImageResolver = resolver
+      return map
+    }),
     remove: vi.fn(),
   }
-  return { handlers, map }
+  return { handlers, map, resolveMissingStyleImage: (id: string) => missingStyleImageResolver?.(id) }
 }
 
 describe('NavigationMap', () => {
@@ -112,6 +120,16 @@ describe('NavigationMap', () => {
     expect(markerSpies.setRotation).toHaveBeenLastCalledWith(
       bearingBetween(route.coordinateParts[0][0], route.coordinateParts[0][1]),
     )
+
+    await fake.resolveMissingStyleImage('transportation:road_')
+    expect(fake.map.addImage).toHaveBeenCalledWith('transportation:road_', expect.objectContaining({
+      width: 1,
+      height: 1,
+      data: expect.any(Uint8Array),
+    }))
+    fake.map.addImage.mockClear()
+    await fake.resolveMissingStyleImage('provider:missing-real-icon')
+    expect(fake.map.addImage).not.toHaveBeenCalled()
 
     view.rerender(
       <NavigationMap

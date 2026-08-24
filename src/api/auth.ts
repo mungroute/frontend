@@ -1,5 +1,7 @@
-import { apiRequest, refreshAuthentication, setAccessToken } from './http'
+import { apiRequest, hasAccessToken, refreshAuthentication, setAccessToken } from './http'
 import { setDevLocationOverrideUser } from '../utils/devLocationOverride'
+
+const AUTH_SESSION_STORAGE_KEY = 'mungroute.auth.session.v1'
 
 export type AuthUser = {
   userId: number
@@ -23,7 +25,23 @@ async function acceptAuth(request: Promise<AuthResponse>) {
   const response = await request
   setAccessToken(response.accessToken, response.expiresIn)
   setDevLocationOverrideUser(response.user.email)
+  try {
+    window.sessionStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(response))
+  } catch {
+    // The access token remains usable in memory when storage is unavailable.
+  }
   return response
+}
+
+function readStoredAuth(): AuthResponse | undefined {
+  if (!hasAccessToken()) return undefined
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY) ?? 'null') as AuthResponse | null
+    return stored?.user && stored.accessToken ? stored : undefined
+  } catch {
+    window.sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+    return undefined
+  }
 }
 
 export const authApi = {
@@ -46,6 +64,11 @@ export const authApi = {
     }, { authenticated: false }))
   },
   async restore() {
+    const stored = readStoredAuth()
+    if (stored) {
+      setDevLocationOverrideUser(stored.user.email)
+      return stored
+    }
     return acceptAuth(refreshAuthentication() as Promise<AuthResponse>)
   },
   async logout() {
@@ -54,6 +77,11 @@ export const authApi = {
     } finally {
       setAccessToken(null)
       setDevLocationOverrideUser(undefined)
+      try {
+        window.sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+      } catch {
+        // Nothing else is required when storage is unavailable.
+      }
     }
   },
   async checkEmail(email: string) {

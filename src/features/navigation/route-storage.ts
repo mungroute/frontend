@@ -111,9 +111,13 @@ export function readActiveWalkRoute(): ActiveWalkRouteSnapshot | undefined {
   const startedAt = typeof snapshot.startedAt === 'string' && Number.isFinite(Date.parse(snapshot.startedAt))
     ? snapshot.startedAt
     : undefined
+  const dogIds = Array.isArray(snapshot.dogIds)
+    ? snapshot.dogIds.filter((dogId): dogId is string => typeof dogId === 'string' && dogId.length > 0)
+    : undefined
   return {
     ...snapshot,
     ...(startedAt ? { startedAt } : {}),
+    ...(dogIds?.length ? { dogIds } : { dogIds: undefined }),
     route,
     presenceMode,
     presenceEnabled: presenceMode !== null && snapshot.presenceEnabled === true,

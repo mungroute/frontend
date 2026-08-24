@@ -26,6 +26,13 @@ describe('WalkCompletePage', () => {
     expect(screen.queryByText(/kcal/)).not.toBeInTheDocument()
   })
 
+  it('names the dog that actually completed the walk', () => {
+    render(<WalkCompletePage dogName="쿠키" />)
+
+    expect(screen.getByText('쿠키와 함께한 오늘의 길을 저장해요.')).toBeInTheDocument()
+    expect(screen.queryByText(/망고와 함께한/)).not.toBeInTheDocument()
+  })
+
   it('explains GPS eligibility only when the unavailable representative option is selected', () => {
     const onSave = vi.fn()
     render(<WalkCompletePage representativeEligible={false} matchStatus="INSUFFICIENT_POINTS" onSave={onSave} />)

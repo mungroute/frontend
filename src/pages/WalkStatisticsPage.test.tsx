@@ -80,6 +80,22 @@ describe('WalkStatisticsPage', () => {
     expect(onOpenRecord).toHaveBeenCalledWith(31)
   })
 
+  it('keeps the selected statistics month in view on the annual calendar', () => {
+    const { container } = render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
+    const viewport = container.querySelector('.contribution-calendar__skyline-viewport') as HTMLDivElement
+    const scrollTo = vi.fn()
+    Object.defineProperties(viewport, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollWidth: { configurable: true, value: 900 },
+      scrollTo: { configurable: true, value: scrollTo },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '이전 달' }))
+
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ left: expect.any(Number) }))
+    expect(scrollTo.mock.calls.at(-1)?.[0].left).toBeGreaterThan(0)
+  })
+
   it('morphs the same date element from the 2D grid into the 3D skyline', () => {
     render(<WalkStatisticsPage statistics={statistics} contributions={contributions} onOpenRecords={vi.fn()} />)
     const flatDateBlock = screen.getByRole('button', { name: /8월 3일, 2.0km, 2회/ })

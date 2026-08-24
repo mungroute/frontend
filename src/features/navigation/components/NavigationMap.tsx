@@ -46,6 +46,8 @@ const FOLLOW_ANCHOR_Y = 0.68
 const DEFAULT_MAP_HEIGHT = 700
 const DEFAULT_PADDING = { top: 116, right: 20, bottom: 180, left: 20 }
 const SOURCE_IDS = ['navigation-route', 'navigation-passed', 'navigation-remaining', 'navigation-chevron', 'navigation-places'] as const
+const EMPTY_ROAD_SHIELD_IMAGE_ID = 'transportation:road_'
+const TRANSPARENT_STYLE_IMAGE = { width: 1, height: 1, data: new Uint8Array(4) }
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 const followOffset = (height?: number): [number, number] => [
   0,
@@ -187,6 +189,13 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       return
     }
     mapRef.current = map
+    map.setMissingStyleImageResolver((id) => {
+      // MapTiler's road-shield expression can produce this id when a tile has no road network code.
+      // Its sprite intentionally has no matching shield, so register a transparent fallback.
+      if (id === EMPTY_ROAD_SHIELD_IMAGE_ID && !map.hasImage(id)) {
+        map.addImage(id, TRANSPARENT_STYLE_IMAGE)
+      }
+    })
     const disableFollow = (event: { originalEvent?: unknown }) => {
       if (event.originalEvent) setFollowMode(false)
     }

@@ -115,7 +115,7 @@ describe('DrawCoursePage', () => {
     expect(screen.getByText('1/20개 지점')).toBeInTheDocument()
   })
 
-  it('keeps every selected waypoint when the server detects a backtracking spur', async () => {
+  it('sends every selected waypoint in order even when one was snapped to a nearby walkway', async () => {
     const api = createApi()
     vi.mocked(api.snap)
       .mockResolvedValueOnce(snap(1))
@@ -134,7 +134,7 @@ describe('DrawCoursePage', () => {
         segmentIds: [901, 902],
         coordinates: [{ lat: 37.56, lon: 126.97 }, { lat: 37.562, lon: 126.972 }],
         cumulative: metrics(180),
-        ignoredWaypointIndexes: [1],
+        ignoredWaypointIndexes: [],
       })
     render(<DrawCoursePage api={api} />)
 
@@ -145,9 +145,44 @@ describe('DrawCoursePage', () => {
     await waitFor(() => expect(screen.getByText('2/20개 지점')).toBeInTheDocument())
     fireEvent.click(addPoint)
 
-    expect(await screen.findByText('되돌아가는 자동 연결 구간을 제외하고 자연스럽게 이어졌어요.')).toBeInTheDocument()
+    await waitFor(() => expect(api.connect).toHaveBeenLastCalledWith(expect.objectContaining({
+      waypoints: [
+        expect.objectContaining({ nodeId: 1 }),
+        expect.objectContaining({ nodeId: 2 }),
+        expect.objectContaining({ nodeId: 3 }),
+      ],
+    })))
+    expect(screen.queryByText(/자동 연결 구간을 제외/)).not.toBeInTheDocument()
     expect(screen.getByText('3/20개 지점')).toBeInTheDocument()
     expect(screen.getByText('0.18km')).toBeInTheDocument()
+  })
+
+  it('explains when returning to the start uses the same shortest path in reverse', async () => {
+    const api = createApi()
+    vi.mocked(api.connect)
+      .mockResolvedValueOnce({
+        addedSegmentIds: [901, 902],
+        segmentIds: [901, 902],
+        coordinates: [{ lat: 37.56, lon: 126.97 }, { lat: 37.562, lon: 126.972 }],
+        cumulative: metrics(190),
+      })
+      .mockResolvedValueOnce({
+        addedSegmentIds: [902, 901],
+        segmentIds: [901, 902, 902, 901],
+        coordinates: [{ lat: 37.56, lon: 126.97 }, { lat: 37.562, lon: 126.972 }, { lat: 37.56, lon: 126.97 }],
+        cumulative: metrics(380),
+      })
+    render(<DrawCoursePage api={api} />)
+
+    const addPoint = screen.getByRole('button', { name: '지도에 지점 추가' })
+    fireEvent.click(addPoint)
+    await waitFor(() => expect(screen.getByText('1/20개 지점')).toBeInTheDocument())
+    fireEvent.click(addPoint)
+    await waitFor(() => expect(screen.getByText('2/20개 지점')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '출발점으로 돌아오기' }))
+
+    expect(await screen.findByText('가장 빠른 길이어서 지나온 길을 따라 출발점으로 돌아왔어요.')).toBeInTheDocument()
+    expect(screen.getByText('0.38km')).toBeInTheDocument()
   })
 
   it('does not show a shade percentage after sunset', async () => {

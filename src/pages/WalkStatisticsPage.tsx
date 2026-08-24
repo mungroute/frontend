@@ -109,7 +109,7 @@ export function WalkStatisticsPage({ statistics, contributions, dogs = [], onBac
           <small>{formatRecentWalk(viewData.lastWalkedAt)}</small>
         </section>
 
-        {contributionData && <WalkContributionCalendar contributions={contributionData} onOpenRecord={onOpenRecord} />}
+        {contributionData && <WalkContributionCalendar contributions={contributionData} focusMonth={selectedMonthNumber} onOpenRecord={onOpenRecord} />}
         {contributionError && <p className="walk-statistics-page__contribution-error" role="alert">산책 발자국을 불러오지 못했어요.</p>}
 
         <div className="walk-statistics-page__chart">

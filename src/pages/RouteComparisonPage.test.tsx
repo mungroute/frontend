@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CourseCatalogApi, CourseComparison, CourseDiagnostics } from '../api/courses'
-import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
+import type { BaseMapAdapter, BaseMapScene, MapClickEvent } from '../Components/map'
 import { RouteComparisonPage } from './RouteComparisonPage'
 
 const usual = {
@@ -15,7 +15,17 @@ const comparison: CourseComparison = {
   usualRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [126.99, 37.57]] },
   alternativeRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [127, 37.57]] },
   temperatureImprovementC: 3, distanceDifferenceM: 100,
-  swappedSections: [{ sectionIndex: 0, originalSegmentIds: [1], alternativeSegmentIds: [2], temperatureImprovementC: 3, addedLengthM: 100 }],
+  swappedSections: [{
+    sectionIndex: 0,
+    fromSegmentIndex: 0,
+    toSegmentIndexExclusive: 1,
+    originalSegmentIds: [1],
+    alternativeSegmentIds: [2],
+    originalRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [126.99, 37.57]] },
+    alternativeRoute: { type: 'LineString', coordinates: [[126.98, 37.56], [127, 37.57]] },
+    temperatureImprovementC: 3,
+    addedLengthM: 100,
+  }],
   unavailableReason: null,
 }
 const diagnostics: CourseDiagnostics = {
@@ -43,7 +53,7 @@ describe('RouteComparisonPage', () => {
     render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(comparison)} onStartAlternative={onStartAlternative} onStartUsual={onStartUsual} />)
     expect(await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '패널 높이 조절' })).toBeEnabled()
-    expect(screen.getByText('거리 100m 추가 · 추정 노면온도 3.0℃ 개선')).toBeInTheDocument()
+    expect(screen.getByLabelText('추천 변경 효과')).toHaveTextContent('기존 34.0℃→추천 31.0℃↓ 3.0℃그늘 68% → 74%거리 100m 추가')
     expect(screen.getByText('추천 대안이 이 구간을 우회해요.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '대안 코스로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '기존 코스 선택' }))
@@ -77,6 +87,8 @@ describe('RouteComparisonPage', () => {
     }))
 
     fireEvent.click(screen.getByRole('button', { name: /오늘의 추천 대안/ }))
+    await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).routes)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'alternative-section-0-0-0' })])))
     const updatedScene = update.mock.lastCall?.[0] as BaseMapScene
     expect(updatedScene.viewFit?.coordinates).toEqual([
       { latitude: 37.56, longitude: 126.98 },
@@ -84,6 +96,161 @@ describe('RouteComparisonPage', () => {
     ])
     expect(updatedScene.center.latitude).toBeCloseTo(37.565)
     expect(updatedScene.center.longitude).toBeCloseTo(126.99)
+    expect(updatedScene.routes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'usual-segment-1-replaced',
+        width: 4,
+        outlineWidth: 8,
+        lineDash: [4, 7],
+      }),
+      expect.objectContaining({
+        id: 'alternative-section-0-0-chevrons',
+        chevrons: true,
+      }),
+    ]))
+    expect(screen.getByLabelText('코스 색상 안내')).toHaveTextContent('기존 길변경 구간')
+  })
+
+  it('keeps shared geometry on the thermal existing course and colors only the actual detour mint', async () => {
+    const sharedComparison: CourseComparison = {
+      ...comparison,
+      usualRoute: {
+        type: 'LineString',
+        coordinates: [[126.98, 37.56], [126.981, 37.56], [126.982, 37.56], [126.983, 37.56]],
+      },
+      alternativeRoute: {
+        type: 'LineString',
+        coordinates: [[126.98, 37.56], [126.981, 37.56], [126.9815, 37.561], [126.982, 37.56], [126.983, 37.56]],
+      },
+      swappedSections: [{
+        ...comparison.swappedSections[0],
+        fromSegmentIndex: 1,
+        toSegmentIndexExclusive: 2,
+        originalSegmentIds: [2],
+        originalRoute: { type: 'LineString', coordinates: [[126.981, 37.56], [126.982, 37.56]] },
+        // Deliberately includes both shared ends to guard against painting the whole alternative mint.
+        alternativeRoute: {
+          type: 'LineString',
+          coordinates: [[126.98, 37.56], [126.981, 37.56], [126.9815, 37.561], [126.982, 37.56], [126.983, 37.56]],
+        },
+      }],
+    }
+    const sharedDiagnostics: CourseDiagnostics = {
+      ...diagnostics,
+      hottestSegmentId: 2,
+      segments: [
+        { ...diagnostics.segments[0], sequence: 1, segmentId: 1, temperatureGrade: 'LOW', route: { type: 'LineString', coordinates: [[126.98, 37.56], [126.981, 37.56]] } },
+        { ...diagnostics.segments[0], sequence: 2, segmentId: 2, temperatureGrade: 'HIGH', route: { type: 'LineString', coordinates: [[126.981, 37.56], [126.982, 37.56]] } },
+        { ...diagnostics.segments[0], sequence: 3, segmentId: 3, temperatureGrade: 'VERY_HIGH', route: { type: 'LineString', coordinates: [[126.982, 37.56], [126.983, 37.56]] } },
+      ],
+    }
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
+    }
+    const scene: BaseMapScene = { center: { latitude: 37.56, longitude: 126.98 }, zoom: 16 }
+    const sharedApi = {
+      ...apiFor(sharedComparison),
+      diagnostics: vi.fn(async () => sharedDiagnostics),
+    } as unknown as CourseCatalogApi
+
+    render(<RouteComparisonPage source="custom" courseId={42} api={sharedApi} map={{ adapter, scene }} />)
+    await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })
+    await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).routes)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'alternative-section-0-0-0' })])))
+
+    const updatedScene = update.mock.lastCall?.[0] as BaseMapScene
+    const firstUsualPieces = updatedScene.routes?.filter((route) => route.id.startsWith('usual-segment-1-')) ?? []
+    const replacedUsualPieces = updatedScene.routes?.filter((route) => route.id.startsWith('usual-segment-2-')) ?? []
+    const lastUsualPieces = updatedScene.routes?.filter((route) => route.id.startsWith('usual-segment-3-')) ?? []
+    expect(firstUsualPieces).toHaveLength(6)
+    expect(replacedUsualPieces).toHaveLength(1)
+    expect(lastUsualPieces).toHaveLength(6)
+    expect(firstUsualPieces.every((route) => route.lineDash === undefined)).toBe(true)
+    expect(replacedUsualPieces.every((route) => route.lineDash?.join(',') === '4,7')).toBe(true)
+    expect(lastUsualPieces.every((route) => route.lineDash === undefined)).toBe(true)
+    expect(new Set([...firstUsualPieces, ...replacedUsualPieces, ...lastUsualPieces].map((route) => route.color)).size)
+      .toBeGreaterThan(3)
+    expect(updatedScene.routes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'alternative-section-0-0-0',
+        color: '#20bfa9',
+        interactive: true,
+      }),
+    ]))
+    const replacementRoutes = updatedScene.routes?.filter((route) => route.id.startsWith('alternative-')) ?? []
+    expect(replacementRoutes).toHaveLength(9)
+  })
+
+  it('links a map route selection to the matching bottom-sheet section without changing the fitted route', async () => {
+    let mapClick: ((event: MapClickEvent) => void) | undefined
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({
+        ready: Promise.resolve(),
+        update,
+        destroy: vi.fn(),
+        setClickHandler: (handler: ((event: MapClickEvent) => void) | undefined) => { mapClick = handler },
+      })),
+    }
+    const scene: BaseMapScene = { center: { latitude: 37.56, longitude: 126.98 }, zoom: 16 }
+    render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(comparison)} map={{ adapter, scene }} />)
+    await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })
+    await waitFor(() => expect(mapClick).toBeTypeOf('function'))
+    await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).routes)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'alternative-section-0-0-0', width: 5 })])))
+    const fittedCoordinates = (update.mock.lastCall?.[0] as BaseMapScene).viewFit?.coordinates
+
+    act(() => mapClick?.({
+      coordinate: { latitude: 37.565, longitude: 126.99 },
+      xPercent: 50,
+      yPercent: 50,
+      featureId: 'comparison-section-0',
+    }))
+
+    expect(screen.getByRole('button', { name: /변경 구간 1/ })).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).routes)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'alternative-section-0-0-0', width: 6 })])))
+    expect((update.mock.lastCall?.[0] as BaseMapScene).viewFit?.coordinates).toEqual(fittedCoordinates)
+    await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).markers)
+      .toEqual(expect.arrayContaining([expect.objectContaining({
+        id: 'comparison-callout-0',
+        kind: 'route-callout',
+        selected: true,
+      })])), { timeout: 1_500 })
+  })
+
+  it('reveals the replacement and callout immediately when reduced motion is requested', async () => {
+    const originalMatchMedia = window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn((query: string) => ({
+        matches: query === '(prefers-reduced-motion: reduce)',
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({ ready: Promise.resolve(), update, destroy: vi.fn() })),
+    }
+    const scene: BaseMapScene = { center: { latitude: 37.56, longitude: 126.98 }, zoom: 16 }
+    const view = render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(comparison)} map={{ adapter, scene }} />)
+    try {
+      await screen.findByRole('heading', { name: '오늘은 이 구간만 바꿔볼까요?' })
+      await waitFor(() => expect((update.mock.lastCall?.[0] as BaseMapScene).markers)
+        .toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'route-callout' })])))
+      expect((update.mock.lastCall?.[0] as BaseMapScene).routes)
+        .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'alternative-section-0-0-0' })]))
+    } finally {
+      view.unmount()
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
+    }
   })
 
   it('falls back to the existing course when no alternative exists', async () => {
