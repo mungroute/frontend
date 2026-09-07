@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MapMarker } from '../../../Components/map'
 import { normalizeWalkRoute } from '../route-normalizer'
 import { bearingBetween } from '../utils/bearing'
+import type { RouteProgressGeometry } from '../utils/route-progress'
 import { NavigationMap } from './NavigationMap'
 
 const markerSpies = vi.hoisted(() => ({
@@ -202,6 +203,56 @@ describe('NavigationMap', () => {
     })))
     expect(markerSpies.setRotation).toHaveBeenLastCalledWith(95)
     now.mockRestore()
+  })
+
+  it('snaps the visible marker and follow camera to the route while keeping off-route fixes raw', async () => {
+    const fake = createFakeMap()
+    const rawCoordinate = { latitude: 37.5603, longitude: 126.9806 }
+    const snappedCoordinate = { latitude: 37.56045, longitude: 126.98045 }
+    const progress: RouteProgressGeometry = {
+      coordinate: snappedCoordinate,
+      distanceFromRouteM: 18,
+      progressM: 70,
+      segmentIndex: 0,
+      segmentBearing: 45,
+      offRoute: false,
+      passed: [route.coordinateParts[0][0], snappedCoordinate],
+      remaining: [snappedCoordinate, route.coordinateParts[0][1]],
+      progressRatio: 0.1,
+    }
+    const position = { coordinate: rawCoordinate, accuracy: 22, observedAt: 1, heading: 45, speed: 1 }
+    const view = render(
+      <NavigationMap
+        route={route}
+        position={position}
+        progress={progress}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+      />,
+    )
+
+    await waitFor(() => expect(markerSpies.setLngLat).toHaveBeenCalledWith([
+      snappedCoordinate.longitude,
+      snappedCoordinate.latitude,
+    ]))
+    await waitFor(() => expect(fake.map.easeTo).toHaveBeenCalledWith(expect.objectContaining({
+      center: [snappedCoordinate.longitude, snappedCoordinate.latitude],
+    })))
+
+    view.rerender(
+      <NavigationMap
+        route={route}
+        position={position}
+        progress={{ ...progress, offRoute: true, distanceFromRouteM: 42 }}
+        mapFactory={() => fake.map as never}
+        styleUrl="https://example.test/style.json"
+      />,
+    )
+
+    await waitFor(() => expect(markerSpies.setLngLat).toHaveBeenLastCalledWith([
+      rawCoordinate.longitude,
+      rawCoordinate.latitude,
+    ]))
   })
 
   it('opens the accepted meet profile instead of treating its marker as a place', async () => {

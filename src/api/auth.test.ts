@@ -38,7 +38,7 @@ describe('authApi', () => {
     expect(protectedHeaders.get('Authorization')).toBe('Bearer issued-access-token')
   })
 
-  it('restores the authenticated user from session storage without rotating the refresh cookie', async () => {
+  it('reuses the in-memory authenticated user without rotating the refresh cookie', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(authBody), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -49,7 +49,7 @@ describe('authApi', () => {
     await expect(authApi.restore()).resolves.toEqual(authBody)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(window.sessionStorage.getItem('mungroute.auth.access-token.v1')).toContain('issued-access-token')
+    expect(JSON.stringify(window.sessionStorage)).not.toContain('issued-access-token')
   })
 
   it('restores an access token with the HttpOnly refresh cookie before a protected request', async () => {

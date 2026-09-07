@@ -32,7 +32,7 @@ export function EditableCourseOverlay({ points }: { points: CoursePoint[] }) {
   const segments = points.slice(1).map((point, index) => {
     const from = points[index]
     return {
-      key: `${from.x}-${from.y}-${point.x}-${point.y}`,
+      key: `${index}-${from.x}-${from.y}-${point.x}-${point.y}`,
       from,
       to: point,
     }

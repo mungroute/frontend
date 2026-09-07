@@ -557,6 +557,7 @@ export function RouteComparisonPage({
       </DraggableSheet>
       {comparison && unavailableDialogOpen && !comparison.hasAlternative && (
         <CourseAlternativeUnavailableDialog
+          comfortable={comparison.usual.estimatedSurfaceTempC < 35}
           message={unavailableReasonMessage(comparison.unavailableReason)}
           onClose={() => setUnavailableDialogOpen(false)}
         />

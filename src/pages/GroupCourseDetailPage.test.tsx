@@ -58,7 +58,7 @@ describe('GroupCourseDetailPage', () => {
     const view = render(<GroupCourseDetailPage groupId={10} sharedCourseId={31} api={api} map={{ adapter, scene: mapScene }} />)
 
     expect(await screen.findByRole('heading', { name: '대표 코스' })).toBeInTheDocument()
-    expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({
+    await waitFor(() => expect(adapter.mount).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({
       viewFit: {
         coordinates: [
           { latitude: 37.55, longitude: 126.98 },
@@ -67,7 +67,7 @@ describe('GroupCourseDetailPage', () => {
         padding: [36, 24, 36, 24],
         maxZoom: 17,
       },
-    }))
+    })))
 
     instance.update.mockClear()
     view.rerender(<GroupCourseDetailPage groupId={10} sharedCourseId={32} api={api} map={{ adapter, scene: mapScene }} />)

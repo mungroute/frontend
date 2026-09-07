@@ -61,6 +61,7 @@ export function RepresentativeHomePage({ onStartFreeWalk = () => undefined, onSt
     return {
       center: placeMarkers.length ? placeSceneOverlay.center : routeCenter,
       zoom: placeMarkers.length ? placeSceneOverlay.zoom : undefined,
+      focusAnchorY: placeMarkers.length ? placeSceneOverlay.focusAnchorY : undefined,
       viewFit: hasRoute && !placeMarkers.length ? {
         coordinates: routeCoordinates,
         padding: [40, 24, 350, 24] as [number, number, number, number],

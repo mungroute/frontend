@@ -25,8 +25,20 @@ describe('buildPlaceMarkerSceneOverlay', () => {
     const selected = marker('selected', 37.563, 127.001, true)
     const result = buildPlaceMarkerSceneOverlay([selected, marker('other', 37.57, 127.01)])
 
-    expect(result.center?.longitude).toBe(selected.position.longitude)
-    expect(result.center?.latitude).toBeLessThan(selected.position.latitude)
-    expect(result.zoom).toBe(15.8)
+    expect(result.center).toBe(selected.position)
+    expect(result.focusAnchorY).toBe(0.36)
+    expect(result.zoom).toBe(17)
+  })
+
+  it('renders the selected place after nearby markers so clusters cannot cover its name', () => {
+    const selected = marker('selected', 37.563, 127.001, true)
+    const result = buildPlaceMarkerSceneOverlay([
+      selected,
+      marker('nearby-1', 37.5631, 127.0011),
+      marker('nearby-2', 37.5632, 127.0012),
+      marker('nearby-3', 37.5633, 127.0013),
+    ])
+
+    expect(result.markers?.at(-1)).toBe(selected)
   })
 })

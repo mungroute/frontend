@@ -13,6 +13,10 @@ export default tseslint.config(
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // The project does not enable the React Compiler. Exhaustive dependency
+      // checking remains active; this compiler-only rule produces false
+      // positives for stable state setters inside the walk session callbacks.
+      'react-hooks/preserve-manual-memoization': 'off',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },

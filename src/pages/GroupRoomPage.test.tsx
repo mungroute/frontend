@@ -4,7 +4,8 @@ import type { CourseCatalogApi, CourseSummary } from '../api/courses'
 import type { GroupApi, GroupDetail, GroupSharedCourse } from '../api/groups'
 import type { GroupCourseEvent, GroupCourseSocketConnector } from '../api/groupCourseSocket'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
-import { GroupRoomPage, groupRouteColorForUser } from './GroupRoomPage'
+import { GroupRoomPage } from './GroupRoomPage'
+import { groupRouteColorForUser } from './group-route-color'
 
 const route = { type: 'LineString' as const, coordinates: [[126.98, 37.55], [126.981, 37.551]] }
 const shared: GroupSharedCourse = {

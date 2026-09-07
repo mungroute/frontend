@@ -106,7 +106,10 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       : 0
   }, [route?.navigationPolyline])
   const navigationBearing = heading ?? progress?.segmentBearing ?? routeStartBearing
-  const navigationCenter = position?.coordinate ?? progress?.coordinate ?? route?.navigationPolyline?.[0]
+  const displayCoordinate = position
+    ? progress && !progress.offRoute ? progress.coordinate : position.coordinate
+    : progress?.coordinate
+  const navigationCenter = displayCoordinate ?? route?.navigationPolyline?.[0]
   const initialCameraRef = useRef({ center: navigationCenter, bearing: navigationBearing })
   const chevrons = useMemo(() => preparedRoute
     ? chevronsAhead(preparedRoute, progress?.progressM ?? 0, 48, 35).map((item, index) => ({
@@ -124,7 +127,9 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       ? 18
       : placeMarkers.length ? placeSceneOverlay.zoom : undefined,
     bearing: viewMode === 'navigation' ? navigationBearing : 0,
-    focusAnchorY: viewMode === 'navigation' ? FOLLOW_ANCHOR_Y : 0.5,
+    focusAnchorY: viewMode === 'navigation'
+      ? FOLLOW_ANCHOR_Y
+      : placeMarkers.length ? placeSceneOverlay.focusAnchorY ?? 0.5 : 0.5,
     focusBottomInset: 0,
     focusOffsetY: 0,
     viewFit: viewMode === 'overview' && !placeMarkers.length && fallbackFitCoordinates.length >= 2 ? {
@@ -133,7 +138,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       maxZoom: 17,
     } : undefined,
     markers: [
-      ...(position ? [{ id: 'current-location', position: position.coordinate, kind: 'current-location' as const, ...currentLocationMarker }] : []),
+      ...(position && displayCoordinate ? [{ id: 'current-location', position: displayCoordinate, kind: 'current-location' as const, ...currentLocationMarker }] : []),
       ...allPlaceMarkers,
     ],
     routes: [
@@ -148,7 +153,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       })) ?? [],
       ...(walkedCoordinates.length >= 2 ? [{ id: 'walked', coordinates: walkedCoordinates, color: '#c5c0ba', width: 6 }] : []),
     ],
-  }), [allPlaceMarkers, currentLocationMarker, fallbackFitCoordinates, navigationBearing, navigationCenter, padding.bottom, placeMarkers.length, placeSceneOverlay.center, placeSceneOverlay.zoom, position, route, viewMode, walkedCoordinates])
+  }), [allPlaceMarkers, currentLocationMarker, displayCoordinate, fallbackFitCoordinates, navigationBearing, navigationCenter, padding.bottom, placeMarkers.length, placeSceneOverlay.center, placeSceneOverlay.focusAnchorY, placeSceneOverlay.zoom, position, route, viewMode, walkedCoordinates])
 
   useEffect(() => {
     onPlaceSelectRef.current = onPlaceSelect
@@ -274,16 +279,16 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !ready || !position) return
+    if (!map || !ready || !position || !displayCoordinate) return
     if (!markerRef.current) {
       const element = document.createElement('div')
       element.className = 'navigation-map__marker'
       element.innerHTML = '<span></span>'
       markerRef.current = new maplibregl.Marker({ element, rotationAlignment: 'map', pitchAlignment: 'map' })
-        .setLngLat([position.coordinate.longitude, position.coordinate.latitude])
+        .setLngLat([displayCoordinate.longitude, displayCoordinate.latitude])
         .addTo(map)
     } else {
-      markerRef.current.setLngLat([position.coordinate.longitude, position.coordinate.latitude])
+      markerRef.current.setLngLat([displayCoordinate.longitude, displayCoordinate.latitude])
     }
     markerRef.current.setRotation(navigationBearing)
     if (!followMode || paused) return
@@ -291,7 +296,7 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
     if (now - cameraAtRef.current < 350) return
     cameraAtRef.current = now
     map.easeTo({
-      center: [position.coordinate.longitude, position.coordinate.latitude],
+      center: [displayCoordinate.longitude, displayCoordinate.latitude],
       zoom: 18,
       pitch: 54,
       bearing: navigationBearing,
@@ -300,15 +305,15 @@ export function NavigationMap({ route, position, heading, preparedRoute, progres
       duration: prefersReducedMotion() ? 0 : 650,
       essential: true,
     })
-  }, [followMode, navigationBearing, padding, paused, position, ready])
+  }, [displayCoordinate, followMode, navigationBearing, padding, paused, position, ready])
 
   const restoreFollow = () => {
     setViewMode('navigation')
     setFollowMode(true)
     cameraAtRef.current = 0
-    if (!position || !mapRef.current || !ready) return
+    if (!position || !displayCoordinate || !mapRef.current || !ready) return
     mapRef.current.easeTo({
-      center: [position.coordinate.longitude, position.coordinate.latitude],
+      center: [displayCoordinate.longitude, displayCoordinate.latitude],
       zoom: 18,
       pitch: 54,
       bearing: navigationBearing,

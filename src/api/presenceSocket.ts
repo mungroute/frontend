@@ -121,7 +121,8 @@ export function connectPresenceSocket(options: PresenceSocketOptions): PresenceS
       options.onError?.(new Error('실시간 연결을 사용할 수 없어 REST 방식으로 전환합니다.'))
     }
     nextSocket.onclose = () => {
-      if (socket === nextSocket) socket = undefined
+      if (socket !== nextSocket) return
+      socket = undefined
       setConnected(false)
       scheduleReconnect()
     }

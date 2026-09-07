@@ -1,6 +1,6 @@
 import type { BaseMapScene, MapMarker } from './types'
 
-type PlaceSceneOverlay = Pick<BaseMapScene, 'markers'> & Partial<Pick<BaseMapScene, 'center' | 'zoom'>>
+type PlaceSceneOverlay = Pick<BaseMapScene, 'markers'> & Partial<Pick<BaseMapScene, 'center' | 'zoom' | 'focusAnchorY'>>
 
 const clamp = (minimum: number, value: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
 
@@ -9,13 +9,17 @@ export function buildPlaceMarkerSceneOverlay(markers: MapMarker[]): PlaceSceneOv
 
   const selected = markers.find((marker) => marker.selected)
   if (selected) {
+    const stackedMarkers = [
+      ...markers.filter((marker) => marker !== selected),
+      selected,
+    ]
     return {
-      markers,
-      center: {
-        latitude: selected.position.latitude - 0.0032,
-        longitude: selected.position.longitude,
-      },
-      zoom: 15.8,
+      // Provider overlays follow DOM paint order. Keep the selected label above
+      // nearby number clusters so that its place name can never be obscured.
+      markers: stackedMarkers,
+      center: selected.position,
+      zoom: 17,
+      focusAnchorY: 0.36,
     }
   }
   if (markers.length === 1) {

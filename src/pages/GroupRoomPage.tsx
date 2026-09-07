@@ -12,6 +12,7 @@ import type { GroupApi, GroupDetail, GroupInvite, GroupJoinPolicy, GroupVisibili
 import { connectGroupCourseSocket } from '../api/groupCourseSocket'
 import type { GroupCourseSocketConnector } from '../api/groupCourseSocket'
 import { getValidAccessToken } from '../api/http'
+import { groupRouteColorForUser } from './group-route-color'
 import '../styles/pages/journey-page.css'
 import '../styles/pages/profile-group-pages.css'
 
@@ -33,18 +34,6 @@ const shareOption = (course: CourseSummary) => ({
   title: course.courseName,
   meta: `${course.durationMin}분 · ${(course.lengthM / 1000).toFixed(1)}km${course.metrics?.shadeRatio == null ? '' : ` · 그늘 ${Math.round(course.metrics.shadeRatio * 100)}%`}`,
 })
-
-const GROUP_ROUTE_COLORS = [
-  '#f47a3a', '#20a88f', '#5f82c5', '#9b6fc3', '#d96f8c',
-  '#c5902f', '#5e9a68', '#d65e55', '#467f96', '#b87945',
-]
-
-export const groupRouteColorForUser = (userId: number) => {
-  let hash = Math.imul(userId, 0x45d9f3b)
-  hash = Math.imul((hash >>> 16) ^ hash, 0x45d9f3b)
-  hash = (hash >>> 16) ^ hash
-  return GROUP_ROUTE_COLORS[(hash >>> 0) % GROUP_ROUTE_COLORS.length]
-}
 
 export function GroupRoomPage({ groupId, map, api = groupApi, courseApi = courseCatalogApi, onBack, onOpenSharedCourse, onOpenActivity, onOpenAllCourses, onClosed, connectCourseEvents = connectGroupCourseSocket }: GroupRoomPageProps) {
   const [group, setGroup] = useState<GroupDetail>()

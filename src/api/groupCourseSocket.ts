@@ -85,7 +85,11 @@ export const connectGroupCourseSocket: GroupCourseSocketConnector = (options) =>
         }
       })
     }
-    current.onclose = scheduleReconnect
+    current.onclose = () => {
+      if (socket !== current) return
+      socket = undefined
+      scheduleReconnect()
+    }
   }
 
   open()

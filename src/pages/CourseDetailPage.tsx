@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { BaseMapViewport } from '../Components/map'
-import type { BaseMapBinding, MapClickEvent, MapMarker } from '../Components/map'
+import type { BaseMapBinding, MapClickEvent, MapCoordinate, MapMarker } from '../Components/map'
 import { courseRouteCoordinates } from '../Components/courses/course-map'
 import { COURSE_REFERENCE_HOURS, requestedAtForHour } from '../Components/courses/course-thermal'
 import { buildDiagnosticCourseRoutes, diagnosticRouteColor } from '../Components/courses/diagnostic-course-route'
@@ -143,6 +143,15 @@ export function CourseDetailPage({
   }, [selectedLegSequence])
 
   const routeCoordinates = useMemo(() => courseRouteCoordinates(course?.route), [course?.route])
+  const routeGeometryKey = JSON.stringify(routeCoordinates)
+  const initialRouteViewFit = useMemo(() => {
+    const coordinates = JSON.parse(routeGeometryKey) as MapCoordinate[]
+    return coordinates.length > 1 ? {
+      coordinates,
+      padding: [136, 28, 164, 28] as [number, number, number, number],
+      maxZoom: 17,
+    } : undefined
+  }, [routeGeometryKey])
   const diagnosticLegs = useMemo<DiagnosticLeg[]>(() => {
     const grouped = new Map<number, CourseSegmentDiagnostic[]>()
     diagnostics?.segments.forEach((segment) => {
@@ -234,8 +243,9 @@ export function CourseDetailPage({
       markers: routeMarkers,
       center: focusedMapCenter,
       zoom: segmentFocusActive ? 17.5 : 17.2,
+      viewFit: segmentFocusActive ? undefined : initialRouteViewFit,
     }
-  }, [courseId, diagnostics, diagnosticLegs, routeCoordinates, selectedLegSequence, segmentFocusActive, source])
+  }, [courseId, diagnostics, diagnosticLegs, initialRouteViewFit, routeCoordinates, selectedLegSequence, segmentFocusActive, source])
   const selectedLeg = diagnosticLegs.find((leg) => leg.sequence === selectedLegSequence)
   const hottestLeg = diagnosticLegs.reduce<DiagnosticLeg | undefined>(
     (hottest, leg) => !hottest || leg.estimatedSurfaceTempC > hottest.estimatedSurfaceTempC ? leg : hottest,

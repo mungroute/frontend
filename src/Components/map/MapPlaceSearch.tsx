@@ -468,7 +468,10 @@ export function PlaceDetailSheet({ place, onRoute, onClose, loading = false, err
             {place.menuItems && place.menuItems.length > 0 ? (
               <ul>
                 {place.menuItems.slice(0, 8).map((menu, index) => (
-                  <li key={`${menu.name}-${index}`}>
+                  <li
+                    key={`${menu.name}-${index}`}
+                    className={menu.imageUrl ? 'map-place-card__menu-item--with-image' : undefined}
+                  >
                     {menu.imageUrl && <img src={menu.imageUrl} alt="" loading="lazy" />}
                     <span>
                       <strong>{menu.name}</strong>
