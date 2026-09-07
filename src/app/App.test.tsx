@@ -224,7 +224,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '로그인' }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/location-permission'))
-    expect(screen.getByRole('heading', { name: '산책 시작 위치를 알려주세요' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '산책 시작 위치를 알려주세요' })).toBeInTheDocument()
   })
 
   it('creates an account, offers dog onboarding, and then asks for location permission', async () => {
@@ -247,10 +247,10 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '가입하기' }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/onboarding/dog'))
-    expect(screen.getByRole('heading', { name: '반려견 등록' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '반려견 등록' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '나중에 등록할게요' }))
     expect(window.location.pathname).toBe('/home')
-    expect(screen.getByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: '위치 권한 안내' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '위치 사용 허용' })).toBeInTheDocument()
   })
 
@@ -286,7 +286,7 @@ describe('App location permission route', () => {
     act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.5, longitude: 127 } }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/home'))
-    expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '산책 시작' })).toBeInTheDocument()
   })
 
   it.each([
@@ -307,7 +307,7 @@ describe('App location permission route', () => {
     act(() => getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 37.5, longitude: 127 } }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/home'))
-    expect(screen.getByRole('button', { name: '산책 시작' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '산책 시작' })).toBeInTheDocument()
     if (courses.some((course) => course.representative)) {
       expect(await screen.findByRole('heading', { name: '저녁 남산길' })).toBeInTheDocument()
     } else {
@@ -417,7 +417,7 @@ describe('App location permission route', () => {
       name: '저녁 남산길',
       backendId: 'custom:42',
     }))
-    expect(screen.getByTestId('walk-route-progress')).toBeInTheDocument()
+    expect(await screen.findByTestId('walk-route-progress')).toBeInTheDocument()
   })
 
   it.each([
@@ -457,7 +457,7 @@ describe('App location permission route', () => {
     const active = readActiveWalkRoute()
     expect(walkApi.start).toHaveBeenCalledOnce()
     expect(active?.route).toEqual(expect.objectContaining({ origin, name: routeName, geometry, backendId }))
-    expect(screen.getByText(routeName)).toBeInTheDocument()
+    expect(await screen.findByText(routeName)).toBeInTheDocument()
   })
 
   it('keeps home course actions as separate flows', async () => {
@@ -842,7 +842,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
     expect(window.location.search).toBe('')
-    expect(screen.getByText('남산 둘레길 A')).toBeInTheDocument()
+    expect(await screen.findByText('남산 둘레길 A')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '산책 중' })).toBeInTheDocument()
   })
 
@@ -911,8 +911,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    await screen.findByRole('button', { name: '패널 높이 조절' })
-    const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
+    const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
     expect(window.location.pathname).toBe('/walk/active')
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     expect(walkApi.start).toHaveBeenCalledWith('distance', [])
@@ -973,8 +972,7 @@ describe('App location permission route', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 설정으로 산책 시작' }))
     fireEvent.click(screen.getByRole('button', { name: '동의하고 켜기' }))
 
-    await screen.findByRole('button', { name: '패널 높이 조절' })
-    const activeSwitch = screen.getByRole('switch', { name: '거리두기 알림 모드' })
+    const activeSwitch = await screen.findByRole('switch', { name: '거리두기 알림 모드' })
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(activeSwitch)
     expect(activeSwitch).toHaveAttribute('aria-checked', 'true')
@@ -1034,6 +1032,7 @@ describe('App location permission route', () => {
     fireEvent.click(within(firstDialog).getByRole('button', { name: '돌아가기' }))
 
     await waitFor(() => expect(window.location.pathname).toBe('/walk/active'))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '산책 이탈 확인' })).not.toBeInTheDocument())
     expect(walkApi.end).not.toHaveBeenCalled()
 
     act(() => window.history.back())

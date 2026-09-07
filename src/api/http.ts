@@ -25,31 +25,11 @@ type AuthTokenResponse = {
   expiresIn?: number
 }
 
-const ACCESS_TOKEN_STORAGE_KEY = 'mungroute.auth.access-token.v1'
-
-type StoredAccessToken = {
-  token: string
-  expiresAt: number
-}
-
-function readStoredAccessToken(): StoredAccessToken | undefined {
-  if (typeof window === 'undefined') return undefined
-  try {
-    const stored = JSON.parse(window.sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? 'null') as StoredAccessToken | null
-    if (!stored?.token || !Number.isFinite(stored.expiresAt) || stored.expiresAt <= Date.now()) {
-      window.sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
-      return undefined
-    }
-    return stored
-  } catch {
-    window.sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
-    return undefined
-  }
-}
-
-const storedAccessToken = readStoredAccessToken()
-let accessToken: string | null = storedAccessToken?.token ?? null
-let accessTokenExpiresAt = storedAccessToken?.expiresAt ?? 0
+// Access tokens intentionally live in memory only. A reload restores the
+// session through the HttpOnly refresh cookie, keeping bearer credentials out
+// of browser storage that any injected script could read.
+let accessToken: string | null = null
+let accessTokenExpiresAt = 0
 let refreshRequest: Promise<AuthTokenResponse> | null = null
 
 export function setAccessToken(token: string | null, expiresInSeconds?: number) {
@@ -59,19 +39,6 @@ export function setAccessToken(token: string | null, expiresInSeconds?: number) 
     : expiresInSeconds === undefined
       ? Number.MAX_SAFE_INTEGER
       : Date.now() + expiresInSeconds * 1_000
-  if (typeof window === 'undefined') return
-  try {
-    if (token === null) {
-      window.sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
-    } else {
-      window.sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, JSON.stringify({
-        token,
-        expiresAt: accessTokenExpiresAt,
-      } satisfies StoredAccessToken))
-    }
-  } catch {
-    // Authentication still works in memory when storage is unavailable.
-  }
 }
 
 export function hasAccessToken() {

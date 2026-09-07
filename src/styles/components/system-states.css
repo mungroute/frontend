@@ -17,6 +17,7 @@
 .system-surface--walk-choice > p { margin-bottom: 20px; }
 .system-surface h2 { margin: 18px 0 8px; font-size: 24px; line-height: 34px; letter-spacing: -.04em; }
 .system-surface p { margin: 0 0 24px; color: var(--color-text-secondary); font-size: 14px; line-height: 21px; }
+.course-alternative-unavailable-dialog__message { overflow-wrap: break-word; word-break: keep-all; }
 .system-surface .ui-button + .ui-button { margin-top: 8px; }
 .system-surface--presence { position: relative; min-height: 392px; overflow: hidden; border: 1px solid rgba(255,255,255,.78); background: linear-gradient(155deg, #fff 0%, #fbf6f0 100%); }
 .system-surface--presence::before { position: absolute; top: -72px; right: -58px; width: 176px; height: 176px; border-radius: 50%; content: ''; background: radial-gradient(circle, rgba(244,122,58,.23), rgba(244,122,58,0) 70%); pointer-events: none; }
@@ -29,6 +30,7 @@
 .system-surface--presence p { position: relative; font-size: 13px; line-height: 20px; }
 .system-icon { width: 64px; height: 64px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; color: var(--color-primary); }
 .system-icon--soft { background: var(--color-primary-soft); }
+.system-icon--positive { color: #169e8d; background: #e6f8f4; }
 .system-icon--warning { color: var(--color-alert); background: #fff0ed; }
 .system-surface__left-title { margin: 0 0 6px !important; text-align: left; }
 .system-surface__left-copy { text-align: left; }

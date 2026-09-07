@@ -231,7 +231,8 @@
 .course-detail-page__sheet .ui-draggable-sheet__handle { height: 32px; }
 .course-detail-page__sheet .ui-draggable-sheet__handle span { width: 48px; height: 5px; background: rgba(91,81,75,.24); }
 .course-detail-page__sheet .course-detail-page__metrics { position: static; height: 88px; }
-.course-detail-page__sheet .course-detail-page__metrics .management-metrics { height: 100%; border: 1px solid rgba(232,222,212,.58); border-radius: 20px; box-shadow: 0 7px 18px rgba(55,43,34,.045); }
+.course-detail-page__sheet .course-detail-page__metrics .management-metrics { height: 100%; grid-template-columns: minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1.2fr); border: 1px solid rgba(232,222,212,.58); border-radius: 20px; box-shadow: 0 7px 18px rgba(55,43,34,.045); }
+.course-detail-page__sheet .course-detail-page__metrics .management-metrics div:last-child dt { overflow: visible; line-height: 15px; text-overflow: clip; white-space: normal; word-break: keep-all; }
 .course-detail-page__sheet .course-detail-page__representative { position: static; height: 66px; margin-top: 12px; border: 1px solid rgba(232,222,212,.58); border-radius: 18px; box-shadow: 0 7px 18px rgba(55,43,34,.04); }
 .course-detail-page__sheet .course-detail-page__representative .ui-switch-row { height: 64px; }
 .course-detail-page__sheet :is(.course-detail-page__start, .course-detail-page__compare, .course-detail-page__share) { position: static; width: 100%; }

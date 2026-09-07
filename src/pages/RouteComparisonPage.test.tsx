@@ -256,15 +256,16 @@ describe('RouteComparisonPage', () => {
   it('falls back to the existing course when no alternative exists', async () => {
     const noAlternative = { ...comparison, hasAlternative: false, alternative: null, alternativeRoute: null, temperatureImprovementC: null, distanceDifferenceM: null, swappedSections: [], unavailableReason: '교체 가능한 구간이 없어요.' }
     render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(noAlternative)} />)
-    const dialog = await screen.findByRole('dialog', { name: '추천 대안 생성 안내' })
-    expect(within(dialog).getByText(/교체 가능한 구간이 없어요/)).toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('button', { name: '기존 코스 확인' }))
-    expect(screen.queryByRole('dialog', { name: '추천 대안 생성 안내' })).not.toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: '기존 코스 이용 안내' })
+    expect(within(dialog).getByRole('heading', { name: '기존 코스가 이미 쾌적해요' })).toBeInTheDocument()
+    expect(within(dialog).getByText(/오늘은 기존 코스를 그대로 이용해도 좋아요/)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: '기존 코스로 계속하기' }))
+    expect(screen.queryByRole('dialog', { name: '기존 코스 이용 안내' })).not.toBeInTheDocument()
     expect(screen.queryByText('오늘의 추천 대안')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '기존 코스로 산책 시작' })).toBeInTheDocument()
   })
 
-  it('shows a friendly modal instead of exposing an internal unavailable reason code', async () => {
+  it('reassures the user that the existing course remains usable when generation fails', async () => {
     const noAlternative = {
       ...comparison,
       hasAlternative: false,
@@ -273,13 +274,16 @@ describe('RouteComparisonPage', () => {
       temperatureImprovementC: null,
       distanceDifferenceM: null,
       swappedSections: [],
+      usual: { ...comparison.usual, estimatedSurfaceTempC: 40 },
       unavailableReason: 'COURSE_NOT_CONNECTED',
     }
     render(<RouteComparisonPage source="custom" courseId={42} api={apiFor(noAlternative)} />)
 
-    const dialog = await screen.findByRole('dialog', { name: '추천 대안 생성 안내' })
-    expect(within(dialog).getByRole('heading', { name: '추천 대안을 만들지 못했어요' })).toBeInTheDocument()
-    expect(within(dialog).getByText(/현재 코스 구조에서는 우회 구간을 만들기 어려워요/)).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: '기존 코스 이용 안내' })
+    expect(within(dialog).getByRole('heading', { name: '기존 코스는 그대로 이용할 수 있어요' })).toBeInTheDocument()
+    expect(within(dialog).getByText(/현재 코스 구조에서는 우회 구간을 만들기 어려워요/))
+      .toHaveClass('course-alternative-unavailable-dialog__message')
+    expect(within(dialog).getByText(/저장된 기존 코스는 정상적으로 이용할 수 있어요/)).toBeInTheDocument()
     expect(screen.queryByText('COURSE_NOT_CONNECTED')).not.toBeInTheDocument()
   })
 })

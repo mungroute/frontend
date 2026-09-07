@@ -5,8 +5,8 @@
 .management-header__trailing { position: absolute; top: -1px; right: 1px; }
 .management-metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0 12px; border-radius: 18px; background: var(--color-surface); }
 .management-metrics div { display: flex; min-width: 0; flex-direction: column-reverse; justify-content: center; padding-left: 10px; }
-.management-metrics dt { color: var(--color-text-secondary); font-size: 12px; line-height: 18px; white-space: nowrap; }
-.management-metrics dd { margin: 0; font-size: 22px; line-height: 32px; font-weight: 700; white-space: nowrap; }
+.management-metrics dt { max-width: 100%; overflow: hidden; color: var(--color-text-secondary); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.management-metrics dd { max-width: 100%; margin: 0; overflow: hidden; font-size: 22px; line-height: 32px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .route-summary-card { position: relative; display: block; width: 100%; height: 116px; padding: 16px 18px; border: 2px solid var(--color-primary); border-radius: 16px; color: var(--color-text-primary); text-align: left; background: var(--color-surface); cursor: pointer; }
 .route-summary-card strong, .route-summary-card__meta, .route-summary-card__badge { display: block; }
 .route-summary-card strong { font-size: 17px; line-height: 26px; }

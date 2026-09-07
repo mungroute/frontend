@@ -152,13 +152,18 @@ export function WalkProcessingAlertDialog({ message, onClose }: CloseableProps &
   )
 }
 
-export function CourseAlternativeUnavailableDialog({ message, onClose }: CloseableProps & { message: string }) {
+export function CourseAlternativeUnavailableDialog({ comfortable = false, message, onClose }: CloseableProps & {
+  comfortable?: boolean
+  message: string
+}) {
   return (
-    <Overlay label="추천 대안 생성 안내" className="system-surface--compact" onClose={onClose}>
-      <div className="system-icon system-icon--warning"><AlertTriangle size={25} /></div>
-      <h2>추천 대안을 만들지 못했어요</h2>
-      <p>{message}<br />기존 코스는 그대로 이용할 수 있어요.</p>
-      <Button onClick={onClose}>기존 코스 확인</Button>
+    <Overlay label="기존 코스 이용 안내" className="system-surface--compact" onClose={onClose}>
+      <div className="system-icon system-icon--positive"><Check size={27} strokeWidth={2.5} /></div>
+      <h2>{comfortable ? '기존 코스가 이미 쾌적해요' : '기존 코스는 그대로 이용할 수 있어요'}</h2>
+      <p className="course-alternative-unavailable-dialog__message">{comfortable
+        ? <>현재 코스보다 더 쾌적한 대안을 찾기 어려웠어요.<br />오늘은 기존 코스를 그대로 이용해도 좋아요.</>
+        : <>{message}<br />저장된 기존 코스는 정상적으로 이용할 수 있어요.</>}</p>
+      <Button onClick={onClose}>기존 코스로 계속하기</Button>
     </Overlay>
   )
 }

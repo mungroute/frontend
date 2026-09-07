@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SplashPage } from '../pages/SplashPage'
 import { LocationPermissionPage } from '../pages/LocationPermissionPage'
 import { RepresentativeHomePage } from '../pages/RepresentativeHomePage'
@@ -32,7 +33,6 @@ import { DEFAULT_DOG_PROFILE_IMAGE } from '../Components/profile/DogProfileCard'
 import { GroupActivityPage } from '../pages/GroupActivityPage'
 import { GroupCourseDetailPage } from '../pages/GroupCourseDetailPage'
 import { ServiceInfoPage } from '../pages/ServiceInfoPage'
-import type { ServiceInfoSection } from '../pages/ServiceInfoPage'
 import { WalkStatisticsPage } from '../pages/WalkStatisticsPage'
 import { SystemStatesPreviewPage } from '../pages/SystemStatesPreviewPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
@@ -71,55 +71,8 @@ import { normalizeWalkRoute } from '../features/navigation/route-normalizer'
 import { clearActiveWalkRoute, clearPendingWalkRoute, clearWalkRoutes, readActiveWalkRoute, readPendingWalkRoute, writeActiveWalkRoute, writePendingWalkRoute } from '../features/navigation/route-storage'
 import type { WalkNavigationRoute, WalkRouteSelection } from '../features/navigation/types'
 import { useWalkExperiencePreferences } from '../features/walk-experience/preferences'
-
-const allowedWalkReturnPaths = new Set(['/home', '/courses/compare', '/courses/candidates', '/courses/detail', '/courses/shade'])
-const activeWalkPaths = new Set(['/walk/active', '/walk/distance-alert', '/walk/paused'])
-
-const readWalkReturnTo = (search: string) => {
-  const requested = new URLSearchParams(search).get('returnTo')
-  if (!requested) return '/home'
-  try {
-    const url = new URL(requested, window.location.origin)
-    return url.origin === window.location.origin && allowedWalkReturnPaths.has(url.pathname)
-      ? `${url.pathname}${url.search}`
-      : '/home'
-  } catch {
-    return '/home'
-  }
-}
-
-const walkSelectionUrl = (returnTo: string, context: Record<string, string | number>) => {
-  const params = new URLSearchParams({ returnTo })
-  Object.entries(context).forEach(([key, value]) => params.set(key, String(value)))
-  return `/walk/dogs?${params.toString()}`
-}
-
-const readLocation = () => {
-  const search = window.location.search
-  if (window.location.pathname === '/home/no-course') {
-    window.history.replaceState(window.history.state, '', `/home${search}`)
-  }
-  return { pathname: window.location.pathname, search }
-}
-
-type NavigationOptions = {
-  replace?: boolean
-  state?: Record<string, unknown>
-}
-
-type RecommendationHistoryStep = 'time' | 'loading' | 'candidates'
-
-const recommendationHistoryStep = () => (
-  window.history.state?.recommendationHistoryStep as RecommendationHistoryStep | undefined
-)
-
-const readDuration = (search: string) => {
-  const duration = Number(new URLSearchParams(search).get('duration'))
-  return duration >= 10 && duration <= 60 && duration % 5 === 0 ? duration : 30
-}
-
-const serviceInfoSections = new Set<ServiceInfoSection>(['version', 'terms', 'privacy', 'licenses'])
-const isServiceInfoSection = (value: string | null): value is ServiceInfoSection => value !== null && serviceInfoSections.has(value as ServiceInfoSection)
+import { activeWalkPaths, isServiceInfoSection, readDuration, readWalkReturnTo, recommendationHistoryStep, walkSelectionUrl } from './routing'
+import type { NavigationOptions } from './routing'
 
 type AppDog = DogProfileSummary & DogProfileFormValue
 
@@ -158,8 +111,21 @@ const toAppDog = (dog: DogProfile): AppDog => ({
 })
 
 export function App() {
+  return (
+    <BrowserRouter>
+      <AppRuntime />
+    </BrowserRouter>
+  )
+}
+
+function AppRuntime() {
+  const routeLocation = useLocation()
+  const routerNavigate = useNavigate()
+  const location = { pathname: routeLocation.pathname, search: routeLocation.search }
+  const navigate = useCallback((url: string, options: NavigationOptions = {}) => {
+    routerNavigate(url, { replace: options.replace, state: options.state, flushSync: true })
+  }, [routerNavigate])
   const [restoredActiveSnapshot] = useState(readActiveWalkRoute)
-  const [location, setLocation] = useState(readLocation)
   const [locationError, setLocationError] = useState(false)
   const [showSignupLocationPermission, setShowSignupLocationPermission] = useState(false)
   const [walkPresenceMode, setWalkPresenceMode] = useState<LockedWalkPresenceMode | null>(restoredActiveSnapshot?.presenceMode ?? null)
@@ -199,7 +165,6 @@ export function App() {
   const walkPointUploadChainRef = useRef<Promise<void>>(Promise.resolve())
   const walkStartingRef = useRef(false)
   const walkEndingRef = useRef(false)
-  const skipNextHistoryPopRef = useRef(false)
   const presenceSocketRef = useRef<PresenceSocketClient | undefined>(undefined)
   const meetSocketRef = useRef<MeetSocketClient | undefined>(undefined)
   const meetSearchTimeoutRef = useRef<number | undefined>(undefined)
@@ -218,13 +183,11 @@ export function App() {
     setNearbyPresence(representative)
     const currentPath = window.location.pathname
     if (representative && currentPath === '/walk/active') {
-      window.history.replaceState({}, '', `/walk/distance-alert${window.location.search}`)
-      setLocation(readLocation())
+      navigate(`/walk/distance-alert${window.location.search}`, { replace: true })
     } else if (!representative && currentPath === '/walk/distance-alert') {
-      window.history.replaceState({}, '', `/walk/active${window.location.search}`)
-      setLocation(readLocation())
+      navigate(`/walk/active${window.location.search}`, { replace: true })
     }
-  }, [])
+  }, [navigate])
   const finishMeetSearch = useCallback(() => {
     if (meetSearchTimeoutRef.current !== undefined) window.clearTimeout(meetSearchTimeoutRef.current)
     meetSearchTimeoutRef.current = undefined
@@ -523,23 +486,26 @@ export function App() {
   }, [dogs, selectedDogIds, setCurrentLocationMarker])
 
   useEffect(() => {
-    const syncLocation = () => {
-      if (skipNextHistoryPopRef.current) {
-        skipNextHistoryPopRef.current = false
-        setLocation(readLocation())
-        return
-      }
-      if (backendWalkStarted && activeWalkPaths.has(location.pathname)) {
-        skipNextHistoryPopRef.current = true
-        setWalkBackExitOpen(true)
-        window.history.forward()
-        return
-      }
-      setLocation(readLocation())
+    if (!backendWalkStarted || !activeWalkPaths.has(location.pathname)) return
+
+    const currentState = window.history.state ?? {}
+    if (!currentState.mungrouteWalkGuard) {
+      const currentIndex = typeof currentState.idx === 'number' ? currentState.idx : 0
+      window.history.pushState(
+        { ...currentState, idx: currentIndex + 1, mungrouteWalkGuard: true },
+        '',
+        `${location.pathname}${location.search}`,
+      )
+    }
+
+    const syncLocation = (event: PopStateEvent) => {
+      if (event.state?.mungrouteWalkGuard) return
+      setWalkBackExitOpen(true)
+      window.history.forward()
     }
     window.addEventListener('popstate', syncLocation)
     return () => window.removeEventListener('popstate', syncLocation)
-  }, [backendWalkStarted, location.pathname])
+  }, [backendWalkStarted, location.pathname, location.search])
 
   useEffect(() => {
     if (!backendWalkStarted || !activeWalkPaths.has(location.pathname)) return
@@ -561,12 +527,6 @@ export function App() {
       })
     return () => { active = false }
   }, [courseRecommendation?.requestId, recommendationReloadKey, recommendationRequestId])
-
-  const navigate = (url: string, options: NavigationOptions = {}) => {
-    const method = options.replace ? 'replaceState' : 'pushState'
-    window.history[method](options.state ?? {}, '', url)
-    setLocation(readLocation())
-  }
 
   const backFromRecommendationTime = () => {
     navigate('/home', { replace: true })
@@ -900,6 +860,10 @@ export function App() {
       )}
     </>
   )
+
+  if (location.pathname === '/home/no-course') {
+    return <Navigate to={`/home${location.search}`} replace />
+  }
 
   if (location.pathname === '/preview/system-states') {
     const requestedCase = new URLSearchParams(location.search).get('case')
@@ -1377,7 +1341,7 @@ export function App() {
       : undefined
     return <RouteCandidatesPage duration={duration} candidates={candidates} onBack={() => {
       if (recommendationHistoryStep() === 'candidates') {
-        window.history.back()
+        routerNavigate(-1)
       } else {
         navigate(`/walk/time?duration=${duration}`, { replace: true })
       }
@@ -1422,11 +1386,10 @@ export function App() {
       initialDuration={duration}
       onBack={backFromRecommendationTime}
       onContinue={(selectedDuration, departureAt) => {
-        window.history.replaceState(
-          { ...window.history.state, recommendationHistoryStep: 'time' },
-          '',
-          `/walk/time?duration=${selectedDuration}`,
-        )
+        navigate(`/walk/time?duration=${selectedDuration}`, {
+          replace: true,
+          state: { ...window.history.state, recommendationHistoryStep: 'time' },
+        })
         navigate(`/courses/loading?duration=${selectedDuration}&departureAt=${encodeURIComponent(departureAt)}`, {
           state: { recommendationHistoryStep: 'loading' },
         })

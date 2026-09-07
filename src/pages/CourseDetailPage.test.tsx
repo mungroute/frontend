@@ -244,6 +244,17 @@ describe('CourseDetailPage', () => {
     await waitFor(() => expect(updateMap.mock.calls.some(([scene]) => (
       scene.routes?.some((route: { chevrons?: boolean }) => route.chevrons)
     ))).toBe(true))
+    const overviewScene = updateMap.mock.calls
+      .map(([scene]) => scene)
+      .find((scene) => scene.viewFit?.coordinates?.length === 2)
+    expect(overviewScene?.viewFit).toEqual(expect.objectContaining({
+      coordinates: [
+        { latitude: 37.56, longitude: 126.98 },
+        { latitude: 37.57, longitude: 126.99 },
+      ],
+      padding: [136, 28, 164, 28],
+      maxZoom: 17,
+    }))
     expect(screen.queryByText(/1구간 · 가장 쾌적한 구간/)).not.toBeInTheDocument()
 
     mapClickHandler?.({
@@ -254,7 +265,35 @@ describe('CourseDetailPage', () => {
     })
 
     expect(await screen.findByText(/1구간 · 가장 쾌적한 구간/)).toBeInTheDocument()
+    await waitFor(() => expect(updateMap.mock.lastCall?.[0]).toEqual(expect.objectContaining({
+      zoom: 17.5,
+      viewFit: undefined,
+    })))
     expect(screen.getByText('50%')).toBeInTheDocument()
     expect(screen.getByText('700m')).toBeInTheDocument()
+  })
+
+  it('keeps the overview fit request stable after thermal data refreshes', async () => {
+    const updateMap = vi.fn()
+    const map = {
+      scene: { center: { latitude: 37.56, longitude: 126.98 }, zoom: 16 },
+      adapter: {
+        mount: () => ({ ready: Promise.resolve(), update: updateMap, destroy: vi.fn() }),
+      },
+    } as BaseMapBinding
+    const api = apiFor()
+    vi.mocked(api.detail).mockImplementation(async () => ({
+      ...dayCourse,
+      route: { type: 'LineString', coordinates: [[126.98, 37.56], [126.99, 37.57]] },
+    }))
+
+    render(<CourseDetailPage source="custom" courseId={42} api={api} map={map} />)
+    await screen.findByText('주말 산책길')
+    await waitFor(() => expect(updateMap.mock.calls.some(([scene]) => scene.viewFit)).toBe(true))
+    const initialViewFit = updateMap.mock.calls.find(([scene]) => scene.viewFit)?.[0].viewFit
+
+    fireEvent.click(screen.getByRole('button', { name: '09시' }))
+    await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(updateMap.mock.lastCall?.[0].viewFit).toBe(initialViewFit))
   })
 })

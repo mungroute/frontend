@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { BaseMapAdapter, BaseMapScene } from '../Components/map'
 import { RepresentativeHomePage } from './RepresentativeHomePage'
@@ -113,6 +113,29 @@ describe('RepresentativeHomePage', () => {
     const searchRegion = screen.getByRole('region', { name: '지도 장소 검색' })
     expect(searchRegion.style.getPropertyValue('--place-preview-bottom'))
       .toContain('--map-sheet-top')
+  })
+
+  it('focuses a selected place in the visible map area above the preview card', async () => {
+    const update = vi.fn()
+    const adapter: BaseMapAdapter = {
+      mount: vi.fn(() => ({
+        ready: new Promise<void>(() => undefined),
+        update,
+        destroy: vi.fn(),
+      })),
+    }
+
+    render(<RepresentativeHomePage course={course} placeApi={placeApiStub} map={{ adapter, scene: mapScene }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '장소 검색 열기' }))
+    fireEvent.click(screen.getByRole('button', { name: '카페' }))
+    fireEvent.click(await screen.findByRole('button', { name: '멍커피 을지로, 740m' }))
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      center: { latitude: 37.566, longitude: 126.998 },
+      zoom: 17,
+      focusAnchorY: 0.36,
+    })))
   })
 
   it('lowers the home course sheet while place search is open', () => {
