@@ -13,7 +13,7 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
-    "maplibre-gl": "^6.4.1",
+    "maplibre-gl": "^6.7.0",
     "motion": "^13.1.0",
     "ol": "^10.10.0",
     "react": "latest",
