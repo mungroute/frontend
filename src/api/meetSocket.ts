@@ -8,6 +8,7 @@ type Options = {
   tokenProvider: () => Promise<string>
   onPresence: (response: MeetPresenceResult) => void
   onEvent: (event: MeetEvent) => void
+  reconnectAfterMs?: number
 }
 
 const frame = (command: string, headers: Record<string, string>, body = '') =>
@@ -20,12 +21,21 @@ export function connectMeetSocket(options: Options): MeetSocketClient {
   let retry: number | undefined
   let buffer = ''
 
+  const scheduleReconnect = () => {
+    if (stopped || retry !== undefined) return
+    retry = window.setTimeout(() => {
+      retry = undefined
+      open()
+    }, options.reconnectAfterMs ?? 5_000)
+  }
+
   const open = () => {
-    if (stopped) return
+    if (stopped || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return
+    buffer = ''
     const current = new WebSocket(webSocketUrl('/ws'))
     socket = current
     current.onopen = () => void options.tokenProvider().then((token) => {
-      if (!stopped && current.readyState === WebSocket.OPEN) current.send(frame('CONNECT', {
+      if (!stopped && socket === current && current.readyState === WebSocket.OPEN) current.send(frame('CONNECT', {
         'accept-version': '1.2', 'heart-beat': '0,0', Authorization: `Bearer ${token}`,
       }))
     }).catch(() => current.close())
@@ -59,8 +69,10 @@ export function connectMeetSocket(options: Options): MeetSocketClient {
       })
     }
     current.onclose = () => {
+      if (socket !== current) return
+      socket = undefined
       connected = false
-      if (!stopped) retry = window.setTimeout(open, 5_000)
+      scheduleReconnect()
     }
   }
   open()
@@ -73,8 +85,10 @@ export function connectMeetSocket(options: Options): MeetSocketClient {
     close() {
       stopped = true
       if (retry !== undefined) window.clearTimeout(retry)
+      retry = undefined
       connected = false
       socket?.close()
+      socket = undefined
     },
   }
 }

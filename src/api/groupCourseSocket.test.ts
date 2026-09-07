@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { connectGroupCourseSocket } from './groupCourseSocket'
 
 class MockWebSocket {
@@ -24,6 +24,11 @@ describe('connectGroupCourseSocket', () => {
     vi.stubGlobal('WebSocket', MockWebSocket)
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
   it('subscribes to the selected group and forwards course events', async () => {
     const onEvent = vi.fn()
     const client = connectGroupCourseSocket({
@@ -44,5 +49,34 @@ describe('connectGroupCourseSocket', () => {
     expect(onEvent).toHaveBeenCalledWith({ groupId: 10, type: 'COURSE_SHARED', sharedCourseId: 32 })
 
     client.close()
+  })
+
+  it('ignores stale closes and cancels reconnect on client close', async () => {
+    vi.useFakeTimers()
+    const client = connectGroupCourseSocket({
+      groupId: 10,
+      tokenProvider: async () => 'token',
+      onEvent: vi.fn(),
+      reconnectAfterMs: 100,
+    })
+    const first = MockWebSocket.instances[0]
+
+    first.close()
+    first.onclose?.()
+    expect(vi.getTimerCount()).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(100)
+    expect(MockWebSocket.instances).toHaveLength(2)
+    const second = MockWebSocket.instances[1]
+    second.open()
+    await Promise.resolve()
+    second.receive('CONNECTED\nversion:1.2\n\n\0')
+    expect(second.sent.filter((value) => value.startsWith('SUBSCRIBE'))).toHaveLength(1)
+
+    first.onclose?.()
+    expect(vi.getTimerCount()).toBe(0)
+    client.close()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(MockWebSocket.instances).toHaveLength(2)
   })
 })

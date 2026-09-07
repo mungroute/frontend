@@ -48,6 +48,7 @@ describe('presenceSocket', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -98,5 +99,33 @@ describe('presenceSocket', () => {
     expect(onMessage).toHaveBeenCalledWith(response)
 
     client.close()
+  })
+
+  it('keeps one reconnect timer and stops reconnecting after close', async () => {
+    vi.useFakeTimers()
+    const client = connectPresenceSocket({
+      tokenProvider: async () => 'access-token',
+      onMessage: vi.fn(),
+      reconnectAfterMs: 100,
+    })
+    const first = MockWebSocket.instances[0]
+
+    first.close()
+    first.onclose?.()
+    expect(vi.getTimerCount()).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(100)
+    expect(MockWebSocket.instances).toHaveLength(2)
+    const second = MockWebSocket.instances[1]
+    second.open()
+    await Promise.resolve()
+    second.receive('CONNECTED\nversion:1.2\n\n\0')
+    expect(second.sent.filter((value) => value.startsWith('SUBSCRIBE'))).toHaveLength(1)
+
+    first.onclose?.()
+    expect(vi.getTimerCount()).toBe(0)
+    client.close()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(MockWebSocket.instances).toHaveLength(2)
   })
 })
